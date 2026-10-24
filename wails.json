@@ -1,0 +1,19 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "Flux",
+  "outputfilename": "Flux",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "rajvirkolpolok",
+    "email": "rajvir@kolpolok.com"
+  },
+  "info": {
+    "companyName": "Flux",
+    "productName": "Flux",
+    "productVersion": "1.0.0",
+    "comments": "Lightweight HTTP debugging proxy"
+  }
+}
