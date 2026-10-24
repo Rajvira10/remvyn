@@ -43,7 +43,7 @@ class GitHub(val web: String, val api: String, val clientId: String, var token: 
             if (c.responseCode >= 300) throw GitHubException("GitHub sign-in failed (${c.responseCode})", status = c.responseCode)
             return JSONObject(text)
         } catch (e: IOException) {
-            throw GitHubException("Can't reach GitHub (${e.message})")
+            throw GitHubException("Can't reach GitHub (${e.message})", "network")
         } finally {
             c.disconnect()
         }
@@ -73,11 +73,17 @@ class GitHub(val web: String, val api: String, val clientId: String, var token: 
             Thread.sleep(interval)
             if (cancelled()) break
             if (System.currentTimeMillis() > deadline) throw deviceError("expired_token", "")
-            val r = oauth("/login/oauth/access_token", mapOf(
-                "client_id" to clientId,
-                "device_code" to dc.deviceCode,
-                "grant_type" to "urn:ietf:params:oauth:grant-type:device_code",
-            ))
+            // While the user approves in the browser, Remvyn is in the background and
+            // Android (Power Saving, Doze) may cut its network; keep waiting.
+            val r = try {
+                oauth("/login/oauth/access_token", mapOf(
+                    "client_id" to clientId,
+                    "device_code" to dc.deviceCode,
+                    "grant_type" to "urn:ietf:params:oauth:grant-type:device_code",
+                ))
+            } catch (e: GitHubException) {
+                if (e.code == "network") continue else throw e
+            }
             when (val err = r.optString("error")) {
                 "" -> return r.getString("access_token").also { token = it }
                 "authorization_pending" -> {}
@@ -102,10 +108,23 @@ class GitHub(val web: String, val api: String, val clientId: String, var token: 
             }
             return code to body
         } catch (e: IOException) {
-            throw GitHubException("Can't reach GitHub (${e.message})")
+            throw GitHubException("Can't reach GitHub (${e.message})", "network")
         } finally {
             c.disconnect()
         }
+    }
+
+    /** Retries [f] on network errors, e.g. right after returning from the browser. */
+    fun <T> retrying(attempts: Int = 8, f: () -> T): T {
+        repeat(attempts - 1) {
+            try {
+                return f()
+            } catch (e: GitHubException) {
+                if (e.code != "network") throw e
+                Thread.sleep(1500)
+            }
+        }
+        return f()
     }
 
     private fun getJson(path: String): JSONObject {

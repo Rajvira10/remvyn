@@ -175,6 +175,10 @@ func (g *GitHub) PollDeviceToken(ctx context.Context, dc DeviceCode, unit time.D
 			"device_code": {dc.DeviceCode},
 			"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
 		}, &r)
+		var ae *APIError
+		if err != nil && !errors.As(err, &ae) && ctx.Err() == nil {
+			continue // network blip while the user is in the browser; keep waiting
+		}
 		if err != nil {
 			return "", err
 		}

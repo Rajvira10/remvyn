@@ -134,7 +134,7 @@ fun SetupScreen(app: AppState) {
                 val dc = g.startDeviceFlow()
                 onMain { if (attempt.get() == my) code = dc }
                 g.pollToken(dc) { attempt.get() != my }
-                val who = g.user()
+                val who = g.retrying { g.user() }
                 onMain {
                     if (attempt.get() != my) return@onMain
                     login = who
