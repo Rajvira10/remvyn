@@ -174,6 +174,7 @@ export interface Settings {
   terminalFontSize: number
   terminalFontFamily: string
   terminalTheme: string
+  autoLockMinutes: number
   cursorStyle: 'block' | 'bar' | 'underline'
   cursorBlink: boolean
   scrollback: number
@@ -389,4 +390,52 @@ export interface UptimeSummary {
   uptime30d: number
   recent: UptimeResult[]
   downSince: number
+}
+
+export interface LockStatus {
+  protected: boolean
+  locked: boolean
+  minLength: number
+  syncConnected: boolean
+}
+
+export interface SyncStatus {
+  appConfigured: boolean
+  clientId: string
+  appSlug: string
+  builtInApp: boolean
+  connected: boolean
+  repo: string
+  repoUrl: string
+  login: string
+  state: 'off' | 'idle' | 'syncing' | 'error' | 'locked'
+  lastSyncAt: number
+  error: string
+  errorCode: string
+  installUrl: string
+  newRepoUrl: string
+}
+
+export interface DeviceCode {
+  userCode: string
+  verificationUri: string
+  expiresIn: number
+  interval: number
+}
+
+export interface SyncRepo {
+  fullName: string
+  private: boolean
+  defaultBranch: string
+  htmlUrl: string
+}
+
+export interface SyncRepos {
+  repos: SyncRepo[]
+  installed: boolean
+}
+
+export interface RepoInfo extends SyncRepo {
+  hasVault: boolean
+  empty: boolean
 }

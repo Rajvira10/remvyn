@@ -24,12 +24,15 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
       ['Find', k('F')],
       ['Clear scrollback', k('K')],
       ['Show or hide server metrics', k('I')],
+      ['Next / previous color scheme', `${k(isMac ? '⌥]' : 'Alt+]')}  ${k(isMac ? '⌥[' : 'Alt+[')}`],
+      ['Larger / smaller text', `${k('=')}  ${k('-')}`],
     ],
   },
   {
     title: 'App',
     items: [
       ['Settings', k(',')],
+      ['Lock Flux (with a master password)', k('L')],
       ['Show shortcuts', k('/')],
     ],
   },

@@ -3,6 +3,7 @@ import { Toaster, toast } from 'sonner'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { LoadingBlock } from '@/components/common/Spinner'
 import { HostEditor } from '@/components/hosts/HostEditor'
+import { LockScreen } from '@/components/lock/LockScreen'
 import { QuickConnect } from '@/components/layout/QuickConnect'
 import { ShortcutsDialog } from '@/components/layout/ShortcutsDialog'
 import { TabBar, useCloseTab } from '@/components/layout/TabBar'
@@ -11,10 +12,11 @@ import { HostKeyDialog } from '@/components/session/HostKeyDialog'
 import { SftpView } from '@/components/sftp/SftpView'
 import { TerminalView } from '@/components/terminal/TerminalView'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { useAutoLock } from '@/hooks/useAutoLock'
 import { useHotkeys } from '@/hooks/useHotkeys'
 import { useResolvedTheme } from '@/hooks/useTheme'
-import { errorMessage, events, onEvent } from '@/lib/api'
-import type { AlertEvent, ForwardStatus, Metrics, MonitorStatus, Transfer } from '@/lib/types'
+import { api, errorMessage, events, onEvent } from '@/lib/api'
+import type { AlertEvent, ForwardStatus, LockStatus, Metrics, MonitorStatus, SyncStatus, Transfer } from '@/lib/types'
 import { ForwardingPage } from '@/pages/ForwardingPage'
 import { HostsPage } from '@/pages/HostsPage'
 import { KeychainPage } from '@/pages/KeychainPage'
@@ -22,6 +24,7 @@ import { KnownHostsPage } from '@/pages/KnownHostsPage'
 import { MonitoringPage } from '@/pages/MonitoringPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { SnippetsPage } from '@/pages/SnippetsPage'
+import { useLock } from '@/stores/lock'
 import { useMonitor } from '@/stores/monitor'
 import { useSessions } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
@@ -37,7 +40,13 @@ export default function App() {
   const { request: requestClose, dialog: closeDialog } = useCloseTab()
 
   useEffect(() => {
-    Promise.all([useSettings.getState().load(), useVault.getState().loadAll(), useTransfers.getState().load(), useMonitor.getState().loadAlerts()])
+    Promise.all([
+      useLock.getState().load(),
+      useSettings.getState().load(),
+      useVault.getState().loadAll(),
+      useTransfers.getState().load(),
+      useMonitor.getState().loadAlerts(),
+    ])
       .catch((e) => toast.error('Could not reach the Flux backend', { description: errorMessage(e) }))
       .finally(() => setReady(true))
     const offs = [
@@ -48,14 +57,26 @@ export default function App() {
         useMonitor.getState().applyAlert(e)
         if (!e.resolvedAt) toast.error(`${e.ruleName} · ${e.subject}`, { description: e.message })
       }),
+      onEvent<LockStatus>(events.LOCK, (s) => useLock.getState().setStatus(s)),
+      onEvent<SyncStatus>(events.SYNC_STATUS, (s) => useLock.getState().setSync(s)),
+      // Another device changed the vault.
+      onEvent(events.VAULT_CHANGED, () => void useVault.getState().loadAll()),
       onEvent<Transfer>(events.TRANSFER, (t) => {
         const prev = useTransfers.getState().byId[t.id]
         useTransfers.getState().apply(t)
         if (prev?.state === 'running' && t.state === 'failed') toast.error(`Transfer failed: ${t.name}`, { description: t.error })
       }),
     ]
-    return () => offs.forEach((off) => off())
+    // Pick up changes from other devices when Flux comes to the front.
+    const onFocus = () => void api.syncWake().catch(() => {})
+    window.addEventListener('focus', onFocus)
+    return () => {
+      offs.forEach((off) => off())
+      window.removeEventListener('focus', onFocus)
+    }
   }, [])
+
+  useAutoLock()
 
   useHotkeys([
     { combo: 'app+t', handler: () => useUI.getState().setPaletteOpen(true), allowInInputs: true },
@@ -90,6 +111,13 @@ export default function App() {
       allowInInputs: true,
     },
     { combo: 'app+/', handler: () => useUI.getState().setShortcutsOpen(true), allowInInputs: true },
+    {
+      combo: 'app+l',
+      handler: () => {
+        if (useLock.getState().status?.protected) void api.lock()
+      },
+      allowInInputs: true,
+    },
     // Block the webview's reload shortcut, which would drop every session.
     { combo: 'app+r', handler: () => {}, allowInInputs: true },
   ])
@@ -132,6 +160,7 @@ export default function App() {
       <QuickConnect />
       <ShortcutsDialog />
       {closeDialog}
+      <LockScreen />
       <Toaster theme={theme} position="bottom-right" richColors closeButton toastOptions={{ className: 'text-[13px]' }} />
     </TooltipProvider>
   )

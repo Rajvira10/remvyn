@@ -28,6 +28,11 @@ import type {
   UptimeCheck,
   UptimeResult,
   UptimeSummary,
+  DeviceCode,
+  LockStatus,
+  RepoInfo,
+  SyncRepos,
+  SyncStatus,
 } from './types'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -114,6 +119,25 @@ export const api = {
   testUptimeCheck: (c: UptimeCheck): Promise<UptimeResult> => call.TestUptimeCheck(c),
   sendTestNotification: (): Promise<void> => call.SendTestNotification(),
 
+  lockStatus: (): Promise<LockStatus> => call.GetLockStatus(),
+  unlock: (password: string): Promise<void> => call.Unlock(password),
+  lock: (): Promise<void> => call.Lock(),
+  setMasterPassword: (current: string, next: string): Promise<LockStatus> => call.SetMasterPassword(current, next),
+  removeMasterPassword: (current: string): Promise<LockStatus> => call.RemoveMasterPassword(current),
+  resetVault: (): Promise<Settings> => call.ResetVault(),
+
+  syncStatus: (): Promise<SyncStatus> => call.GetSyncStatus(),
+  syncSetApp: (clientId: string, slug: string): Promise<SyncStatus> => call.SyncSetApp(clientId, slug),
+  syncStartLogin: (): Promise<DeviceCode> => call.SyncStartLogin(),
+  syncFinishLogin: (): Promise<string> => call.SyncFinishLogin(),
+  syncCancelLogin: (): Promise<void> => call.SyncCancelLogin(),
+  syncRepos: (): Promise<SyncRepos> => call.SyncRepos(),
+  syncInspect: (repo: string): Promise<RepoInfo> => call.SyncInspect(repo),
+  syncConnect: (repo: string, password: string): Promise<SyncStatus> => call.SyncConnect(repo, password),
+  syncDisconnect: (): Promise<SyncStatus> => call.SyncDisconnect(),
+  syncNow: (): Promise<SyncStatus> => call.SyncNow(),
+  syncWake: (): Promise<void> => call.SyncWake(),
+
 }
 
 export const events = {
@@ -128,6 +152,9 @@ export const events = {
   MONITOR_STATUS: 'monitor:status',
   ALERT: 'alert:event',
   UPTIME_RESULT: 'uptime:result',
+  LOCK: 'lock:status',
+  SYNC_STATUS: 'sync:status',
+  VAULT_CHANGED: 'vault:changed',
 } as const
 
 export function onEvent<T>(name: string, cb: (data: T) => void): () => void {

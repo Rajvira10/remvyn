@@ -52,6 +52,11 @@ func CodeOf(err error) string {
 	if errors.As(err, &ce) {
 		return ce.Code
 	}
+	// Other packages' errors can carry a code without importing sshconn.
+	var coder interface{ ErrCode() string }
+	if errors.As(err, &coder) {
+		return coder.ErrCode()
+	}
 	return ""
 }
 

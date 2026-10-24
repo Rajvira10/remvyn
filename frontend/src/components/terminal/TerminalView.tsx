@@ -4,11 +4,12 @@ import { SearchAddon } from '@xterm/addon-search'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
-import { Terminal } from '@xterm/xterm'
+import { Terminal, type ITheme } from '@xterm/xterm'
 import { ActivityIcon, ChevronDownIcon, ChevronUpIcon, CodeIcon, FolderIcon, RotateCwIcon, SearchIcon, XIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
+import { AppearancePicker, changeFontSize, cycleTerminalTheme } from '@/components/terminal/AppearancePicker'
 import { MonitorPanel } from '@/components/monitor/MonitorPanel'
 import { ConnectOverlay, type Credentials } from '@/components/session/ConnectOverlay'
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,7 @@ import { api, copyText, errorCode, errorMessage, events, onEvent, readClipboard 
 import type { SessionExit } from '@/lib/types'
 import { terminalTheme } from '@/lib/terminalThemes'
 import { appKey, isMac, uid } from '@/lib/utils'
+import { isLocked } from '@/stores/lock'
 import { useSessions, type Tab } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
 import { useUI } from '@/stores/ui'
@@ -40,7 +42,8 @@ function decode(b64: string): Uint8Array {
 
 /** App-level shortcuts that must never be sent to the remote shell. */
 const RESERVED = ['app+t', 'app+w', 'app+k', 'app+f', 'app+,', 'app+[', 'app+]', 'app+shift+[', 'app+shift+]',
-  'app+1', 'app+2', 'app+3', 'app+4', 'app+5', 'app+6', 'app+7', 'app+8', 'app+9', 'app+0', 'app+/', 'app+i']
+  'app+1', 'app+2', 'app+3', 'app+4', 'app+5', 'app+6', 'app+7', 'app+8', 'app+9', 'app+0', 'app+/', 'app+i',
+  'app+alt+[', 'app+alt+]', 'app+=', 'app+-', 'app+l']
 
 export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
   const settings = useSettings((s) => s.settings)
@@ -59,6 +62,7 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
   const credsRef = useRef<Credentials | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [preview, setPreview] = useState<ITheme | null>(null)
   const searchInput = useRef<HTMLInputElement>(null)
 
   const send = (data: string) => {
@@ -99,6 +103,8 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
     }
 
     term.attachCustomKeyEventHandler((e) => {
+      // Nothing reaches the remote shell while Flux is locked.
+      if (isLocked()) return false
       if (e.type !== 'keydown') return true
       // Copy: ⌘C on macOS; Ctrl+Shift+C elsewhere (plain Ctrl+C is SIGINT).
       const copyCombo = isMac ? e.metaKey && !e.ctrlKey && e.key.toLowerCase() === 'c' : e.ctrlKey && e.shiftKey && e.code === 'KeyC'
@@ -159,13 +165,18 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
     term.options.cursorStyle = settings.cursorStyle
     term.options.cursorBlink = settings.cursorBlink
     term.options.scrollback = settings.scrollback
-    term.options.theme = terminalTheme(settings.terminalTheme).theme
     try {
       fitRef.current?.fit()
     } catch {
       /* hidden */
     }
   }, [settings])
+
+  // Color scheme, including a temporary preview from the style picker.
+  useEffect(() => {
+    const term = termRef.current
+    if (term && settings) term.options.theme = preview ?? terminalTheme(settings.terminalTheme).theme
+  }, [settings, preview])
 
   // Refit and focus when the tab becomes visible.
   useEffect(() => {
@@ -261,6 +272,7 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
   useEffect(() => {
     if (!visible) return
     const onKey = (e: KeyboardEvent) => {
+      if (isLocked()) return
       if (matchesCombo(e, 'app+f')) {
         e.preventDefault()
         setSearchOpen(true)
@@ -271,6 +283,12 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
       } else if (matchesCombo(e, 'app+i')) {
         e.preventDefault()
         useUI.getState().setMonitorOpen(!useUI.getState().monitorOpen)
+      } else if (matchesCombo(e, 'app+alt+]') || matchesCombo(e, 'app+alt+[')) {
+        e.preventDefault()
+        cycleTerminalTheme(e.code === 'BracketRight' ? 1 : -1)
+      } else if (matchesCombo(e, 'app+=') || matchesCombo(e, 'app+-')) {
+        e.preventDefault()
+        changeFontSize(e.code === 'Equal' || e.key === '=' ? 1 : -1)
       }
     }
     window.addEventListener('keydown', onKey, true)
@@ -322,6 +340,7 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
               <ActivityIcon /> Metrics
             </Button>
           </Tooltip>
+          <AppearancePicker onPreview={setPreview} />
           <Tooltip content={`Find (${appKey}F)`}>
             <Button variant="ghost" size="icon-xs" aria-label="Find" onClick={() => { setSearchOpen((o) => !o); setTimeout(() => searchInput.current?.focus(), 0) }}>
               <SearchIcon />
@@ -370,7 +389,7 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
         </div>
       )}
       <div className="flex min-h-0 flex-1">
-        <div className="relative min-w-0 flex-1" style={{ background: theme.theme.background }}>
+        <div className="relative min-w-0 flex-1" style={{ background: (preview ?? theme.theme).background }}>
           <div ref={containerRef} className="absolute inset-0 m-2" />
           <ConnectOverlay
             tab={tab}

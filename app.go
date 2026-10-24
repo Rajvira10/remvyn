@@ -17,10 +17,29 @@ import (
 	"flux/backend/files"
 	"flux/backend/models"
 	"flux/backend/sshconn"
+	"flux/backend/vaultsync"
 )
 
 // Version is the application version.
 const Version = "2.0.0"
+
+// The GitHub App used for "Sign in with GitHub" sync. Set at build time:
+//
+//	wails build -ldflags "-X main.githubClientID=Iv23... -X main.githubAppSlug=flux-sync"
+//
+// or with FLUX_GITHUB_CLIENT_ID / FLUX_GITHUB_APP_SLUG. Without one, users
+// can enter their own app in Settings → Sync.
+var (
+	githubClientID string
+	githubAppSlug  string
+)
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
 
 // App is the Wails-bound facade over core.Core. Every exported method is
 // callable from the frontend.
@@ -68,6 +87,15 @@ func (a *App) startup(ctx context.Context) {
 	c, err := core.Open(ctx, core.Options{
 		Emit:   func(event string, data any) { wruntime.EventsEmit(ctx, event, data) },
 		Notify: a.notify,
+		Sync: vaultsync.Options{
+			// FLUX_GITHUB_WEB/API point sync at GitHub Enterprise (or a test server).
+			Endpoints: vaultsync.Endpoints{
+				Web: envOr("FLUX_GITHUB_WEB", vaultsync.DefaultEndpoints.Web),
+				API: envOr("FLUX_GITHUB_API", vaultsync.DefaultEndpoints.API),
+			},
+			ClientID: envOr("FLUX_GITHUB_CLIENT_ID", githubClientID),
+			AppSlug:  envOr("FLUX_GITHUB_APP_SLUG", githubAppSlug),
+		},
 	})
 	if err != nil {
 		a.initErr = err.Error()
@@ -79,8 +107,7 @@ func (a *App) startup(ctx context.Context) {
 
 func (a *App) domReady(context.Context) {
 	if a.core != nil {
-		a.core.StartAutoForwards()
-		a.core.StartMonitoring()
+		a.core.Start()
 	}
 	// Ask for notification permission once, in the background: on macOS
 	// this can wait on the user (or never answer for unsigned builds).
@@ -720,6 +747,144 @@ func (a *App) TestUptimeCheck(c models.UptimeCheck) (models.UptimeResult, error)
 // SendTestNotification shows a sample alert notification.
 func (a *App) SendTestNotification() {
 	a.notify("Flux alerts are working", "You'll see alerts like this when a rule fires.")
+}
+
+// ---------------------------------------------------------------- master password
+
+// GetLockStatus reports whether a master password is set and Flux is locked.
+func (a *App) GetLockStatus() models.LockStatus {
+	if a.core == nil {
+		return models.LockStatus{}
+	}
+	return a.core.LockStatus()
+}
+
+// Unlock opens the vault with the master password.
+func (a *App) Unlock(password string) error {
+	if err := a.ready(); err != nil {
+		return err
+	}
+	return a.core.Unlock(password)
+}
+
+// Lock locks Flux until the master password is entered.
+func (a *App) Lock() error {
+	if err := a.ready(); err != nil {
+		return err
+	}
+	return a.core.Lock()
+}
+
+// SetMasterPassword sets or changes the master password.
+func (a *App) SetMasterPassword(current, next string) (models.LockStatus, error) {
+	if err := a.ready(); err != nil {
+		return models.LockStatus{}, err
+	}
+	return a.core.SetMasterPassword(current, next)
+}
+
+// RemoveMasterPassword turns the master password off.
+func (a *App) RemoveMasterPassword(current string) (models.LockStatus, error) {
+	if err := a.ready(); err != nil {
+		return models.LockStatus{}, err
+	}
+	return a.core.RemoveMasterPassword(current)
+}
+
+// ResetVault erases all local data after a forgotten master password.
+func (a *App) ResetVault() (models.Settings, error) {
+	if err := a.ready(); err != nil {
+		return models.DefaultSettings(), err
+	}
+	return a.core.ResetVault()
+}
+
+// ---------------------------------------------------------------- sync
+
+// GetSyncStatus returns GitHub sync state.
+func (a *App) GetSyncStatus() vaultsync.Status {
+	if a.core == nil {
+		return vaultsync.Status{State: "off"}
+	}
+	return a.core.SyncStatus()
+}
+
+// SyncSetApp stores a GitHub App client ID and name for sign-in.
+func (a *App) SyncSetApp(clientID, slug string) (vaultsync.Status, error) {
+	if err := a.ready(); err != nil {
+		return vaultsync.Status{}, err
+	}
+	return a.core.SyncSetApp(clientID, slug)
+}
+
+// SyncStartLogin begins "Sign in with GitHub" and returns the code to enter.
+func (a *App) SyncStartLogin() (vaultsync.DeviceCode, error) {
+	if err := a.ready(); err != nil {
+		return vaultsync.DeviceCode{}, err
+	}
+	return a.core.SyncStartLogin()
+}
+
+// SyncFinishLogin waits for the user to approve sign-in on GitHub.
+func (a *App) SyncFinishLogin() (string, error) {
+	if err := a.ready(); err != nil {
+		return "", err
+	}
+	return a.core.SyncFinishLogin()
+}
+
+// SyncCancelLogin stops waiting for sign-in.
+func (a *App) SyncCancelLogin() {
+	if a.core != nil {
+		a.core.SyncCancelLogin()
+	}
+}
+
+// SyncRepos lists repositories the Flux GitHub app can access.
+func (a *App) SyncRepos() (core.SyncRepos, error) {
+	if err := a.ready(); err != nil {
+		return core.SyncRepos{}, err
+	}
+	return a.core.SyncRepos()
+}
+
+// SyncInspect reports whether a repository already holds a vault.
+func (a *App) SyncInspect(repo string) (vaultsync.RepoInfo, error) {
+	if err := a.ready(); err != nil {
+		return vaultsync.RepoInfo{}, err
+	}
+	return a.core.SyncInspect(repo)
+}
+
+// SyncConnect creates or joins the vault in repo and starts syncing.
+func (a *App) SyncConnect(repo, password string) (vaultsync.Status, error) {
+	if err := a.ready(); err != nil {
+		return vaultsync.Status{}, err
+	}
+	return a.core.SyncConnect(repo, password)
+}
+
+// SyncDisconnect stops syncing on this device.
+func (a *App) SyncDisconnect() (vaultsync.Status, error) {
+	if err := a.ready(); err != nil {
+		return vaultsync.Status{}, err
+	}
+	return a.core.SyncDisconnect()
+}
+
+// SyncNow runs a sync pass immediately.
+func (a *App) SyncNow() (vaultsync.Status, error) {
+	if err := a.ready(); err != nil {
+		return vaultsync.Status{}, err
+	}
+	return a.core.SyncNow()
+}
+
+// SyncWake asks for a sync pass soon (window focus).
+func (a *App) SyncWake() {
+	if a.core != nil {
+		a.core.SyncWake()
+	}
 }
 
 func wruntimeMinimise(a *App) { wruntime.WindowMinimise(a.ctx) }

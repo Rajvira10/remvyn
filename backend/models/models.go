@@ -230,14 +230,17 @@ type Settings struct {
 	TerminalFontSize   int    `json:"terminalFontSize"`
 	TerminalFontFamily string `json:"terminalFontFamily"`
 	TerminalTheme      string `json:"terminalTheme"`
-	CursorStyle        string `json:"cursorStyle"` // block | bar | underline
-	CursorBlink        bool   `json:"cursorBlink"`
-	Scrollback         int    `json:"scrollback"`
-	CopyOnSelect       bool   `json:"copyOnSelect"`
-	KeepaliveSeconds   int    `json:"keepaliveSeconds"`
-	ConnectTimeout     int    `json:"connectTimeout"`
-	ShowHiddenFiles    bool   `json:"showHiddenFiles"`
-	ConfirmOnClose     bool   `json:"confirmOnClose"`
+	// AutoLockMinutes locks Flux after this much inactivity (0 = never);
+	// only used with a master password.
+	AutoLockMinutes  int    `json:"autoLockMinutes"`
+	CursorStyle      string `json:"cursorStyle"` // block | bar | underline
+	CursorBlink      bool   `json:"cursorBlink"`
+	Scrollback       int    `json:"scrollback"`
+	CopyOnSelect     bool   `json:"copyOnSelect"`
+	KeepaliveSeconds int    `json:"keepaliveSeconds"`
+	ConnectTimeout   int    `json:"connectTimeout"`
+	ShowHiddenFiles  bool   `json:"showHiddenFiles"`
+	ConfirmOnClose   bool   `json:"confirmOnClose"`
 
 	// ProEnabled unlocks Flux Pro features (history, alerts, uptime checks,
 	// background monitoring and dashboards). It is a local switch until
@@ -260,6 +263,7 @@ func DefaultSettings() Settings {
 		TerminalFontSize:   13,
 		TerminalFontFamily: "'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace",
 		TerminalTheme:      "flux",
+		AutoLockMinutes:    15,
 		CursorStyle:        "block",
 		CursorBlink:        true,
 		Scrollback:         10000,
@@ -284,4 +288,12 @@ type SSHConfigImport struct {
 	Warnings []string `json:"warnings"`
 	// Path is the file that was read; empty when the user cancelled the picker.
 	Path string `json:"path"`
+}
+
+// LockStatus describes the master password state.
+type LockStatus struct {
+	Protected     bool `json:"protected"`
+	Locked        bool `json:"locked"`
+	MinLength     int  `json:"minLength"`
+	SyncConnected bool `json:"syncConnected"`
 }

@@ -24,6 +24,7 @@ import (
 	"flux/backend/storage"
 	"flux/backend/terminal"
 	"flux/backend/uptime"
+	"flux/backend/vaultsync"
 )
 
 // Emitter delivers events to the UI.
@@ -41,6 +42,8 @@ type Options struct {
 	MonitorLiveInterval time.Duration
 	// MonitorSlowEvery overrides how often Docker/services refresh (tests).
 	MonitorSlowEvery time.Duration
+	// Sync configures GitHub sync (endpoints, built-in app, timings).
+	Sync vaultsync.Options
 }
 
 // Core is the application service layer.
@@ -63,6 +66,14 @@ type Core struct {
 	notify    func(title, body string)
 	stop      chan struct{}
 	closeOnce sync.Once
+	sync      *vaultsync.Service
+
+	// keyMu guards the master-password state.
+	keyMu     sync.Mutex
+	dek       []byte // data key while unlocked
+	protected bool   // a master password is set
+	started   bool   // Start was called (UI is up)
+	failedTry int
 
 	mu       sync.RWMutex
 	settings models.Settings
@@ -95,21 +106,29 @@ func Open(ctx context.Context, opts Options) (*Core, error) {
 	if err := os.MkdirAll(opts.DataDir, 0o700); err != nil {
 		return nil, fmt.Errorf("create data directory: %w", err)
 	}
-	vault, err := security.OpenVault(opts.DataDir)
+	ks, err := security.LoadKeyState(opts.DataDir)
 	if err != nil {
 		return nil, err
+	}
+	var vault *security.Vault
+	if !ks.Protected {
+		if vault, err = security.NewVault(ks.Key); err != nil {
+			return nil, err
+		}
 	}
 	emit := opts.Emit
 	if emit == nil {
 		emit = func(string, any) {}
 	}
 	c := &Core{
-		DataDir: opts.DataDir,
-		DBPath:  filepath.Join(opts.DataDir, "flux-ssh.db"),
-		emit:    emit,
-		pending: map[string]context.CancelFunc{},
-		notify:  opts.Notify,
-		stop:    make(chan struct{}),
+		DataDir:   opts.DataDir,
+		DBPath:    filepath.Join(opts.DataDir, "flux-ssh.db"),
+		emit:      emit,
+		pending:   map[string]context.CancelFunc{},
+		notify:    opts.Notify,
+		stop:      make(chan struct{}),
+		dek:       ks.Key,
+		protected: ks.Protected,
 	}
 	if c.store, err = storage.Open(c.DBPath, vault); err != nil {
 		return nil, err
@@ -129,6 +148,13 @@ func Open(ctx context.Context, opts Options) (*Core, error) {
 		return client, err
 	})
 	c.initMonitoring(opts.MonitorLiveInterval, opts.MonitorSlowEvery)
+	so := opts.Sync
+	so.Store, so.Emit = c.store, emit
+	if c.sync, err = vaultsync.New(so); err != nil {
+		c.store.Close()
+		return nil, err
+	}
+	c.store.OnChange(c.sync.Changed)
 	return c, nil
 }
 
@@ -162,6 +188,7 @@ func (c *Core) close() {
 	}
 	c.connMu.Unlock()
 	close(c.stop)
+	c.sync.Close()
 	c.monitor.StopAll()
 	c.uptime.StopAll()
 	c.forwards.StopAll()
@@ -202,6 +229,9 @@ func (c *Core) UpdateSettings(s models.Settings) (models.Settings, error) {
 	}
 	if s.KeepaliveSeconds < 0 || s.KeepaliveSeconds > 3600 {
 		return c.Settings(), errors.New("keepalive interval must be between 0 and 3600 seconds")
+	}
+	if s.AutoLockMinutes < 0 || s.AutoLockMinutes > 24*60 {
+		return c.Settings(), errors.New("auto-lock must be between 0 and 1440 minutes")
 	}
 	if s.ConnectTimeout < 3 || s.ConnectTimeout > 300 {
 		return c.Settings(), errors.New("connect timeout must be between 3 and 300 seconds")
@@ -646,8 +676,14 @@ func (c *Core) importIdentity(ctx context.Context, path string, byFP map[string]
 
 // ---------------------------------------------------------------- data
 
-// ClearAppData closes all sessions and wipes stored data.
+// ClearAppData closes all sessions and wipes stored data on this device.
+// Sync is disconnected first so the wipe never reaches other devices.
 func (c *Core) ClearAppData() (models.Settings, error) {
+	if c.sync.Connected() {
+		if err := c.sync.Disconnect(); err != nil {
+			return c.Settings(), err
+		}
+	}
 	c.forwards.StopAll()
 	c.terms.CloseAll()
 	c.files.CloseAll()

@@ -1,8 +1,10 @@
-import { FolderIcon, LayoutGridIcon, PlusIcon, TerminalIcon, XIcon, ZapIcon } from 'lucide-react'
+import { CloudAlertIcon, CloudCheckIcon, CloudIcon, FolderIcon, LayoutGridIcon, LockIcon, PlusIcon, RefreshCwIcon, TerminalIcon, XIcon, ZapIcon } from 'lucide-react'
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { Tooltip } from '@/components/ui/tooltip'
-import { appKey, cn, isMac } from '@/lib/utils'
+import { api } from '@/lib/api'
+import { appKey, cn, isMac, relativeTime } from '@/lib/utils'
+import { useLock } from '@/stores/lock'
 import { useSessions, type Tab } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
 import { useUI } from '@/stores/ui'
@@ -100,7 +102,56 @@ export function TabBar() {
           </button>
         </Tooltip>
       </div>
+      <StatusButtons />
       {dialog}
+    </div>
+  )
+}
+
+/** Sync state and the lock button, at the right of the title bar. */
+function StatusButtons() {
+  const lock = useLock((s) => s.status)
+  const sync = useLock((s) => s.sync)
+  const btn = 'no-drag flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+  const openSettings = () => {
+    useSessions.getState().activate('vault')
+    useUI.getState().setPage('settings')
+  }
+  if (!lock?.protected && !sync?.connected) return null
+  return (
+    <div className="mr-2 flex items-center gap-0.5">
+      {sync?.connected && (
+        <Tooltip
+          content={
+            sync.state === 'error'
+              ? `Sync failed: ${sync.error}`
+              : sync.state === 'syncing'
+                ? 'Syncing…'
+                : sync.state === 'locked'
+                  ? 'Sync paused while locked'
+                  : `Synced with ${sync.repo} ${relativeTime(sync.lastSyncAt)}`
+          }
+        >
+          <button onClick={openSettings} className={btn} aria-label="Sync status">
+            {sync.state === 'error' ? (
+              <CloudAlertIcon className="size-4 text-danger" />
+            ) : sync.state === 'syncing' ? (
+              <RefreshCwIcon className="size-3.5 animate-spin" />
+            ) : sync.state === 'locked' ? (
+              <CloudIcon className="size-4" />
+            ) : (
+              <CloudCheckIcon className="size-4" />
+            )}
+          </button>
+        </Tooltip>
+      )}
+      {lock?.protected && (
+        <Tooltip content={`Lock Flux (${appKey}L)`}>
+          <button onClick={() => void api.lock()} className={btn} aria-label="Lock Flux">
+            <LockIcon className="size-3.5" />
+          </button>
+        </Tooltip>
+      )}
     </div>
   )
 }

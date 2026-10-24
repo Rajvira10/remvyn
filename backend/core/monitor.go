@@ -76,7 +76,13 @@ func (c *Core) applyMonitoring() {
 		c.uptime.Sync(nil)
 		return
 	}
-	c.monitor.SetBackground(st.MonitorHostIDs, time.Duration(st.MonitorIntervalSec)*time.Second)
+	// Background monitoring dials with saved credentials, which are
+	// unavailable while Flux is locked.
+	if c.store.Locked() {
+		c.monitor.SetBackground(nil, 0)
+	} else {
+		c.monitor.SetBackground(st.MonitorHostIDs, time.Duration(st.MonitorIntervalSec)*time.Second)
+	}
 	if rules, err := c.store.AlertRules(ctx); err == nil {
 		c.alerts.SetRules(rules)
 	}

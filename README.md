@@ -7,7 +7,7 @@ Flux is a desktop SSH client in the spirit of Termius. It saves your servers, op
 - **Hosts**: saved servers with labels, groups, colors, startup commands, and password, SSH key or SSH agent authentication. Search, duplicate, import from `~/.ssh/config` (keys referenced by `IdentityFile` are imported too), and quick connect with ⌘T.
 - **Terminal**:
   - Tabbed xterm.js sessions (WebGL renderer) with a real PTY (`xterm-256color`, truecolor, Unicode 11) and live resize.
-  - Copy and paste, find in scrollback, clickable links, five color schemes, and configurable font, cursor and scrollback.
+  - Copy and paste, find in scrollback, clickable links, 39 color schemes, and configurable font, cursor and scrollback. The palette button in the terminal toolbar switches scheme (with live preview on hover), text size and cursor without opening Settings.
   - Run a snippet from the terminal toolbar.
   - Dropped connections show a Reconnect overlay; keepalives detect dead links.
 - **SFTP**:
@@ -21,6 +21,8 @@ Flux is a desktop SSH client in the spirit of Termius. It saves your servers, op
 - **Snippets**: saved commands you can send to any open terminal.
 - **Known hosts**: trust on first use with an explicit fingerprint check. A changed host key shows a man-in-the-middle warning with both fingerprints, and rejecting it is the default action. You can review and forget trusted hosts.
 - **Monitoring**: live CPU, memory, disk, network, Docker containers, services and top processes beside the terminal (free), plus history, alerts, uptime checks and a multi-server dashboard with Flux Pro. See [Monitoring](#monitoring).
+- **Master password and app lock**: optional master password, auto-lock after inactivity, and ⌘L to lock. See [Master password and sync](#master-password-and-sync).
+- **Sync**: keep your vault in sync between computers through a private GitHub repository, end-to-end encrypted. Sign in with GitHub; no server needed.
 - **Settings**: theme, terminal appearance, keepalive and connect timeout, SFTP defaults, close confirmation, and clearing all data.
 
 ## Monitoring
@@ -43,6 +45,44 @@ Pro is a local switch (Settings → Flux Pro, or any upgrade button) until payme
 Background monitoring connects without prompting: it uses an open terminal's connection if there is one, otherwise the host's saved password or key and an already-trusted host key. If something is missing, the dashboard says what to do.
 
 **Limits:** data is only collected while Flux is running. Gaps in history mean the app was closed, and no alerts fire while it's closed. Only Linux servers are supported. Docker data needs the SSH user to be allowed to use Docker; service data needs systemd.
+
+## Master password and sync
+
+**Master password.** Set one in Settings → Security. Flux then asks for it at launch, after auto-lock (15 minutes idle by default) and after ⌘L. Open terminals keep running while locked, but they get no input, and new connections, background monitoring and sync wait until you unlock. The data key that encrypts your secrets is wrapped with a key derived from the password (Argon2id, 64 MiB, 3 passes) and is only held in memory while unlocked; changing the password re-wraps it without re-encrypting anything. A forgotten password can't be recovered: the lock screen offers to erase local data and start over.
+
+**Sync with GitHub.** Settings → Sync → *Sign in with GitHub*:
+
+1. Flux shows a one-time code; approve it on github.com (GitHub's device flow, so there's no client secret and no Flux server).
+2. Choose an empty **private** repository. If Flux can't see one yet, the dialog links to "new repository" and to the app's install page, where you grant access to just that repository.
+3. Set (or confirm) your master password. Flux creates the vault and uploads everything, encrypted.
+
+On another computer, sign in, choose the same repository and enter the same master password; its local data is merged in, and it adopts that master password.
+
+What's synced: hosts (with saved passwords), keys (with passphrases), groups, snippets, forwarding rules and known hosts. Settings and monitoring history stay per device.
+
+How it works:
+- The repository holds `vault.json` (a random sync key wrapped with your master password) and one file per item under `records/`. Each file is AES-256-GCM encrypted and bound to its path; file names are keyed hashes, so GitHub sees only how many items you have and when they change.
+- Flux uses the Git Data API directly; no git binary or local clone.
+- Each device remembers, per item, the version it last agreed with the repository, so it can tell local edits, remote edits and deletions apart. If both sides edited the same item, the newer edit wins. An edit beats a deletion, so nothing is lost silently.
+- Sync runs a couple of seconds after a change, every minute, and when the window comes to the front. Commits that race another device are retried.
+- Changing the master password re-wraps the key in the repository; other devices keep syncing and use the new password next time they join.
+- "Clear all data" and "Reset" disconnect sync first, so a wipe never propagates.
+
+**The GitHub App.** Sign-in needs a GitHub App with *Device Flow* enabled, *Expire user authorization tokens* turned off, and only *Repository → Contents: read and write*. Build it in:
+
+```bash
+wails build -ldflags "-X main.githubClientID=Iv23li... -X main.githubAppSlug=your-app-name"
+```
+
+or set `FLUX_GITHUB_CLIENT_ID` and `FLUX_GITHUB_APP_SLUG`. Without one, Settings → Sync walks users through registering their own app. `FLUX_GITHUB_WEB` / `FLUX_GITHUB_API` point Flux at GitHub Enterprise.
+
+To try sync locally without GitHub:
+
+```bash
+go run ./tools/devgithub        # fake GitHub on 127.0.0.1:2280 with octo/flux-vault
+FLUX_GITHUB_WEB=http://127.0.0.1:2280 FLUX_GITHUB_API=http://127.0.0.1:2280 \
+  FLUX_GITHUB_CLIENT_ID=dev FLUX_GITHUB_APP_SLUG=flux-dev FLUX_DATA_DIR=/tmp/flux-a wails dev
+```
 
 ## Run and build
 
@@ -79,6 +119,9 @@ On macOS these use ⌘. On Linux and Windows they use Ctrl+Shift, so plain Ctrl+
 | Copy / paste in terminal | ⌘C / ⌘V (Ctrl+Shift+C/V elsewhere) |
 | Find in terminal / clear | ⌘F / ⌘K |
 | Server metrics panel | ⌘I |
+| Lock Flux (with a master password) | ⌘L |
+| Next / previous color scheme | ⌘⌥] / ⌘⌥[ |
+| Larger / smaller terminal text | ⌘= / ⌘- |
 | Settings / shortcuts | ⌘, / ⌘/ |
 
 ## Tests
@@ -108,6 +151,12 @@ cd frontend && npx tsc -b && npx oxlint src
   - Container actions and command-injection guards.
   - Pro gating; background monitoring, history, alerts firing and resolving with notifications, and uptime checks.
   - A blocked notifier never stalls alert evaluation.
+- Master password: set, lock, wrong/right unlock, restart locked, change, remove, and reset after a forgotten password.
+- Sync, against an in-process fake GitHub (device flow and Git Data API) with two and three devices:
+  - Sign-in, denied sign-in, app not installed, inaccessible and public repositories.
+  - Creating and joining a vault, wrong vault password, and that nothing readable reaches the repository.
+  - Hosts, passwords, keys, forwards and known hosts arriving intact; edits and deletions in both directions; newer-edit-wins conflicts; idle passes making no commits; retrying after a racing push.
+  - Sync pausing while locked, password changes, and "clear all data" not propagating.
 
 ## Architecture
 
@@ -122,9 +171,11 @@ backend/
   keys/                key generation, parsing and passphrases
   sshconfig/           ~/.ssh/config parser
   storage/             SQLite (modernc.org/sqlite, pure Go)
-  security/            AES-256-GCM vault for secrets
-  testutil/            in-process SSH server for tests
+  security/            AES-256-GCM vault for secrets; master-password key wrapping (Argon2id)
+  vaultsync/           GitHub sync: device-flow sign-in, Git Data API remote, encrypted records, merge engine
+  testutil/            in-process SSH server and fake GitHub for tests
 tools/devsshd/         run the test server for manual testing
+tools/devgithub/       run the fake GitHub for trying sync
   monitor/             agentless metrics collection (script, parser, per-host collectors)
   alerts/              alert rule evaluation, firing and resolving
   uptime/              HTTP/TCP uptime probes
@@ -135,7 +186,8 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 
 ## Security
 
-- Passwords, private keys and key passphrases are encrypted with AES-256-GCM before they are written to SQLite. The key lives in a separate `0600` file in the data folder. This protects against leaking the database file, not against someone who can read your home directory; OS keychain integration is a planned improvement.
+- Passwords, private keys and key passphrases are encrypted with AES-256-GCM before they are written to SQLite. Without a master password, the key lives in a separate `0600` file in the data folder, which protects against leaking the database file but not against someone who can read your home directory. With a master password, the key exists on disk only wrapped by an Argon2id-derived key, and in memory only while unlocked. Host names and other non-secret fields are not encrypted.
+- Synced data is end-to-end encrypted with a key that only exists wrapped by your master password; GitHub stores ciphertext. Records are authenticated, so tampered or swapped files are rejected, but anyone with write access to the repository could delete synced items (and the deletion would sync); Git history keeps the old versions. The GitHub token and sync key are sealed with the local data key, so they're unusable while Flux is locked.
 - Host keys are always verified. New hosts need explicit confirmation, and a changed key is flagged and rejected by default.
 - Private keys never leave the Go backend; the UI only ever receives public metadata.
 - Forwarding rules bind to `127.0.0.1` by default, and the UI warns before you bind to other interfaces.
@@ -152,7 +204,8 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 
 - No jump hosts / ProxyJump, agent forwarding, X11 forwarding or Mosh yet. Hosts imported with `ProxyJump` are flagged during import.
 - No local (non-SSH) terminal tabs, split panes, or session logging/recording.
-- No cloud sync or team sharing; all data stays on this device.
+- Sync needs a GitHub account and a GitHub App (built in, or registered by the user). Same-item conflicts keep the newer edit; there's no field-level merge. Hosts created separately on two devices with the same name are kept as two hosts. No Touch ID unlock yet.
+- No team sharing.
 - Monitoring only runs while Flux is open (no agent or tray mode yet), supports Linux servers only, and Pro has no payment or licensing yet.
 - The "install public key" command assumes a POSIX shell on the server.
 - The app icon is still the Wails default.

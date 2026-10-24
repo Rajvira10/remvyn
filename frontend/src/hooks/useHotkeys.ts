@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { isMac } from '@/lib/utils'
+import { isLocked } from '@/stores/lock'
 
 export interface Hotkey {
   /**
@@ -36,7 +37,9 @@ export function matchesCombo(e: KeyboardEvent, combo: string): boolean {
     e.code.toLowerCase() === `digit${key}` ||
     (key === ']' && e.code === 'BracketRight') ||
     (key === '[' && e.code === 'BracketLeft') ||
-    (key === ',' && e.code === 'Comma')
+    (key === ',' && e.code === 'Comma') ||
+    (key === '=' && e.code === 'Equal') ||
+    (key === '-' && e.code === 'Minus')
   )
 }
 
@@ -54,6 +57,7 @@ export function useHotkeys(keys: Hotkey[], enabled = true) {
   useEffect(() => {
     if (!enabled) return
     const onKey = (e: KeyboardEvent) => {
+      if (isLocked()) return
       for (const hk of ref.current) {
         if (!matchesCombo(e, hk.combo)) continue
         if (!hk.allowInInputs && inEditable(e.target)) continue

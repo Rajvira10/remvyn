@@ -7,6 +7,18 @@ export interface TerminalThemeDef {
   theme: ITheme
 }
 
+const ANSI = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
+  'brightBlack', 'brightRed', 'brightGreen', 'brightYellow', 'brightBlue', 'brightMagenta', 'brightCyan', 'brightWhite'] as const
+
+function compact(id: string, name: string, dark: boolean, base: string, ansi: string): TerminalThemeDef {
+  const [background, foreground, cursor, selectionBackground] = base.split(' ').map((c) => `#${c}`)
+  const theme: ITheme = { background, foreground, cursor, cursorAccent: background, selectionBackground }
+  ansi.split(' ').forEach((c, i) => {
+    theme[ANSI[i]] = `#${c}`
+  })
+  return { id, name, dark, theme }
+}
+
 export const TERMINAL_THEMES: TerminalThemeDef[] = [
   {
     id: 'flux',
@@ -145,6 +157,43 @@ export const TERMINAL_THEMES: TerminalThemeDef[] = [
       brightWhite: '#f3f4f6',
     },
   },
+  ...[
+    // id, name, dark, background foreground cursor selection, then the 16 ANSI colors.
+    ['tokyo-night', 'Tokyo Night', true, '1a1b26 c0caf5 c0caf5 33467c', '15161e f7768e 9ece6a e0af68 7aa2f7 bb9af7 7dcfff a9b1d6 414868 f7768e 9ece6a e0af68 7aa2f7 bb9af7 7dcfff c0caf5'],
+    ['tokyo-night-storm', 'Tokyo Night Storm', true, '24283b c0caf5 c0caf5 364a82', '1d202f f7768e 9ece6a e0af68 7aa2f7 bb9af7 7dcfff a9b1d6 414868 f7768e 9ece6a e0af68 7aa2f7 bb9af7 7dcfff c0caf5'],
+    ['one-dark', 'One Dark', true, '282c34 abb2bf 528bff 3e4451', '282c34 e06c75 98c379 e5c07b 61afef c678dd 56b6c2 abb2bf 5c6370 e06c75 98c379 e5c07b 61afef c678dd 56b6c2 ffffff'],
+    ['monokai', 'Monokai', true, '272822 f8f8f2 f8f8f0 49483e', '272822 f92672 a6e22e f4bf75 66d9ef ae81ff a1efe4 f8f8f2 75715e f92672 a6e22e f4bf75 66d9ef ae81ff a1efe4 f9f8f5'],
+    ['monokai-pro', 'Monokai Pro', true, '2d2a2e fcfcfa fcfcfa 5b595c', '403e41 ff6188 a9dc76 ffd866 fc9867 ab9df2 78dce8 fcfcfa 727072 ff6188 a9dc76 ffd866 fc9867 ab9df2 78dce8 fcfcfa'],
+    ['gruvbox-dark', 'Gruvbox Dark', true, '282828 ebdbb2 ebdbb2 504945', '282828 cc241d 98971a d79921 458588 b16286 689d6a a89984 928374 fb4934 b8bb26 fabd2f 83a598 d3869b 8ec07c ebdbb2'],
+    ['catppuccin-mocha', 'Catppuccin Mocha', true, '1e1e2e cdd6f4 f5e0dc 585b70', '45475a f38ba8 a6e3a1 f9e2af 89b4fa f5c2e7 94e2d5 bac2de 585b70 f38ba8 a6e3a1 f9e2af 89b4fa f5c2e7 94e2d5 a6adc8'],
+    ['catppuccin-macchiato', 'Catppuccin Macchiato', true, '24273a cad3f5 f4dbd6 5b6078', '494d64 ed8796 a6da95 eed49f 8aadf4 f5bde6 8bd5ca b8c0e0 5b6078 ed8796 a6da95 eed49f 8aadf4 f5bde6 8bd5ca a5adcb'],
+    ['rose-pine', 'Rosé Pine', true, '191724 e0def4 e0def4 403d52', '26233a eb6f92 31748f f6c177 9ccfd8 c4a7e7 ebbcba e0def4 6e6a86 eb6f92 31748f f6c177 9ccfd8 c4a7e7 ebbcba e0def4'],
+    ['rose-pine-moon', 'Rosé Pine Moon', true, '232136 e0def4 e0def4 44415a', '393552 eb6f92 3e8fb0 f6c177 9ccfd8 c4a7e7 ea9a97 e0def4 6e6a86 eb6f92 3e8fb0 f6c177 9ccfd8 c4a7e7 ea9a97 e0def4'],
+    ['kanagawa', 'Kanagawa', true, '1f1f28 dcd7ba c8c093 2d4f67', '090618 c34043 76946a c0a36e 7e9cd8 957fb8 6a9589 c8c093 727169 e82424 98bb6c e6c384 7fb4ca 938aa9 7aa89f dcd7ba'],
+    ['everforest-dark', 'Everforest Dark', true, '2d353b d3c6aa d3c6aa 475258', '475258 e67e80 a7c080 dbbc7f 7fbbb3 d699b6 83c092 d3c6aa 859289 e67e80 a7c080 dbbc7f 7fbbb3 d699b6 83c092 d3c6aa'],
+    ['ayu-dark', 'Ayu Dark', true, '0b0e14 bfbdb6 e6b450 273747', '01060e ea6c73 7fd962 f9af4f 53bdfa cda1fa 90e1c6 c7c7c7 686868 f07178 aad94c ffb454 59c2ff d2a6ff 95e6cb ffffff'],
+    ['ayu-mirage', 'Ayu Mirage', true, '1f2430 cccac2 ffcc66 33415e', '191e2a ed8274 87d96c facc6e 6dcbfa dabafa 90e1c6 c7c7c7 686868 f28779 d5ff80 ffd173 73d0ff dfbfff 95e6cb ffffff'],
+    ['palenight', 'Material Palenight', true, '292d3e a6accd ffcc00 444267', '292d3e f07178 c3e88d ffcb6b 82aaff c792ea 89ddff d0d0d0 434758 ff8b92 ddffa7 ffe585 9cc4ff e1acff a3f7ff ffffff'],
+    ['night-owl', 'Night Owl', true, '011627 d6deeb 80a4c2 1d3b53', '011627 ef5350 22da6e addb67 82aaff c792ea 21c7a8 ffffff 575656 ef5350 22da6e ffeb95 82aaff c792ea 7fdbca ffffff'],
+    ['cobalt2', 'Cobalt2', true, '193549 ffffff ffc600 0050a4', '000000 ff0000 38de21 ffe50a 1460d2 ff005d 00bbbb bbbbbb 555555 f40e17 3bd01d edc809 5555ff ff55ff 6ae3fa ffffff'],
+    ['synthwave-84', "SynthWave '84", true, '262335 f0eff1 72f1b8 463465', '262335 fe4450 72f1b8 fede5d 03edf9 ff7edb 03edf9 f0eff1 614d85 fe4450 72f1b8 f97e72 03edf9 ff7edb 03edf9 ffffff'],
+    ['github-dark', 'GitHub Dark', true, '0d1117 e6edf3 2f81f7 264f78', '484f58 ff7b72 3fb950 d29922 58a6ff bc8cff 39c5cf b1bac4 6e7681 ffa198 56d364 e3b341 79c0ff d2a8ff 56d4dd ffffff'],
+    ['nightfox', 'Nightfox', true, '192330 cdcecf cdcecf 2b3b51', '393b44 c94f6d 81b29a dbc074 719cd6 9d79d6 63cdcf dfdfe0 575860 d16983 8ebaa4 e0c989 86abdc baa1e2 7ad5d6 e4e4e5'],
+    ['tomorrow-night', 'Tomorrow Night', true, '1d1f21 c5c8c6 c5c8c6 373b41', '1d1f21 cc6666 b5bd68 f0c674 81a2be b294bb 8abeb7 c5c8c6 969896 cc6666 b5bd68 f0c674 81a2be b294bb 8abeb7 ffffff'],
+    ['snazzy', 'Snazzy', true, '282a36 eff0eb 97979b 3e404f', '282a36 ff5c57 5af78e f3f99d 57c7ff ff6ac1 9aedfe f1f1f0 686868 ff5c57 5af78e f3f99d 57c7ff ff6ac1 9aedfe eff0eb'],
+    ['iceberg', 'Iceberg', true, '161821 c6c8d1 c6c8d1 272c42', '1e2132 e27878 b4be82 e2a478 84a0c6 a093c7 89b8c2 c6c8d1 6b7089 e98989 c0ca8e e9b189 91acd1 ada0d3 95c4ce d2d4de'],
+    ['zenburn', 'Zenburn', true, '3f3f3f dcdccc dcdccc 21322f', '4d4d4d 705050 60b48a f0dfaf 506070 dc8cc3 8cd0d3 dcdccc 709080 dca3a3 c3bf9f e0cf9f 94bff3 ec93d3 93e0e3 ffffff'],
+    ['poimandres', 'Poimandres', true, '1b1e28 a6accd ffffff 303340', '1b1e28 d0679d 5de4c7 fffac2 89ddff fcc5e9 add7ff ffffff a6accd d0679d 5de4c7 fffac2 add7ff fae4fc 89ddff ffffff'],
+    ['homebrew', 'Homebrew', true, '000000 00ff00 23ff18 083905', '000000 990000 00a600 999900 0000b2 b200b2 00a6b2 bfbfbf 666666 e50000 00d900 e5e500 0000ff e500e5 00e5e5 e5e5e5'],
+    ['solarized-light', 'Solarized Light', false, 'fdf6e3 657b83 586e75 eee8d5', '073642 dc322f 859900 b58900 268bd2 d33682 2aa198 eee8d5 002b36 cb4b16 586e75 657b83 839496 6c71c4 93a1a1 fdf6e3'],
+    ['github-light', 'GitHub Light', false, 'ffffff 1f2328 0969da add6ff', '24292f cf222e 116329 4d2d00 0969da 8250df 1b7c83 6e7781 57606a a40e26 1a7f37 633c01 218bff a475f9 3192aa 8c959f'],
+    ['catppuccin-latte', 'Catppuccin Latte', false, 'eff1f5 4c4f69 dc8a78 acb0be', '5c5f77 d20f39 40a02b df8e1d 1e66f5 ea76cb 179299 acb0be 6c6f85 d20f39 40a02b df8e1d 1e66f5 ea76cb 179299 bcc0cc'],
+    ['gruvbox-light', 'Gruvbox Light', false, 'fbf1c7 3c3836 3c3836 d5c4a1', 'fbf1c7 cc241d 98971a d79921 458588 b16286 689d6a 7c6f64 928374 9d0006 79740e b57614 076678 8f3f71 427b58 3c3836'],
+    ['one-light', 'One Light', false, 'fafafa 383a42 526fff e5e5e6', '383a42 e45649 50a14f c18401 4078f2 a626a4 0184bc a0a1a7 696c77 e45649 50a14f c18401 4078f2 a626a4 0184bc fafafa'],
+    ['rose-pine-dawn', 'Rosé Pine Dawn', false, 'faf4ed 575279 575279 dfdad9', 'f2e9e1 b4637a 286983 ea9d34 56949f 907aa9 d7827e 575279 9893a5 b4637a 286983 ea9d34 56949f 907aa9 d7827e 575279'],
+    ['ayu-light', 'Ayu Light', false, 'fcfcfc 5c6166 ffaa33 d1e4f4', '000000 ea6c6d 6cbf43 eca944 3199e1 9e75c7 46ba94 bababa 686868 f07171 86b300 f2ae49 399ee6 a37acc 4cbf99 d1d1d1'],
+    ['tomorrow', 'Tomorrow', false, 'ffffff 4d4d4c 4d4d4c d6d6d6', '000000 c82829 718c00 eab700 4271ae 8959a8 3e999f ffffff 8e908c c82829 718c00 eab700 4271ae 8959a8 3e999f ffffff'],
+  ].map(([id, name, dark, base, ansi]) => compact(id as string, name as string, dark as boolean, base as string, ansi as string)),
 ]
 
 export function terminalTheme(id: string): TerminalThemeDef {

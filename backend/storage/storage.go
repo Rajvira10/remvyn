@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -23,10 +24,38 @@ import (
 // ErrNotFound is returned when a record does not exist.
 var ErrNotFound = errors.New("not found")
 
+// ErrLocked is returned when a secret is needed while the vault is locked.
+var ErrLocked error = lockedError{}
+
+type lockedError struct{}
+
+func (lockedError) Error() string   { return "Flux is locked; unlock it with your master password" }
+func (lockedError) ErrCode() string { return "locked" }
+
 // Store is the SQLite-backed persistence layer.
 type Store struct {
 	db    *sql.DB
-	vault *security.Vault
+	vault atomic.Pointer[security.Vault]
+	// onChange runs after any change to synced data (hosts, keys, ...).
+	onChange atomic.Pointer[func()]
+}
+
+// SetVault installs the key used for secrets; nil locks them.
+func (s *Store) SetVault(v *security.Vault) { s.vault.Store(v) }
+
+// Locked reports whether secrets are unavailable.
+func (s *Store) Locked() bool { return s.vault.Load() == nil }
+
+// OnChange registers a callback for changes to synced data.
+func (s *Store) OnChange(f func()) { s.onChange.Store(&f) }
+
+func (s *Store) changed(err error) error {
+	if err == nil {
+		if f := s.onChange.Load(); f != nil && *f != nil {
+			(*f)()
+		}
+	}
+	return err
 }
 
 const schema = `
@@ -97,11 +126,8 @@ CREATE TABLE IF NOT EXISTS settings (
 `
 
 // Open opens (creating if needed) the database at path. ":memory:" is
-// supported for tests.
+// supported for tests. A nil vault opens the store locked.
 func Open(path string, vault *security.Vault) (*Store, error) {
-	if vault == nil {
-		return nil, errors.New("storage requires a vault")
-	}
 	dsn := "file:" + url.PathEscape(path) +
 		"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=synchronous(NORMAL)"
 	if path == ":memory:" {
@@ -116,11 +142,13 @@ func Open(path string, vault *security.Vault) (*Store, error) {
 	} else {
 		db.SetMaxOpenConns(4)
 	}
-	if _, err := db.Exec(schema + monitorSchema); err != nil {
+	if _, err := db.Exec(schema + monitorSchema + syncSchema); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("initialise schema: %w", err)
 	}
-	return &Store{db: db, vault: vault}, nil
+	st := &Store{db: db}
+	st.vault.Store(vault)
+	return st, nil
 }
 
 // Close releases the database.
@@ -132,14 +160,22 @@ func (s *Store) seal(plain string) ([]byte, error) {
 	if plain == "" {
 		return nil, nil
 	}
-	return s.vault.Seal([]byte(plain))
+	v := s.vault.Load()
+	if v == nil {
+		return nil, ErrLocked
+	}
+	return v.Seal([]byte(plain))
 }
 
 func (s *Store) open(sealed []byte) (string, error) {
 	if len(sealed) == 0 {
 		return "", nil
 	}
-	b, err := s.vault.Open(sealed)
+	v := s.vault.Load()
+	if v == nil {
+		return "", ErrLocked
+	}
+	b, err := v.Open(sealed)
 	if err != nil {
 		return "", fmt.Errorf("decrypt secret: %w", err)
 	}
@@ -184,7 +220,7 @@ func (s *Store) SaveGroup(ctx context.Context, g models.Group) (models.Group, er
 	}
 	_, err := s.db.ExecContext(ctx, `INSERT INTO groups(id, name, created_at) VALUES(?,?,?)
 		ON CONFLICT(id) DO UPDATE SET name = excluded.name`, g.ID, g.Name, g.CreatedAt)
-	return g, err
+	return g, s.changed(err)
 }
 
 // DeleteGroup removes a group; its hosts become ungrouped.
@@ -200,7 +236,7 @@ func (s *Store) DeleteGroup(ctx context.Context, id string) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM groups WHERE id = ?`, id); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return s.changed(tx.Commit())
 }
 
 // ---------------------------------------------------------------- hosts
@@ -329,7 +365,7 @@ func (s *Store) SaveHost(ctx context.Context, in models.HostInput) (models.Host,
 			return h, err
 		}
 	}
-	if err := tx.Commit(); err != nil {
+	if err := s.changed(tx.Commit()); err != nil {
 		return h, err
 	}
 	return s.GetHost(ctx, h.ID)
@@ -342,7 +378,7 @@ func (s *Store) SetHostPassword(ctx context.Context, id, password string) error 
 		return err
 	}
 	_, err = s.db.ExecContext(ctx, `UPDATE hosts SET password_sealed = ? WHERE id = ?`, sealed, id)
-	return err
+	return s.changed(err)
 }
 
 // TouchHost records a successful connection.
@@ -364,7 +400,7 @@ func (s *Store) DeleteHost(ctx context.Context, id string) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM hosts WHERE id = ?`, id); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return s.changed(tx.Commit())
 }
 
 // ---------------------------------------------------------------- keys
@@ -443,7 +479,7 @@ func (s *Store) InsertKey(ctx context.Context, k models.Key, privatePEM, passphr
 	_, err = s.db.ExecContext(ctx, `INSERT INTO keys(id, name, type, bits, fingerprint, public_key, private_sealed,
 		passphrase_sealed, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
 		k.ID, k.Name, k.Type, k.Bits, k.Fingerprint, k.PublicKey, priv, pass, k.CreatedAt)
-	return k, err
+	return k, s.changed(err)
 }
 
 // RenameKey renames a key.
@@ -459,7 +495,7 @@ func (s *Store) RenameKey(ctx context.Context, id, name string) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrNotFound
 	}
-	return nil
+	return s.changed(nil)
 }
 
 // KeyUsage returns the labels of hosts using a key.
@@ -490,7 +526,7 @@ func (s *Store) DeleteKey(ctx context.Context, id string) error {
 		return fmt.Errorf("key is used by %s; change their authentication first", strings.Join(used, ", "))
 	}
 	_, err = s.db.ExecContext(ctx, `DELETE FROM keys WHERE id = ?`, id)
-	return err
+	return s.changed(err)
 }
 
 // ---------------------------------------------------------------- snippets
@@ -532,13 +568,13 @@ func (s *Store) SaveSnippet(ctx context.Context, sn models.Snippet) (models.Snip
 		VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, command=excluded.command,
 		description=excluded.description, updated_at=excluded.updated_at`,
 		sn.ID, sn.Name, sn.Command, sn.Description, sn.CreatedAt, sn.UpdatedAt)
-	return sn, err
+	return sn, s.changed(err)
 }
 
 // DeleteSnippet removes a snippet.
 func (s *Store) DeleteSnippet(ctx context.Context, id string) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM snippets WHERE id = ?`, id)
-	return err
+	return s.changed(err)
 }
 
 // ---------------------------------------------------------------- forwards
@@ -630,13 +666,13 @@ func (s *Store) SaveForward(ctx context.Context, f models.ForwardRule) (models.F
 		bind_port=excluded.bind_port, dest_host=excluded.dest_host, dest_port=excluded.dest_port,
 		auto_start=excluded.auto_start`,
 		f.ID, f.Label, f.HostID, f.Type, f.BindHost, f.BindPort, f.DestHost, f.DestPort, f.AutoStart, f.CreatedAt)
-	return f, err
+	return f, s.changed(err)
 }
 
 // DeleteForward removes a rule.
 func (s *Store) DeleteForward(ctx context.Context, id string) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM forwards WHERE id = ?`, id)
-	return err
+	return s.changed(err)
 }
 
 // ---------------------------------------------------------------- known hosts
@@ -674,7 +710,7 @@ func (s *Store) TrustHostKey(ctx context.Context, host, keyType string, key []by
 		VALUES (?,?,?,?,?)`, host, keyType, key, fingerprint, now()); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return s.changed(tx.Commit())
 }
 
 // ListKnownHosts returns all trusted host keys.
@@ -698,7 +734,7 @@ func (s *Store) ListKnownHosts(ctx context.Context) ([]models.KnownHost, error) 
 // ForgetHostKey removes trust for a host.
 func (s *Store) ForgetHostKey(ctx context.Context, host string) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM known_hosts WHERE host = ?`, host)
-	return err
+	return s.changed(err)
 }
 
 // ---------------------------------------------------------------- settings
@@ -735,7 +771,7 @@ func (s *Store) SaveSettings(ctx context.Context, st models.Settings) error {
 func (s *Store) ClearAll(ctx context.Context) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM forwards; DELETE FROM hosts; DELETE FROM groups; DELETE FROM keys;
 		DELETE FROM snippets; DELETE FROM known_hosts; DELETE FROM settings; DELETE FROM metrics_minute; DELETE FROM alert_rules;
-		DELETE FROM alert_events; DELETE FROM uptime_checks; DELETE FROM uptime_results;`)
+		DELETE FROM alert_events; DELETE FROM uptime_checks; DELETE FROM uptime_results; DELETE FROM sync_state;`)
 	if err == nil {
 		_, _ = s.db.ExecContext(ctx, `PRAGMA wal_checkpoint(TRUNCATE); VACUUM;`)
 	}

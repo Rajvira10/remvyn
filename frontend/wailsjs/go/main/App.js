@@ -82,8 +82,16 @@ export function GetAppInfo() {
   return window['go']['main']['App']['GetAppInfo']();
 }
 
+export function GetLockStatus() {
+  return window['go']['main']['App']['GetLockStatus']();
+}
+
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
+}
+
+export function GetSyncStatus() {
+  return window['go']['main']['App']['GetSyncStatus']();
 }
 
 export function ImportKey(arg1) {
@@ -150,6 +158,10 @@ export function ListUptime() {
   return window['go']['main']['App']['ListUptime']();
 }
 
+export function Lock() {
+  return window['go']['main']['App']['Lock']();
+}
+
 export function MetricsHistory(arg1, arg2) {
   return window['go']['main']['App']['MetricsHistory'](arg1, arg2);
 }
@@ -198,6 +210,10 @@ export function RemoveLocal(arg1) {
   return window['go']['main']['App']['RemoveLocal'](arg1);
 }
 
+export function RemoveMasterPassword(arg1) {
+  return window['go']['main']['App']['RemoveMasterPassword'](arg1);
+}
+
 export function RemoveRemote(arg1, arg2) {
   return window['go']['main']['App']['RemoveRemote'](arg1, arg2);
 }
@@ -212,6 +228,10 @@ export function RenameLocal(arg1, arg2) {
 
 export function RenameRemote(arg1, arg2, arg3) {
   return window['go']['main']['App']['RenameRemote'](arg1, arg2, arg3);
+}
+
+export function ResetVault() {
+  return window['go']['main']['App']['ResetVault']();
 }
 
 export function ResizeTerminal(arg1, arg2, arg3) {
@@ -254,6 +274,10 @@ export function SendTestNotification() {
   return window['go']['main']['App']['SendTestNotification']();
 }
 
+export function SetMasterPassword(arg1, arg2) {
+  return window['go']['main']['App']['SetMasterPassword'](arg1, arg2);
+}
+
 export function StartForward(arg1) {
   return window['go']['main']['App']['StartForward'](arg1);
 }
@@ -262,8 +286,52 @@ export function StopForward(arg1) {
   return window['go']['main']['App']['StopForward'](arg1);
 }
 
+export function SyncCancelLogin() {
+  return window['go']['main']['App']['SyncCancelLogin']();
+}
+
+export function SyncConnect(arg1, arg2) {
+  return window['go']['main']['App']['SyncConnect'](arg1, arg2);
+}
+
+export function SyncDisconnect() {
+  return window['go']['main']['App']['SyncDisconnect']();
+}
+
+export function SyncFinishLogin() {
+  return window['go']['main']['App']['SyncFinishLogin']();
+}
+
+export function SyncInspect(arg1) {
+  return window['go']['main']['App']['SyncInspect'](arg1);
+}
+
+export function SyncNow() {
+  return window['go']['main']['App']['SyncNow']();
+}
+
+export function SyncRepos() {
+  return window['go']['main']['App']['SyncRepos']();
+}
+
+export function SyncSetApp(arg1, arg2) {
+  return window['go']['main']['App']['SyncSetApp'](arg1, arg2);
+}
+
+export function SyncStartLogin() {
+  return window['go']['main']['App']['SyncStartLogin']();
+}
+
+export function SyncWake() {
+  return window['go']['main']['App']['SyncWake']();
+}
+
 export function TestUptimeCheck(arg1) {
   return window['go']['main']['App']['TestUptimeCheck'](arg1);
+}
+
+export function Unlock(arg1) {
+  return window['go']['main']['App']['Unlock'](arg1);
 }
 
 export function UpdateSettings(arg1) {

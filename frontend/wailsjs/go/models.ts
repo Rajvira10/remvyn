@@ -1,3 +1,40 @@
+export namespace core {
+	
+	export class SyncRepos {
+	    repos: vaultsync.Repo[];
+	    installed: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new SyncRepos(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.repos = this.convertValues(source["repos"], vaultsync.Repo);
+	        this.installed = source["installed"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace main {
 	
 	export class AppInfo {
@@ -476,6 +513,24 @@ export namespace models {
 	        this.addedAt = source["addedAt"];
 	    }
 	}
+	export class LockStatus {
+	    protected: boolean;
+	    locked: boolean;
+	    minLength: number;
+	    syncConnected: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new LockStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.protected = source["protected"];
+	        this.locked = source["locked"];
+	        this.minLength = source["minLength"];
+	        this.syncConnected = source["syncConnected"];
+	    }
+	}
 	export class MetricPoint {
 	    at: number;
 	    cpu: number;
@@ -759,6 +814,7 @@ export namespace models {
 	    terminalFontSize: number;
 	    terminalFontFamily: string;
 	    terminalTheme: string;
+	    autoLockMinutes: number;
 	    cursorStyle: string;
 	    cursorBlink: boolean;
 	    scrollback: number;
@@ -783,6 +839,7 @@ export namespace models {
 	        this.terminalFontSize = source["terminalFontSize"];
 	        this.terminalFontFamily = source["terminalFontFamily"];
 	        this.terminalTheme = source["terminalTheme"];
+	        this.autoLockMinutes = source["autoLockMinutes"];
 	        this.cursorStyle = source["cursorStyle"];
 	        this.cursorBlink = source["cursorBlink"];
 	        this.scrollback = source["scrollback"];
@@ -953,6 +1010,107 @@ export namespace models {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace vaultsync {
+	
+	export class DeviceCode {
+	    userCode: string;
+	    verificationUri: string;
+	    expiresIn: number;
+	    interval: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeviceCode(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.userCode = source["userCode"];
+	        this.verificationUri = source["verificationUri"];
+	        this.expiresIn = source["expiresIn"];
+	        this.interval = source["interval"];
+	    }
+	}
+	export class Repo {
+	    fullName: string;
+	    private: boolean;
+	    defaultBranch: string;
+	    htmlUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Repo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.fullName = source["fullName"];
+	        this.private = source["private"];
+	        this.defaultBranch = source["defaultBranch"];
+	        this.htmlUrl = source["htmlUrl"];
+	    }
+	}
+	export class RepoInfo {
+	    fullName: string;
+	    private: boolean;
+	    defaultBranch: string;
+	    htmlUrl: string;
+	    hasVault: boolean;
+	    empty: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new RepoInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.fullName = source["fullName"];
+	        this.private = source["private"];
+	        this.defaultBranch = source["defaultBranch"];
+	        this.htmlUrl = source["htmlUrl"];
+	        this.hasVault = source["hasVault"];
+	        this.empty = source["empty"];
+	    }
+	}
+	export class Status {
+	    appConfigured: boolean;
+	    clientId: string;
+	    appSlug: string;
+	    builtInApp: boolean;
+	    connected: boolean;
+	    repo: string;
+	    repoUrl: string;
+	    login: string;
+	    state: string;
+	    lastSyncAt: number;
+	    error: string;
+	    errorCode: string;
+	    installUrl: string;
+	    newRepoUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Status(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.appConfigured = source["appConfigured"];
+	        this.clientId = source["clientId"];
+	        this.appSlug = source["appSlug"];
+	        this.builtInApp = source["builtInApp"];
+	        this.connected = source["connected"];
+	        this.repo = source["repo"];
+	        this.repoUrl = source["repoUrl"];
+	        this.login = source["login"];
+	        this.state = source["state"];
+	        this.lastSyncAt = source["lastSyncAt"];
+	        this.error = source["error"];
+	        this.errorCode = source["errorCode"];
+	        this.installUrl = source["installUrl"];
+	        this.newRepoUrl = source["newRepoUrl"];
+	    }
 	}
 
 }

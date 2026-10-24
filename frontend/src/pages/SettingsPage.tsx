@@ -1,9 +1,12 @@
-import { FolderOpenIcon, LockIcon, MonitorIcon, MoonIcon, SunIcon } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { FolderOpenIcon, MonitorIcon, MoonIcon, SunIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { LoadingBlock } from '@/components/common/Spinner'
 import { ProBadge } from '@/components/monitor/ProGate'
+import { SecuritySection } from '@/components/settings/SecuritySection'
+import { Field, Section } from '@/components/settings/Section'
+import { SyncSection } from '@/components/settings/SyncSection'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -15,30 +18,6 @@ import { cn } from '@/lib/utils'
 import { useSessions } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
 import { useVault } from '@/stores/vault'
-
-function Section({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
-  return (
-    <section className="rounded-xl border bg-card">
-      <div className="border-b px-4 py-3">
-        <h2 className="text-[13.5px] font-semibold">{title}</h2>
-        {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
-      </div>
-      <div className="divide-y">{children}</div>
-    </section>
-  )
-}
-
-function Field({ label, hint, children }: { label: ReactNode; hint?: ReactNode; children: ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-6 px-4 py-3">
-      <div className="min-w-0">
-        <div className="text-[13px] font-medium">{label}</div>
-        {hint && <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>}
-      </div>
-      <div className="shrink-0">{children}</div>
-    </div>
-  )
-}
 
 /** Number input that commits on blur/Enter so intermediate values aren't validated. */
 function NumField({ value, onCommit, min, max, className }: { value: number; onCommit: (n: number) => void; min: number; max: number; className?: string }) {
@@ -230,21 +209,9 @@ export function SettingsPage() {
             </Field>
           </Section>
 
-          <Section title="Security">
-            <div className="flex gap-3 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-              <LockIcon className="mt-0.5 size-4 shrink-0 text-success" />
-              <div className="flex flex-col gap-2">
-                <p>
-                  Passwords, private keys and key passphrases are encrypted with AES-256-GCM before being written to the local database. The encryption key
-                  is stored in a separate file readable only by your user account.
-                </p>
-                <p>
-                  Server host keys are verified on every connection. New servers require you to confirm their fingerprint, and a changed key is flagged as a
-                  possible man-in-the-middle attack.
-                </p>
-              </div>
-            </div>
-          </Section>
+          <SecuritySection form={form} apply={apply} />
+
+          <SyncSection />
 
           <Section title="Data">
             <Field label="Data folder" hint={<span className="font-mono">{info?.dataDir}</span>}>
