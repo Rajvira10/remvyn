@@ -23,6 +23,7 @@ type FakeGitHub struct {
 	mu      sync.Mutex
 	tokens  map[string]string // token -> login
 	devices map[string]int    // device code -> polls so far
+	nextDev int
 	blobs   map[string][]byte
 	trees   map[string]map[string]string // tree sha -> path -> blob sha
 	commits map[string]fakeCommit
@@ -187,7 +188,8 @@ func (g *FakeGitHub) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		g.mu.Lock()
-		code := fmt.Sprintf("dev-%d", len(g.devices)+1)
+		g.nextDev++
+		code := fmt.Sprintf("dev-%d", g.nextDev)
 		g.devices[code] = 0
 		g.mu.Unlock()
 		writeJSON(w, 200, map[string]any{"device_code": code, "user_code": "ABCD-1234",

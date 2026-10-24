@@ -1,0 +1,6 @@
+{
+  "content": "0zU2SAoa69azq61MPn/ho/mW9jwyVTH1CQxENwgjEbea+2fPJkqGc9JqYEFONeNptBwR7U1xQYu+b+C+8KpID0Iow/IYlBOiEv6pC3UJjrBTqbor6IuKKuBs/l2EsouXfkuDqSNCcZclFXdt2b1ZFHCTL3zOZ74ESIiqnpE4hE94TE6WSRuIuayx0IGpljpoJz7ooQhhkgToH7WsBinRQGH1XYSiq+9kE6LJv9iSDS2k4fNEwb6M7HXLPPf2xcbBy4fcxGkJAAM8N+HtTSBGK+THNy2rsZcIJg==",
+  "keyId": "4926b24db24b01fbfc0e1252",
+  "path": "records/bfb46ef7961196b2840b534aaeaa2cab",
+  "vault": "{\n  \"format\": \"flux-vault\",\n  \"version\": 1,\n  \"key\": {\n    \"kdf\": {\n      \"alg\": \"argon2id\",\n      \"time\": 3,\n      \"memoryKiB\": 65536,\n      \"threads\": 4,\n      \"salt\": \"RP5cWcm4PRfCDOep+++nqg==\"\n    },\n    \"wrapped\": \"MmSfT7C1Rxw5fspO34NkWos+KiFBfj36o+ah0xUvr8tjylQ1/spoYmW4QDSMg/7NcGtxYKHe2dxmxpjB\"\n  },\n  \"keyId\": \"4926b24db24b01fbfc0e1252\",\n  \"createdAt\": 1700000000000\n}"
+}

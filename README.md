@@ -46,6 +46,35 @@ Background monitoring connects without prompting: it uses an open terminal's con
 
 **Limits:** data is only collected while Flux is running. Gaps in history mean the app was closed, and no alerts fire while it's closed. Only Linux servers are supported. Docker data needs the SSH user to be allowed to use Docker; service data needs systemd.
 
+## Install
+
+Download from [Releases](https://github.com/Rajvira10/flux/releases):
+
+- **macOS**: `Flux-<version>-macOS-universal.dmg` (Apple Silicon and Intel). Drag Flux to Applications. The app isn't notarized yet, so the first time, right-click it and choose **Open** (or run `xattr -dr com.apple.quarantine /Applications/Flux.app`).
+- **Android**: `Flux-<version>-android.apk` (Android 8+). Open it on your phone and allow installing from your browser or file manager.
+
+## Android app
+
+A companion for when you're away from your computer. It signs in with GitHub, opens the same encrypted vault as the desktop (sync must be on there first), and gives you an SSH terminal to your hosts.
+
+- Hosts with groups and colors, search, and saved passwords and keys (ed25519, ECDSA, RSA, passphrase-protected).
+- Terminal: xterm-256color emulator with colors, scrollback, alternate screen (vim, htop, less), pinch to zoom, and an extra-keys row (esc, tab, ctrl, alt, arrows, home/end, page up/down). Snippets from the vault run from the menu.
+- Host keys are checked against the vault's known hosts; new ones need confirmation, and a changed key is flagged.
+- The vault stays encrypted on the phone and opens only with the master password; Flux locks after 5 minutes in the background. The GitHub token is sealed with the Android Keystore. Screenshots of the app are blocked.
+- **Read-only vault for now**: add and edit hosts on the desktop. Host keys you trust on the phone are kept on the phone.
+- Sessions can drop when Android suspends the app in the background (no foreground service yet). Agent-auth hosts can't be used on the phone.
+
+Build it with Android Studio, or:
+
+```bash
+cd mobile/android
+./gradlew assembleDebug                                   # app/build/outputs/apk/debug
+FLUX_SIGNING=/path/to/signing.properties ./gradlew assembleRelease
+./gradlew testDebugUnitTest                               # opens a vault and keys made by the Go code
+```
+
+`signing.properties` holds `storeFile`, `storePassword`, `keyAlias` and `keyPassword`; keep it and the keystore out of the repo. `FLUX_GITHUB_CLIENT_ID` / `FLUX_GITHUB_APP_SLUG` build a GitHub App in, like the desktop.
+
 ## Master password and sync
 
 **Master password.** Set one in Settings → Security. Flux then asks for it at launch, after auto-lock (15 minutes idle by default) and after ⌘L. Open terminals keep running while locked, but they get no input, and new connections, background monitoring and sync wait until you unlock. The data key that encrypts your secrets is wrapped with a key derived from the password (Argon2id, 64 MiB, 3 passes) and is only held in memory while unlocked; changing the password re-wraps it without re-encrypting anything. A forgotten password can't be recovered: the lock screen offers to erase local data and start over.
@@ -93,6 +122,7 @@ wails doctor
 
 wails dev                     # hot-reload development
 wails build                   # → build/bin/Flux.app (macOS)
+wails build -platform darwin/universal   # Intel + Apple Silicon
 open build/bin/Flux.app
 ```
 
@@ -176,6 +206,7 @@ backend/
   testutil/            in-process SSH server and fake GitHub for tests
 tools/devsshd/         run the test server for manual testing
 tools/devgithub/       run the fake GitHub for trying sync
+mobile/android/        Android companion app (Kotlin, Jetpack Compose, JSch)
   monitor/             agentless metrics collection (script, parser, per-host collectors)
   alerts/              alert rule evaluation, firing and resolving
   uptime/              HTTP/TCP uptime probes

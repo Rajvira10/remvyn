@@ -1,0 +1,11 @@
+# JSch loads ciphers, KEX and key types by class name.
+-keep class com.jcraft.jsch.** { *; }
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.bouncycastle.**
+-dontwarn com.jcraft.jsch.**
+-dontwarn org.ietf.jgss.**
+-dontwarn org.newsclub.net.unix.**
+-dontwarn com.sun.jna.**
+-dontwarn org.slf4j.**
+-dontwarn org.apache.logging.log4j.**
+-dontwarn javax.annotation.**
