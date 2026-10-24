@@ -1,6 +1,6 @@
-# Flux
+# Remvyn
 
-Flux is a desktop SSH client in the spirit of Termius. It saves your servers, opens tabbed terminals, transfers files over SFTP, manages SSH keys, and runs port-forwarding tunnels. It is built with Wails v2, Go, React, TypeScript, xterm.js and SQLite.
+Remvyn is a desktop SSH client in the spirit of Termius. It saves your servers, opens tabbed terminals, transfers files over SFTP, manages SSH keys, and runs port-forwarding tunnels. It is built with Wails v2, Go, React, TypeScript, xterm.js and SQLite.
 
 ## Features
 
@@ -20,38 +20,41 @@ Flux is a desktop SSH client in the spirit of Termius. It saves your servers, op
 - **Port forwarding**: local (`-L`), remote (`-R`) and dynamic SOCKS5 (`-D`) rules, with start/stop, auto-start at launch, live connection and byte counters, and automatic stop with an error if the SSH link drops.
 - **Snippets**: saved commands you can send to any open terminal.
 - **Known hosts**: trust on first use with an explicit fingerprint check. A changed host key shows a man-in-the-middle warning with both fingerprints, and rejecting it is the default action. You can review and forget trusted hosts.
-- **Monitoring**: live CPU, memory, disk, network, Docker containers, services and top processes beside the terminal (free), plus history, alerts, uptime checks and a multi-server dashboard with Flux Pro. See [Monitoring](#monitoring).
+- **Monitoring**: live CPU, memory, disk, network, Docker containers, services and top processes beside the terminal (free), plus history, alerts, uptime checks and a multi-server dashboard with Remvyn Pro. See [Monitoring](#monitoring).
 - **Master password and app lock**: optional master password, auto-lock after inactivity, and ⌘L to lock. See [Master password and sync](#master-password-and-sync).
 - **Sync**: keep your vault in sync between computers through a private GitHub repository, end-to-end encrypted. Sign in with GitHub; no server needed.
 - **Settings**: theme, terminal appearance, keepalive and connect timeout, SFTP defaults, close confirmation, and clearing all data.
 
 ## Monitoring
 
-Flux monitors Linux servers without an agent. It runs a short, read-only shell script over SSH (`/proc`, `df`, `ps`, `docker` and `systemctl`) and computes CPU and network rates from successive samples. Nothing is installed on the server.
+Remvyn monitors Linux servers without an agent. It runs a short, read-only shell script over SSH (`/proc`, `df`, `ps`, `docker` and `systemctl`) and computes CPU and network rates from successive samples. Nothing is installed on the server.
 
 **Free**
 - A metrics panel beside every terminal (toolbar **Metrics** or ⌘I). It reuses the terminal's SSH connection, so there's no second login.
 - CPU (with load average), memory and swap, every disk, network throughput, Docker containers (with start, stop and restart), systemd services (failed first) and the busiest processes.
 - Live view for any host from **Monitoring**, sampled every 2 seconds while you look. Docker and services refresh every 10 seconds.
 
-**Flux Pro**
-- **Multi-server dashboard**: choose servers to monitor in the background (every 30 seconds by default) while Flux is open.
+**Remvyn Pro**
+- **Multi-server dashboard**: choose servers to monitor in the background (every 30 seconds by default) while Remvyn is open.
 - **Historical metrics**: per-minute averages and CPU peaks, charted over 1 hour to 30 days, kept for 30 days by default (up to a year).
 - **Custom alerts**: CPU, memory, swap, disk, load, failed services, stopped containers, an unreachable server, or a failing uptime check. Each rule has a threshold and a duration, sends a desktop notification and an in-app alert, and notifies again when it resolves.
 - **Uptime monitoring**: HTTP(S) and TCP checks run from this computer, with response time, 24-hour, 7-day and 30-day availability and recent results.
 
-Pro is a local switch (Settings → Flux Pro, or any upgrade button) until payments are added. Pro features are enforced in the backend, not just hidden in the UI.
+Pro is a local switch (Settings → Remvyn Pro, or any upgrade button) until payments are added. Pro features are enforced in the backend, not just hidden in the UI.
 
 Background monitoring connects without prompting: it uses an open terminal's connection if there is one, otherwise the host's saved password or key and an already-trusted host key. If something is missing, the dashboard says what to do.
 
-**Limits:** data is only collected while Flux is running. Gaps in history mean the app was closed, and no alerts fire while it's closed. Only Linux servers are supported. Docker data needs the SSH user to be allowed to use Docker; service data needs systemd.
+**Limits:** data is only collected while Remvyn is running. Gaps in history mean the app was closed, and no alerts fire while it's closed. Only Linux servers are supported. Docker data needs the SSH user to be allowed to use Docker; service data needs systemd.
 
 ## Install
 
-Download from [Releases](https://github.com/Rajvira10/flux/releases):
+Remvyn was called Flux during development. On first launch it moves the old `Flux` data folder (hosts, keys, settings) to `Remvyn`, and vaults already synced to GitHub keep working.
 
-- **macOS**: `Flux-<version>-macOS-universal.dmg` (Apple Silicon and Intel). Drag Flux to Applications. The app isn't notarized yet, so the first time, right-click it and choose **Open** (or run `xattr -dr com.apple.quarantine /Applications/Flux.app`).
-- **Android**: `Flux-<version>-android.apk` (Android 8+). Open it on your phone and allow installing from your browser or file manager.
+
+Download from [Releases](https://github.com/Rajvira10/remvyn/releases):
+
+- **macOS**: `Remvyn-<version>-macOS-universal.dmg` (Apple Silicon and Intel). Drag Remvyn to Applications. The app isn't notarized yet, so the first time, right-click it and choose **Open** (or run `xattr -dr com.apple.quarantine /Applications/Remvyn.app`).
+- **Android**: `Remvyn-<version>-android.apk` (Android 8+). Open it on your phone and allow installing from your browser or file manager.
 
 ## Android app
 
@@ -60,7 +63,7 @@ A companion for when you're away from your computer. It signs in with GitHub, op
 - Hosts with groups and colors, search, and saved passwords and keys (ed25519, ECDSA, RSA, passphrase-protected).
 - Terminal: xterm-256color emulator with colors, scrollback, alternate screen (vim, htop, less), pinch to zoom, and an extra-keys row (esc, tab, ctrl, alt, arrows, home/end, page up/down). Snippets from the vault run from the menu.
 - Host keys are checked against the vault's known hosts; new ones need confirmation, and a changed key is flagged.
-- The vault stays encrypted on the phone and opens only with the master password; Flux locks after 5 minutes in the background. The GitHub token is sealed with the Android Keystore. Screenshots of the app are blocked.
+- The vault stays encrypted on the phone and opens only with the master password; Remvyn locks after 5 minutes in the background. The GitHub token is sealed with the Android Keystore. Screenshots of the app are blocked.
 - **Read-only vault for now**: add and edit hosts on the desktop. Host keys you trust on the phone are kept on the phone.
 - Sessions can drop when Android suspends the app in the background (no foreground service yet). Agent-auth hosts can't be used on the phone.
 
@@ -69,21 +72,21 @@ Build it with Android Studio, or:
 ```bash
 cd mobile/android
 ./gradlew assembleDebug                                   # app/build/outputs/apk/debug
-FLUX_SIGNING=/path/to/signing.properties ./gradlew assembleRelease
+REMVYN_SIGNING=/path/to/signing.properties ./gradlew assembleRelease
 ./gradlew testDebugUnitTest                               # opens a vault and keys made by the Go code
 ```
 
-`signing.properties` holds `storeFile`, `storePassword`, `keyAlias` and `keyPassword`; keep it and the keystore out of the repo. `FLUX_GITHUB_CLIENT_ID` / `FLUX_GITHUB_APP_SLUG` build a GitHub App in, like the desktop.
+`signing.properties` holds `storeFile`, `storePassword`, `keyAlias` and `keyPassword`; keep it and the keystore out of the repo. `REMVYN_GITHUB_CLIENT_ID` / `REMVYN_GITHUB_APP_SLUG` build a GitHub App in, like the desktop.
 
 ## Master password and sync
 
-**Master password.** Set one in Settings → Security. Flux then asks for it at launch, after auto-lock (15 minutes idle by default) and after ⌘L. Open terminals keep running while locked, but they get no input, and new connections, background monitoring and sync wait until you unlock. The data key that encrypts your secrets is wrapped with a key derived from the password (Argon2id, 64 MiB, 3 passes) and is only held in memory while unlocked; changing the password re-wraps it without re-encrypting anything. A forgotten password can't be recovered: the lock screen offers to erase local data and start over.
+**Master password.** Set one in Settings → Security. Remvyn then asks for it at launch, after auto-lock (15 minutes idle by default) and after ⌘L. Open terminals keep running while locked, but they get no input, and new connections, background monitoring and sync wait until you unlock. The data key that encrypts your secrets is wrapped with a key derived from the password (Argon2id, 64 MiB, 3 passes) and is only held in memory while unlocked; changing the password re-wraps it without re-encrypting anything. A forgotten password can't be recovered: the lock screen offers to erase local data and start over.
 
 **Sync with GitHub.** Settings → Sync → *Sign in with GitHub*:
 
-1. Flux shows a one-time code; approve it on github.com (GitHub's device flow, so there's no client secret and no Flux server).
-2. Choose an empty **private** repository. If Flux can't see one yet, the dialog links to "new repository" and to the app's install page, where you grant access to just that repository.
-3. Set (or confirm) your master password. Flux creates the vault and uploads everything, encrypted.
+1. Remvyn shows a one-time code; approve it on github.com (GitHub's device flow, so there's no client secret and no Remvyn server).
+2. Choose an empty **private** repository. If Remvyn can't see one yet, the dialog links to "new repository" and to the app's install page, where you grant access to just that repository.
+3. Set (or confirm) your master password. Remvyn creates the vault and uploads everything, encrypted.
 
 On another computer, sign in, choose the same repository and enter the same master password; its local data is merged in, and it adopts that master password.
 
@@ -91,7 +94,7 @@ What's synced: hosts (with saved passwords), keys (with passphrases), groups, sn
 
 How it works:
 - The repository holds `vault.json` (a random sync key wrapped with your master password) and one file per item under `records/`. Each file is AES-256-GCM encrypted and bound to its path; file names are keyed hashes, so GitHub sees only how many items you have and when they change.
-- Flux uses the Git Data API directly; no git binary or local clone.
+- Remvyn uses the Git Data API directly; no git binary or local clone.
 - Each device remembers, per item, the version it last agreed with the repository, so it can tell local edits, remote edits and deletions apart. If both sides edited the same item, the newer edit wins. An edit beats a deletion, so nothing is lost silently.
 - Sync runs a couple of seconds after a change, every minute, and when the window comes to the front. Commits that race another device are retried.
 - Changing the master password re-wraps the key in the repository; other devices keep syncing and use the new password next time they join.
@@ -103,14 +106,14 @@ How it works:
 wails build -ldflags "-X main.githubClientID=Iv23li... -X main.githubAppSlug=your-app-name"
 ```
 
-or set `FLUX_GITHUB_CLIENT_ID` and `FLUX_GITHUB_APP_SLUG`. Without one, Settings → Sync walks users through registering their own app. `FLUX_GITHUB_WEB` / `FLUX_GITHUB_API` point Flux at GitHub Enterprise.
+or set `REMVYN_GITHUB_CLIENT_ID` and `REMVYN_GITHUB_APP_SLUG`. Without one, Settings → Sync walks users through registering their own app. `REMVYN_GITHUB_WEB` / `REMVYN_GITHUB_API` point Remvyn at GitHub Enterprise.
 
 To try sync locally without GitHub:
 
 ```bash
-go run ./tools/devgithub        # fake GitHub on 127.0.0.1:2280 with octo/flux-vault
-FLUX_GITHUB_WEB=http://127.0.0.1:2280 FLUX_GITHUB_API=http://127.0.0.1:2280 \
-  FLUX_GITHUB_CLIENT_ID=dev FLUX_GITHUB_APP_SLUG=flux-dev FLUX_DATA_DIR=/tmp/flux-a wails dev
+go run ./tools/devgithub        # fake GitHub on 127.0.0.1:2280 with octo/remvyn-vault
+REMVYN_GITHUB_WEB=http://127.0.0.1:2280 REMVYN_GITHUB_API=http://127.0.0.1:2280 \
+  REMVYN_GITHUB_CLIENT_ID=dev REMVYN_GITHUB_APP_SLUG=remvyn-dev REMVYN_DATA_DIR=/tmp/remvyn-a wails dev
 ```
 
 ## Run and build
@@ -121,12 +124,12 @@ go install github.com/wailsapp/wails/v2/cmd/wails@latest
 wails doctor
 
 wails dev                     # hot-reload development
-wails build                   # → build/bin/Flux.app (macOS)
+wails build                   # → build/bin/Remvyn.app (macOS)
 wails build -platform darwin/universal   # Intel + Apple Silicon
-open build/bin/Flux.app
+open build/bin/Remvyn.app
 ```
 
-Set `FLUX_DATA_DIR` to use a different data folder. The default is the OS config dir plus `/Flux`, for example `~/Library/Application Support/Flux`.
+Set `REMVYN_DATA_DIR` to use a different data folder. The default is the OS config dir plus `/Remvyn`, for example `~/Library/Application Support/Remvyn`.
 
 ### A local server to try it against
 
@@ -134,7 +137,7 @@ Set `FLUX_DATA_DIR` to use a different data folder. The default is the OS config
 go run ./tools/devsshd -addr 127.0.0.1:2223 -user demo -password demo
 ```
 
-This is the in-process test server: password auth, a tiny shell, SFTP over your real filesystem, and port forwarding. For a full shell, point Flux at any OpenSSH server.
+This is the in-process test server: password auth, a tiny shell, SFTP over your real filesystem, and port forwarding. For a full shell, point Remvyn at any OpenSSH server.
 
 ## Keyboard shortcuts
 
@@ -149,7 +152,7 @@ On macOS these use ⌘. On Linux and Windows they use Ctrl+Shift, so plain Ctrl+
 | Copy / paste in terminal | ⌘C / ⌘V (Ctrl+Shift+C/V elsewhere) |
 | Find in terminal / clear | ⌘F / ⌘K |
 | Server metrics panel | ⌘I |
-| Lock Flux (with a master password) | ⌘L |
+| Lock Remvyn (with a master password) | ⌘L |
 | Next / previous color scheme | ⌘⌥] / ⌘⌥[ |
 | Larger / smaller terminal text | ⌘= / ⌘- |
 | Settings / shortcuts | ⌘, / ⌘/ |
@@ -207,6 +210,7 @@ backend/
 tools/devsshd/         run the test server for manual testing
 tools/devgithub/       run the fake GitHub for trying sync
 mobile/android/        Android companion app (Kotlin, Jetpack Compose, JSch)
+branding/              logo, app icons and naming research (BRANDING.md)
   monitor/             agentless metrics collection (script, parser, per-host collectors)
   alerts/              alert rule evaluation, firing and resolving
   uptime/              HTTP/TCP uptime probes
@@ -218,7 +222,7 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 ## Security
 
 - Passwords, private keys and key passphrases are encrypted with AES-256-GCM before they are written to SQLite. Without a master password, the key lives in a separate `0600` file in the data folder, which protects against leaking the database file but not against someone who can read your home directory. With a master password, the key exists on disk only wrapped by an Argon2id-derived key, and in memory only while unlocked. Host names and other non-secret fields are not encrypted.
-- Synced data is end-to-end encrypted with a key that only exists wrapped by your master password; GitHub stores ciphertext. Records are authenticated, so tampered or swapped files are rejected, but anyone with write access to the repository could delete synced items (and the deletion would sync); Git history keeps the old versions. The GitHub token and sync key are sealed with the local data key, so they're unusable while Flux is locked.
+- Synced data is end-to-end encrypted with a key that only exists wrapped by your master password; GitHub stores ciphertext. Records are authenticated, so tampered or swapped files are rejected, but anyone with write access to the repository could delete synced items (and the deletion would sync); Git history keeps the old versions. The GitHub token and sync key are sealed with the local data key, so they're unusable while Remvyn is locked.
 - Host keys are always verified. New hosts need explicit confirmation, and a changed key is flagged and rejected by default.
 - Private keys never leave the Go backend; the UI only ever receives public metadata.
 - Forwarding rules bind to `127.0.0.1` by default, and the UI warns before you bind to other interfaces.
@@ -237,6 +241,6 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 - No local (non-SSH) terminal tabs, split panes, or session logging/recording.
 - Sync needs a GitHub account and a GitHub App (built in, or registered by the user). Same-item conflicts keep the newer edit; there's no field-level merge. Hosts created separately on two devices with the same name are kept as two hosts. No Touch ID unlock yet.
 - No team sharing.
-- Monitoring only runs while Flux is open (no agent or tray mode yet), supports Linux servers only, and Pro has no payment or licensing yet.
+- Monitoring only runs while Remvyn is open (no agent or tray mode yet), supports Linux servers only, and Pro has no payment or licensing yet.
 - The "install public key" command assumes a POSIX shell on the server.
 - The app icon is still the Wails default.

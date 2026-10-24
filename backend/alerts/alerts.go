@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"flux/backend/models"
+	"remvyn/backend/models"
 )
 
 // EventAlert is emitted with a models.AlertEvent when an alert fires or resolves.

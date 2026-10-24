@@ -74,7 +74,7 @@ export function HostsPage() {
     } catch (e) {
       if (errorCode(e) === 'no_ssh_config')
         toast('You don’t have an SSH config file', {
-          description: 'Flux imports hosts from ~/.ssh/config, which doesn’t exist on this Mac. Choose a config file from elsewhere, or add hosts with New host.',
+          description: 'Remvyn imports hosts from ~/.ssh/config, which doesn’t exist on this Mac. Choose a config file from elsewhere, or add hosts with New host.',
           action: { label: 'Choose file…', onClick: () => void importConfig(true) },
           duration: 10000,
         })

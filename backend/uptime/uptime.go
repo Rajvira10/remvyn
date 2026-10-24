@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"flux/backend/models"
+	"remvyn/backend/models"
 )
 
 // EventResult is emitted with a models.UptimeResult after every probe.
@@ -143,7 +143,7 @@ func Probe(ctx context.Context, c models.UptimeCheck) models.UptimeResult {
 			r.Error = err.Error()
 			break
 		}
-		req.Header.Set("User-Agent", "Flux-Uptime/1.0")
+		req.Header.Set("User-Agent", "Remvyn-Uptime/1.0")
 		res, err := httpClient.Do(req)
 		if err != nil {
 			r.Error = friendly(err)

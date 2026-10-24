@@ -13,8 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"flux/backend/models"
-	"flux/backend/sshconn"
+	"remvyn/backend/models"
+	"remvyn/backend/sshconn"
 )
 
 // EventStatus carries models.ForwardStatus updates.

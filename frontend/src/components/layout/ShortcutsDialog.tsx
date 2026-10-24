@@ -32,7 +32,7 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
     title: 'App',
     items: [
       ['Settings', k(',')],
-      ['Lock Flux (with a master password)', k('L')],
+      ['Lock Remvyn (with a master password)', k('L')],
       ['Show shortcuts', k('/')],
     ],
   },

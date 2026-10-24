@@ -71,9 +71,9 @@ function AppSetupDialog({ open, onOpenChange, status }: { open: boolean; onOpenC
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Set up the Flux GitHub app</DialogTitle>
+          <DialogTitle>Set up the Remvyn GitHub app</DialogTitle>
           <DialogDescription>
-            Sign-in uses a GitHub App that you register once. It only gets access to the one repository you choose, and Flux needs no server or secret.
+            Sign-in uses a GitHub App that you register once. It only gets access to the one repository you choose, and Remvyn needs no server or secret.
           </DialogDescription>
         </DialogHeader>
         <ol className="flex flex-col gap-3 text-[13px]">
@@ -100,7 +100,7 @@ function AppSetupDialog({ open, onOpenChange, status }: { open: boolean; onOpenC
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="gh-slug">App page or name</Label>
-            <Input id="gh-slug" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="https://github.com/apps/my-flux-sync" className="font-mono text-[12px]" />
+            <Input id="gh-slug" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="https://github.com/apps/my-remvyn-sync" className="font-mono text-[12px]" />
           </div>
         </div>
         <DialogFooter>
@@ -143,7 +143,7 @@ function ConnectDialog({ open, onOpenChange, relogin }: { open: boolean; onOpenC
       const r = await api.syncRepos()
       setRepos(r.repos)
       setInstalled(r.installed)
-      const vault = r.repos.find((x) => x.private && /flux/i.test(x.fullName)) ?? (r.repos.length === 1 && r.repos[0].private ? r.repos[0] : undefined)
+      const vault = r.repos.find((x) => x.private && /remvyn|flux/i.test(x.fullName)) ?? (r.repos.length === 1 && r.repos[0].private ? r.repos[0] : undefined)
       if (vault && !picked) setPicked(vault.fullName)
     } catch (e) {
       toast.error('Could not list repositories', { description: errorMessage(e) })
@@ -244,9 +244,9 @@ function ConnectDialog({ open, onOpenChange, relogin }: { open: boolean; onOpenC
             <GithubIcon className="size-4" /> {relogin ? 'Sign in to GitHub again' : 'Sync with GitHub'}
           </DialogTitle>
           <DialogDescription>
-            {stage === 'code' && 'Approve Flux on github.com with this one-time code.'}
+            {stage === 'code' && 'Approve Remvyn on github.com with this one-time code.'}
             {stage === 'repo' && `Signed in as ${login}. Choose the private repository that will hold your encrypted vault.`}
-            {stage === 'password' && (info?.hasVault ? `${picked} already has a Flux vault.` : `Flux will create a new vault in ${picked}.`)}
+            {stage === 'password' && (info?.hasVault ? `${picked} already has a Remvyn vault.` : `Remvyn will create a new vault in ${picked}.`)}
           </DialogDescription>
         </DialogHeader>
 
@@ -309,8 +309,8 @@ function ConnectDialog({ open, onOpenChange, relogin }: { open: boolean; onOpenC
                   <p className="mb-2 text-muted-foreground">
                     {repos.length === 0
                       ? installed
-                        ? 'Flux can’t see any repositories yet.'
-                        : 'The Flux app isn’t installed on your account yet.'
+                        ? 'Remvyn can’t see any repositories yet.'
+                        : 'The Remvyn app isn’t installed on your account yet.'
                       : 'Don’t see the right one?'}
                   </p>
                   <ol className="flex flex-col gap-2">
@@ -326,7 +326,7 @@ function ConnectDialog({ open, onOpenChange, relogin }: { open: boolean; onOpenC
                     </Step>
                     <Step n={2}>
                       <div className="flex flex-wrap items-center gap-2">
-                        Give Flux access to only that repository
+                        Give Remvyn access to only that repository
                         {sync?.installUrl && <LinkButton href={sync.installUrl}>Choose repositories</LinkButton>}
                       </div>
                     </Step>
@@ -381,7 +381,7 @@ function ConnectDialog({ open, onOpenChange, relogin }: { open: boolean; onOpenC
                 </div>
                 <PasswordInput id="sync-pw2" label="Confirm master password" value={confirm} onChange={(v) => { setConfirm(v); setError('') }} />
                 <p className="rounded-md bg-warning/10 px-3 py-2 text-xs leading-relaxed text-warning">
-                  It encrypts the vault before upload, unlocks Flux on this computer, and lets your other devices join. It can’t be recovered if you forget it.
+                  It encrypts the vault before upload, unlocks Remvyn on this computer, and lets your other devices join. It can’t be recovered if you forget it.
                 </p>
               </>
             )}
@@ -408,7 +408,7 @@ function stateLabel(s: SyncStatus): { text: string; tone: string } {
     case 'error':
       return { text: 'Sync failed', tone: 'text-danger' }
     case 'locked':
-      return { text: 'Paused while Flux is locked', tone: 'text-muted-foreground' }
+      return { text: 'Paused while Remvyn is locked', tone: 'text-muted-foreground' }
     default:
       return { text: s.lastSyncAt ? `Synced ${relativeTime(s.lastSyncAt)}` : 'Not synced yet', tone: 'text-success' }
   }
@@ -462,7 +462,7 @@ export function SyncSection() {
               <CloudIcon className="size-3.5 text-muted-foreground" /> Not syncing
             </span>
           }
-          hint="Sign in with GitHub, choose a private repository, and Flux does the rest."
+          hint="Sign in with GitHub, choose a private repository, and Remvyn does the rest."
         >
           <Button
             size="sm"
@@ -509,7 +509,7 @@ export function SyncSection() {
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <span className={label.tone}>{label.text}</span>
               {sync.state === 'error' && <span className="text-muted-foreground">{sync.error}</span>}
-              {sync.state !== 'error' && <span className="text-muted-foreground">Flux syncs a few seconds after you change something, every minute, and when you switch back to it.</span>}
+              {sync.state !== 'error' && <span className="text-muted-foreground">Remvyn syncs a few seconds after you change something, every minute, and when you switch back to it.</span>}
             </div>
             {sync.errorCode === 'github_auth' && (
               <Button

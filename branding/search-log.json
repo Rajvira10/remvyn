@@ -1,0 +1,69 @@
+{
+  "checked_date": "2026-10-24",
+  "notes": "Indexed web results are incomplete; absence does not establish legal clearance or store-wide absence.",
+  "queries": [
+    {
+      "name": "Remvyn",
+      "query": "\"Remvyn\" (SSH OR terminal OR monitoring OR devops OR software OR app)",
+      "finding": "No named software product identified; food-database username, fiction and random short-link references.",
+      "store_index_query": "\"Remvyn\" (site:github.com OR site:play.google.com OR site:apps.apple.com OR site:producthunt.com)",
+      "trademark_index_query": "\"Remvyn\" trademark (site:uspto.gov OR site:euipo.europa.eu OR site:trademarkia.com OR site:trademarks.justia.com)"
+    },
+    {
+      "name": "Velqin",
+      "query": "\"Velqin\" software app SSH terminal monitoring",
+      "finding": "Retail and supplement brands; no relevant product identified.",
+      "store_index_query": "\"Velqin\" (site:github.com OR site:play.google.com OR site:apps.apple.com OR site:producthunt.com)",
+      "trademark_index_query": "\"Velqin\" trademark (site:uspto.gov OR site:euipo.europa.eu OR site:trademarkia.com OR site:trademarks.justia.com)"
+    },
+    {
+      "name": "Selqen",
+      "query": "\"Selqen\" software",
+      "finding": "Indexed search weak; direct GitHub API found vikions/SELQEN, crypto safety extension, 0 stars.",
+      "store_index_query": "\"Selqen\" (site:github.com OR site:play.google.com OR site:apps.apple.com OR site:producthunt.com)",
+      "trademark_index_query": "\"Selqen\" trademark (site:uspto.gov OR site:euipo.europa.eu OR site:trademarkia.com OR site:trademarks.justia.com)"
+    },
+    {
+      "name": "Veylun",
+      "query": "\"Veylun\" (SSH OR terminal OR server OR devops OR monitoring OR software)",
+      "finding": "Music identity and crypto token. Direct GitHub API also found unrelated game Dabot11/Veylun, 0 stars.",
+      "store_index_query": "\"Veylun\" (site:github.com OR site:play.google.com OR site:apps.apple.com OR site:producthunt.com)",
+      "trademark_index_query": "\"Veylun\" trademark (site:uspto.gov OR site:euipo.europa.eu OR site:trademarkia.com OR site:trademarks.justia.com)"
+    },
+    {
+      "name": "Osvren",
+      "query": "\"Osvren\" software terminal",
+      "finding": "osvren.com feed/search interface; purpose incompletely verified. No relevant infra product found.",
+      "store_index_query": "\"Osvren\" (site:github.com OR site:play.google.com OR site:apps.apple.com OR site:producthunt.com)",
+      "trademark_index_query": "\"Osvren\" trademark (site:uspto.gov OR site:euipo.europa.eu OR site:trademarkia.com OR site:trademarks.justia.com)"
+    },
+    {
+      "name": "Nivrel",
+      "query": "\"Nivrel\" software SSH terminal monitoring",
+      "finding": "Established watch brand; no in-domain product identified. Trademark concern.",
+      "store_index_query": "\"Nivrel\" (site:github.com OR site:play.google.com OR site:apps.apple.com OR site:producthunt.com)",
+      "trademark_index_query": "\"Nivrel\" trademark (site:uspto.gov OR site:euipo.europa.eu OR site:trademarkia.com OR site:trademarks.justia.com)"
+    },
+    {
+      "name": "Auvren",
+      "query": "\"Auvren\" software app",
+      "finding": "Retail/watch businesses; class-9 trademark application; not retained.",
+      "store_index_query": "\"Auvren\" (site:github.com OR site:play.google.com OR site:apps.apple.com OR site:producthunt.com)",
+      "trademark_index_query": "\"Auvren\" trademark (site:uspto.gov OR site:euipo.europa.eu OR site:trademarkia.com OR site:trademarks.justia.com)"
+    },
+    {
+      "name": "Kivren",
+      "query": "\"Kivren\"",
+      "finding": "Existing developer collaboration app at kivren.ai; disqualified.",
+      "store_index_query": "\"Kivren\" (site:github.com OR site:play.google.com OR site:apps.apple.com OR site:producthunt.com)",
+      "trademark_index_query": "\"Kivren\" trademark (site:uspto.gov OR site:euipo.europa.eu OR site:trademarkia.com OR site:trademarks.justia.com)"
+    },
+    {
+      "name": "Telvra",
+      "query": "\"Telvra\" software SSH terminal monitoring app",
+      "finding": "Existing automated competitor-monitoring app at telvra.app; rejected conservatively.",
+      "store_index_query": "\"Telvra\" (site:github.com OR site:play.google.com OR site:apps.apple.com OR site:producthunt.com)",
+      "trademark_index_query": "\"Telvra\" trademark (site:uspto.gov OR site:euipo.europa.eu OR site:trademarkia.com OR site:trademarks.justia.com)"
+    }
+  ]
+}

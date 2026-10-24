@@ -1,0 +1,240 @@
+[
+  {
+    "domain": "selqen.com",
+    "url": "https://rdap.verisign.com/com/v1/domain/selqen.com",
+    "checked_utc": "2026-10-24T07:48:37.359229+00:00",
+    "http": 200,
+    "registered": true,
+    "name": "SELQEN.COM",
+    "events": [
+      {
+        "eventAction": "registration",
+        "eventDate": "2025-10-17T09:21:07Z"
+      },
+      {
+        "eventAction": "expiration",
+        "eventDate": "2027-10-17T09:21:07Z"
+      },
+      {
+        "eventAction": "last changed",
+        "eventDate": "2026-10-18T08:12:13Z"
+      },
+      {
+        "eventAction": "last update of RDAP database",
+        "eventDate": "2026-10-24T07:48:20Z"
+      }
+    ],
+    "status": [
+      "client transfer prohibited"
+    ]
+  },
+  {
+    "domain": "selqen.app",
+    "url": "https://pubapi.registry.google/rdap/domain/selqen.app",
+    "checked_utc": "2026-10-24T07:48:37.359547+00:00",
+    "http": 404,
+    "registered": false
+  },
+  {
+    "domain": "selqen.dev",
+    "url": "https://pubapi.registry.google/rdap/domain/selqen.dev",
+    "checked_utc": "2026-10-24T07:48:37.359688+00:00",
+    "http": 404,
+    "registered": false
+  },
+  {
+    "domain": "veylun.com",
+    "url": "https://rdap.verisign.com/com/v1/domain/veylun.com",
+    "checked_utc": "2026-10-24T07:48:37.360029+00:00",
+    "http": 200,
+    "registered": true,
+    "name": "VEYLUN.COM",
+    "events": [
+      {
+        "eventAction": "registration",
+        "eventDate": "2026-09-03T07:53:58Z"
+      },
+      {
+        "eventAction": "expiration",
+        "eventDate": "2027-09-03T07:53:58Z"
+      },
+      {
+        "eventAction": "last changed",
+        "eventDate": "2026-09-03T08:03:22Z"
+      },
+      {
+        "eventAction": "last update of RDAP database",
+        "eventDate": "2026-10-24T07:48:20Z"
+      }
+    ],
+    "status": [
+      "client transfer prohibited"
+    ]
+  },
+  {
+    "domain": "veylun.app",
+    "url": "https://pubapi.registry.google/rdap/domain/veylun.app",
+    "checked_utc": "2026-10-24T07:48:37.360153+00:00",
+    "http": 404,
+    "registered": false
+  },
+  {
+    "domain": "veylun.dev",
+    "url": "https://pubapi.registry.google/rdap/domain/veylun.dev",
+    "checked_utc": "2026-10-24T07:48:37.360348+00:00",
+    "http": 404,
+    "registered": false
+  },
+  {
+    "domain": "velqin.com",
+    "url": "https://rdap.verisign.com/com/v1/domain/velqin.com",
+    "checked_utc": "2026-10-24T07:48:37.360596+00:00",
+    "http": 200,
+    "registered": true,
+    "name": "VELQIN.COM",
+    "events": [
+      {
+        "eventAction": "registration",
+        "eventDate": "2025-10-05T19:10:19Z"
+      },
+      {
+        "eventAction": "expiration",
+        "eventDate": "2027-10-05T19:10:19Z"
+      },
+      {
+        "eventAction": "last changed",
+        "eventDate": "2026-09-05T10:29:48Z"
+      },
+      {
+        "eventAction": "last update of RDAP database",
+        "eventDate": "2026-10-24T07:48:20Z"
+      }
+    ],
+    "status": [
+      "client transfer prohibited"
+    ]
+  },
+  {
+    "domain": "velqin.app",
+    "url": "https://pubapi.registry.google/rdap/domain/velqin.app",
+    "checked_utc": "2026-10-24T07:48:37.360690+00:00",
+    "http": 404,
+    "registered": false
+  },
+  {
+    "domain": "velqin.dev",
+    "url": "https://pubapi.registry.google/rdap/domain/velqin.dev",
+    "checked_utc": "2026-10-24T07:48:37.579216+00:00",
+    "http": 404,
+    "registered": false
+  },
+  {
+    "domain": "auvren.com",
+    "url": "https://rdap.verisign.com/com/v1/domain/auvren.com",
+    "checked_utc": "2026-10-24T07:48:37.587051+00:00",
+    "http": 200,
+    "registered": true,
+    "name": "AUVREN.COM",
+    "events": [
+      {
+        "eventAction": "registration",
+        "eventDate": "2025-01-15T23:24:37Z"
+      },
+      {
+        "eventAction": "expiration",
+        "eventDate": "2027-01-15T23:24:37Z"
+      },
+      {
+        "eventAction": "last changed",
+        "eventDate": "2025-12-16T06:11:29Z"
+      },
+      {
+        "eventAction": "last update of RDAP database",
+        "eventDate": "2026-10-24T07:48:20Z"
+      }
+    ],
+    "status": [
+      "client transfer prohibited"
+    ]
+  },
+  {
+    "domain": "auvren.app",
+    "url": "https://pubapi.registry.google/rdap/domain/auvren.app",
+    "checked_utc": "2026-10-24T07:48:37.704184+00:00",
+    "http": 200,
+    "registered": true,
+    "name": "auvren.app",
+    "events": [
+      {
+        "eventAction": "registration",
+        "eventActor": "name",
+        "eventDate": "2026-10-10T20:37:10.417Z"
+      },
+      {
+        "eventAction": "expiration",
+        "eventDate": "2027-10-10T20:37:10.417Z"
+      },
+      {
+        "eventAction": "last update of RDAP database",
+        "eventDate": "2026-10-24T07:48:38.051Z"
+      },
+      {
+        "eventAction": "last changed",
+        "eventDate": "2026-10-15T20:37:10.417Z"
+      }
+    ],
+    "status": [
+      "client transfer prohibited"
+    ]
+  },
+  {
+    "domain": "auvren.dev",
+    "url": "https://pubapi.registry.google/rdap/domain/auvren.dev",
+    "checked_utc": "2026-10-24T07:48:37.738362+00:00",
+    "http": 404,
+    "registered": false
+  },
+  {
+    "domain": "osvren.com",
+    "url": "https://rdap.verisign.com/com/v1/domain/osvren.com",
+    "checked_utc": "2026-10-24T07:48:37.797868+00:00",
+    "http": 200,
+    "registered": true,
+    "name": "OSVREN.COM",
+    "events": [
+      {
+        "eventAction": "registration",
+        "eventDate": "2026-07-17T00:49:27Z"
+      },
+      {
+        "eventAction": "expiration",
+        "eventDate": "2027-07-17T00:49:27Z"
+      },
+      {
+        "eventAction": "last changed",
+        "eventDate": "2026-07-17T00:56:20Z"
+      },
+      {
+        "eventAction": "last update of RDAP database",
+        "eventDate": "2026-10-24T07:48:20Z"
+      }
+    ],
+    "status": [
+      "client transfer prohibited"
+    ]
+  },
+  {
+    "domain": "osvren.app",
+    "url": "https://pubapi.registry.google/rdap/domain/osvren.app",
+    "checked_utc": "2026-10-24T07:48:37.798106+00:00",
+    "http": 404,
+    "registered": false
+  },
+  {
+    "domain": "osvren.dev",
+    "url": "https://pubapi.registry.google/rdap/domain/osvren.dev",
+    "checked_utc": "2026-10-24T07:48:37.807390+00:00",
+    "http": 404,
+    "registered": false
+  }
+]

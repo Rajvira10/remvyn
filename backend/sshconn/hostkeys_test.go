@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"flux/backend/models"
+	"remvyn/backend/models"
 )
 
 func TestPromptBrokerResolveAndTimeout(t *testing.T) {

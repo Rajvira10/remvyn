@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Flux bolt on the adaptive-icon safe zone (108dp canvas). -->
+<!-- Remvyn "routed R" mark (branding/android-foreground.svg), inside the 108dp adaptive-icon safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#7AA2F7"
-        android:pathData="M59,30 L38,58 L52,58 L48,78 L70,48 L56,48 Z" />
+    <group android:translateX="17.136" android:translateY="17.136" android:scaleX="0.072" android:scaleY="0.072">
+        <path android:fillColor="#7AA2F7" android:fillType="evenOdd"
+            android:pathData="M192 192H544C703.058 192 832 277.961 832 384C832 473.4 751 535.6 648 561L736 704H832V832H656L496 576H320V832H192ZM320 320V448H544C632.366 448 704 423.346 704 384C704 344.654 632.366 320 544 320Z" />
+    </group>
 </vector>

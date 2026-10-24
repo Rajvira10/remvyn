@@ -1,4 +1,5 @@
-import { EyeIcon, EyeOffIcon, LockIcon, ZapIcon } from 'lucide-react'
+import { EyeIcon, EyeOffIcon, LockIcon } from 'lucide-react'
+import { Logo } from '@/components/common/Logo'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -49,7 +50,7 @@ export function LockScreen() {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background" role="dialog" aria-modal aria-label="Flux is locked">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background" role="dialog" aria-modal aria-label="Remvyn is locked">
       <div className="titlebar-drag absolute inset-x-0 top-0 h-[50px]" />
       <form
         className="flex w-80 flex-col items-center gap-5"
@@ -59,13 +60,13 @@ export function LockScreen() {
         }}
       >
         <div className="relative flex size-14 items-center justify-center rounded-2xl border bg-card shadow-sm">
-          <ZapIcon className="size-6 fill-primary text-primary" />
+          <Logo className="size-6 text-primary" />
           <span className="absolute -right-1.5 -bottom-1.5 flex size-6 items-center justify-center rounded-full border bg-background">
             <LockIcon className="size-3 text-muted-foreground" />
           </span>
         </div>
         <div className="text-center">
-          <h1 className="text-[16px] font-semibold">Flux is locked</h1>
+          <h1 className="text-[16px] font-semibold">Remvyn is locked</h1>
           <p className="mt-1 text-xs text-muted-foreground">Enter your master password to continue.</p>
         </div>
         <div className="flex w-full flex-col gap-2">
@@ -107,7 +108,7 @@ export function LockScreen() {
         // Inline rather than a dialog: dialogs sit below the lock screen.
         <div className="absolute inset-0 flex items-center justify-center bg-black/50">
           <div className="flex w-[26rem] flex-col gap-3 rounded-xl border bg-popover p-5 shadow-2xl">
-            <h2 className="text-[15px] font-semibold">Reset Flux?</h2>
+            <h2 className="text-[15px] font-semibold">Reset Remvyn?</h2>
             <p className="text-[13px] leading-relaxed text-muted-foreground">
               {sync?.connected
                 ? 'Your master password can’t be recovered. Resetting erases everything on this computer and turns off sync. The copy on GitHub is kept, but joining it again still needs the password.'
@@ -127,7 +128,7 @@ export function LockScreen() {
                     for (const t of useSessions.getState().tabs) useSessions.getState().close(t.key)
                     await Promise.all([useLock.getState().load(), useVault.getState().loadAll()])
                     setForgot(false)
-                    toast.success('Flux was reset')
+                    toast.success('Remvyn was reset')
                   } catch (e) {
                     toast.error('Could not reset', { description: errorMessage(e) })
                   }

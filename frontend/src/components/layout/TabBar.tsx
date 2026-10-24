@@ -1,6 +1,7 @@
-import { CloudAlertIcon, CloudCheckIcon, CloudIcon, FolderIcon, LayoutGridIcon, LockIcon, PlusIcon, RefreshCwIcon, TerminalIcon, XIcon, ZapIcon } from 'lucide-react'
+import { CloudAlertIcon, CloudCheckIcon, CloudIcon, FolderIcon, LayoutGridIcon, LockIcon, PlusIcon, RefreshCwIcon, TerminalIcon, XIcon } from 'lucide-react'
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import { Logo } from '@/components/common/Logo'
 import { Tooltip } from '@/components/ui/tooltip'
 import { api } from '@/lib/api'
 import { appKey, cn, isMac, relativeTime } from '@/lib/utils'
@@ -41,9 +42,9 @@ export function TabBar() {
       {/* Same width as the vault sidebar, so the window controls and brand sit above it and the tabs line up with the content. */}
       <div className={cn('flex h-full w-[200px] shrink-0 items-center justify-end gap-2 border-r pr-4', !isMac && 'justify-start pl-4')}>
         <div className="flex size-5 items-center justify-center rounded-md bg-primary/15">
-          <ZapIcon className="size-3 fill-primary text-primary" />
+          <Logo className="size-3 text-primary" />
         </div>
-        <span className="text-[13px] font-semibold tracking-tight">Flux</span>
+        <span className="text-[13px] font-semibold tracking-tight">Remvyn</span>
       </div>
       <button
         onClick={() => activate('vault')}
@@ -146,8 +147,8 @@ function StatusButtons() {
         </Tooltip>
       )}
       {lock?.protected && (
-        <Tooltip content={`Lock Flux (${appKey}L)`}>
-          <button onClick={() => void api.lock()} className={btn} aria-label="Lock Flux">
+        <Tooltip content={`Lock Remvyn (${appKey}L)`}>
+          <button onClick={() => void api.lock()} className={btn} aria-label="Lock Remvyn">
             <LockIcon className="size-3.5" />
           </button>
         </Tooltip>

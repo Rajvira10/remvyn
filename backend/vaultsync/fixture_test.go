@@ -9,11 +9,11 @@ import (
 
 // TestWriteMobileFixture writes a vault and an encrypted record for the
 // Android app's compatibility test (mobile/android/app/src/test).
-// Run with FLUX_WRITE_FIXTURE=<file>.
+// Run with REMVYN_WRITE_FIXTURE=<file>.
 func TestWriteMobileFixture(t *testing.T) {
-	out := os.Getenv("FLUX_WRITE_FIXTURE")
+	out := os.Getenv("REMVYN_WRITE_FIXTURE")
 	if out == "" {
-		t.Skip("set FLUX_WRITE_FIXTURE to write the fixture")
+		t.Skip("set REMVYN_WRITE_FIXTURE to write the fixture")
 	}
 	doc, key, err := NewVaultDoc("correct horse battery", time.UnixMilli(1700000000000))
 	if err != nil {

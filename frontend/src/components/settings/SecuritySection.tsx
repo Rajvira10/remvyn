@@ -79,11 +79,11 @@ function PasswordDialog({ mode, onClose }: { mode: Mode | null; onClose: () => v
             <DialogHeader>
               <DialogTitle>{titles[mode]}</DialogTitle>
               <DialogDescription>
-                {mode === 'set' && 'Flux will ask for it when it starts and after it auto-locks. It also encrypts your vault for sync.'}
+                {mode === 'set' && 'Remvyn will ask for it when it starts and after it auto-locks. It also encrypts your vault for sync.'}
                 {mode === 'change' && (status?.syncConnected
                   ? 'The synced vault on GitHub is updated too. Your other devices keep syncing; they use the new password the next time they join.'
                   : 'Your saved passwords and keys stay as they are; only the password that unlocks them changes.')}
-                {mode === 'remove' && 'Flux will open without a password, and anyone using this computer can see your saved passwords and keys.'}
+                {mode === 'remove' && 'Remvyn will open without a password, and anyone using this computer can see your saved passwords and keys.'}
               </DialogDescription>
             </DialogHeader>
             {mode !== 'set' && (
@@ -133,8 +133,8 @@ export function SecuritySection({ form, apply }: { form: Settings; apply: (patch
         }
         hint={
           protectedVault
-            ? 'Required when Flux starts and after it locks.'
-            : 'Not set. Anyone who can use this computer can open Flux and read your saved passwords.'
+            ? 'Required when Remvyn starts and after it locks.'
+            : 'Not set. Anyone who can use this computer can open Remvyn and read your saved passwords.'
         }
       >
         {protectedVault ? (
@@ -158,7 +158,7 @@ export function SecuritySection({ form, apply }: { form: Settings; apply: (patch
       </Field>
       {protectedVault && (
         <>
-          <Field label="Auto-lock" hint="Lock Flux when you haven’t used it for a while. Open terminals keep running.">
+          <Field label="Auto-lock" hint="Lock Remvyn when you haven’t used it for a while. Open terminals keep running.">
             <Select value={String(form.autoLockMinutes)} onValueChange={(v) => void apply({ autoLockMinutes: Number(v) })}>
               <SelectTrigger className="w-40">
                 <SelectValue />
@@ -185,7 +185,7 @@ export function SecuritySection({ form, apply }: { form: Settings; apply: (patch
           <p>
             Passwords, private keys and key passphrases are encrypted with AES-256-GCM before being written to the local database.{' '}
             {protectedVault
-              ? 'The encryption key is itself encrypted with a key derived from your master password (Argon2id), and is only in memory while Flux is unlocked.'
+              ? 'The encryption key is itself encrypted with a key derived from your master password (Argon2id), and is only in memory while Remvyn is unlocked.'
               : 'The encryption key is stored in a separate file readable only by your user account.'}{' '}
             Host names and other non-secret details are not encrypted.
           </p>

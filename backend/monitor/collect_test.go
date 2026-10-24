@@ -141,7 +141,7 @@ func TestParseDockerAndServices(t *testing.T) {
 
 func TestDockerAndSystemdUnavailable(t *testing.T) {
 	base := sample("1 0 1 1", "1", "1", false, false)
-	r, _ := parse(base+"@@docker\nflux:not-installed\n@@services\nflux:not-available\n", 1)
+	r, _ := parse(base+"@@docker\nremvyn:not-installed\n@@services\nremvyn:not-available\n", 1)
 	if r.docker.Available || r.docker.Error != "Docker is not installed" || r.services.Available {
 		t.Fatalf("unavailable: %+v %+v", r.docker, r.services)
 	}

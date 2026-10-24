@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"flux/backend/storage"
+	"remvyn/backend/storage"
 )
 
 // Events emitted to the UI.
@@ -23,7 +23,7 @@ const (
 const metaKey = "sync"
 
 // Config is persisted in the settings table. Secrets are sealed with the
-// local data key, so they're unavailable while Flux is locked.
+// local data key, so they're unavailable while Remvyn is locked.
 type Config struct {
 	ClientID    string `json:"clientId,omitempty"`
 	AppSlug     string `json:"appSlug,omitempty"`
@@ -168,8 +168,8 @@ func (s *Service) statusLocked() Status {
 	id, slug, builtIn := s.clientID()
 	st := Status{AppConfigured: id != "", ClientID: id, AppSlug: slug, BuiltInApp: builtIn, Connected: s.cfg.connected(),
 		Repo: s.cfg.Repo, Login: s.cfg.Login, State: s.state, LastSyncAt: s.cfg.LastSyncAt,
-		NewRepoURL: s.o.Endpoints.Web + "/new?" + url.Values{"name": {"flux-vault"}, "visibility": {"private"},
-			"description": {"Encrypted Flux vault (synced by the Flux app)"}}.Encode()}
+		NewRepoURL: s.o.Endpoints.Web + "/new?" + url.Values{"name": {"remvyn-vault"}, "visibility": {"private"},
+			"description": {"Encrypted Remvyn vault (synced by the Remvyn app)"}}.Encode()}
 	if slug != "" {
 		st.InstallURL = s.o.Endpoints.Web + "/apps/" + url.PathEscape(slug) + "/installations/new"
 	}
@@ -384,7 +384,7 @@ func (s *Service) CreateVault(ctx context.Context, fullName, password string) ([
 		if _, ok := snap.Files[vaultFile]; ok {
 			return nil, errors.New("this repository already has a vault; join it instead")
 		}
-		_, err = r.Commit(ctx, snap, map[string][]byte{vaultFile: doc}, "Create Flux vault")
+		_, err = r.Commit(ctx, snap, map[string][]byte{vaultFile: doc}, "Create Remvyn vault")
 		if errors.Is(err, ErrConflict) {
 			continue
 		}
@@ -417,7 +417,7 @@ func (s *Service) JoinVault(ctx context.Context, fullName, password string) ([]b
 	}
 	sha, ok := snap.Files[vaultFile]
 	if !ok {
-		return nil, errors.New("this repository doesn't contain a Flux vault")
+		return nil, errors.New("this repository doesn't contain a Remvyn vault")
 	}
 	raw, err := r.Read(ctx, sha)
 	if err != nil {
@@ -686,7 +686,7 @@ func parseVaultDoc(raw []byte) (vaultDoc, error) {
 	var d vaultDoc
 	err := json.Unmarshal(raw, &d)
 	if err == nil && d.Format != vaultFormat {
-		err = fmt.Errorf("not a Flux vault")
+		err = fmt.Errorf("not a Remvyn vault")
 	}
 	return d, err
 }

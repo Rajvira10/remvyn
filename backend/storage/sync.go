@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"flux/backend/models"
+	"remvyn/backend/models"
 )
 
 const syncSchema = `

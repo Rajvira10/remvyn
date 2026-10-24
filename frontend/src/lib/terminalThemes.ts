@@ -22,7 +22,7 @@ function compact(id: string, name: string, dark: boolean, base: string, ansi: st
 export const TERMINAL_THEMES: TerminalThemeDef[] = [
   {
     id: 'flux',
-    name: 'Flux Dark',
+    name: 'Remvyn Dark',
     dark: true,
     theme: {
       background: '#15161a',
@@ -131,7 +131,7 @@ export const TERMINAL_THEMES: TerminalThemeDef[] = [
   },
   {
     id: 'light',
-    name: 'Flux Light',
+    name: 'Remvyn Light',
     dark: false,
     theme: {
       background: '#fbfbfc',

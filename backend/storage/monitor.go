@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"strings"
 
-	"flux/backend/ids"
-	"flux/backend/models"
+	"remvyn/backend/ids"
+	"remvyn/backend/models"
 )
 
 const monitorSchema = `
@@ -245,9 +245,9 @@ func (s *Store) ResolveAlertEvent(ctx context.Context, id, at int64) error {
 }
 
 // ResolveOpenAlerts closes events left open by a previous run (their state
-// was lost when Flux quit).
+// was lost when Remvyn quit).
 func (s *Store) ResolveOpenAlerts(ctx context.Context, at int64) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE alert_events SET resolved_at = ?, message = message || ' (closed when Flux restarted)' WHERE resolved_at = 0`, at)
+	_, err := s.db.ExecContext(ctx, `UPDATE alert_events SET resolved_at = ?, message = message || ' (closed when Remvyn restarted)' WHERE resolved_at = 0`, at)
 	return err
 }
 

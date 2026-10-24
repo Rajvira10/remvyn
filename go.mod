@@ -1,4 +1,4 @@
-module flux
+module remvyn
 
 go 1.26.0
 

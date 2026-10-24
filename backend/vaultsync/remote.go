@@ -122,9 +122,9 @@ func (r *GitHubRemote) Read(ctx context.Context, sha string) ([]byte, error) {
 	return decodeB64Lines(b.Content)
 }
 
-const readme = `# Flux vault
+const readme = `# Remvyn vault
 
-This repository holds an end-to-end encrypted Flux vault. Every file is
+This repository holds an end-to-end encrypted Remvyn vault. Every file is
 encrypted with a key derived from your master password; GitHub only sees
 ciphertext. Don't edit these files by hand.
 `
@@ -135,7 +135,7 @@ func (r *GitHubRemote) Commit(ctx context.Context, base Snapshot, changes map[st
 		// The Git Data API doesn't work on an empty repository; the contents
 		// API can create the first commit.
 		status, err := r.GH.do(ctx, http.MethodPut, r.path("/contents/README.md"), map[string]any{
-			"message": "Create Flux vault",
+			"message": "Create Remvyn vault",
 			"content": b64([]byte(readme)),
 			"branch":  r.Branch,
 		}, nil)

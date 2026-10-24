@@ -1,0 +1,11 @@
+2026-10-24 — direct Google Play searches through web reader
+
+https://play.google.com/store/search?q=Remvyn&c=apps
+https://play.google.com/store/search?q=Velqin&c=apps
+https://play.google.com/store/search?q=Selqen&c=apps
+https://play.google.com/store/search?q=Veylun&c=apps
+https://play.google.com/store/search?q=Osvren&c=apps
+
+Each returned: URL ... is not accessible via this tool.
+No live-catalog absence is inferred from these failures.
+Indexed exact-name Google Play searches were also performed as recorded in search-log.json.

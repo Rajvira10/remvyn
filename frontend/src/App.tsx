@@ -47,7 +47,7 @@ export default function App() {
       useTransfers.getState().load(),
       useMonitor.getState().loadAlerts(),
     ])
-      .catch((e) => toast.error('Could not reach the Flux backend', { description: errorMessage(e) }))
+      .catch((e) => toast.error('Could not reach the Remvyn backend', { description: errorMessage(e) }))
       .finally(() => setReady(true))
     const offs = [
       onEvent<ForwardStatus>(events.FORWARD_STATUS, (s) => useVault.getState().setStatus(s)),
@@ -67,7 +67,7 @@ export default function App() {
         if (prev?.state === 'running' && t.state === 'failed') toast.error(`Transfer failed: ${t.name}`, { description: t.error })
       }),
     ]
-    // Pick up changes from other devices when Flux comes to the front.
+    // Pick up changes from other devices when Remvyn comes to the front.
     const onFocus = () => void api.syncWake().catch(() => {})
     window.addEventListener('focus', onFocus)
     return () => {
@@ -128,7 +128,7 @@ export default function App() {
         <TabBar />
         <div className="relative min-h-0 flex-1">
           {!ready ? (
-            <LoadingBlock label="Starting Flux…" />
+            <LoadingBlock label="Starting Remvyn…" />
           ) : (
             <>
               <div className={active === 'vault' ? 'flex h-full' : 'hidden'}>

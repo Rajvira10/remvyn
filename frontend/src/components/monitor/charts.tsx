@@ -82,7 +82,7 @@ export interface Series {
 
 /**
  * Time-series chart with a y axis, time labels and a hover readout.
- * Gaps longer than gapMs (for example while Flux was closed) break the line.
+ * Gaps longer than gapMs (for example while Remvyn was closed) break the line.
  */
 export function HistoryChart({
   times,

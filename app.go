@@ -13,11 +13,11 @@ import (
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"flux/backend/core"
-	"flux/backend/files"
-	"flux/backend/models"
-	"flux/backend/sshconn"
-	"flux/backend/vaultsync"
+	"remvyn/backend/core"
+	"remvyn/backend/files"
+	"remvyn/backend/models"
+	"remvyn/backend/sshconn"
+	"remvyn/backend/vaultsync"
 )
 
 // Version is the application version.
@@ -25,9 +25,9 @@ const Version = "2.0.0"
 
 // The GitHub App used for "Sign in with GitHub" sync. Set at build time:
 //
-//	wails build -ldflags "-X main.githubClientID=Iv23... -X main.githubAppSlug=flux-sync"
+//	wails build -ldflags "-X main.githubClientID=Iv23... -X main.githubAppSlug=remvyn-sync"
 //
-// or with FLUX_GITHUB_CLIENT_ID / FLUX_GITHUB_APP_SLUG. Without one, users
+// or with REMVYN_GITHUB_CLIENT_ID / REMVYN_GITHUB_APP_SLUG. Without one, users
 // can enter their own app in Settings → Sync.
 var (
 	githubClientID string
@@ -88,18 +88,18 @@ func (a *App) startup(ctx context.Context) {
 		Emit:   func(event string, data any) { wruntime.EventsEmit(ctx, event, data) },
 		Notify: a.notify,
 		Sync: vaultsync.Options{
-			// FLUX_GITHUB_WEB/API point sync at GitHub Enterprise (or a test server).
+			// REMVYN_GITHUB_WEB/API point sync at GitHub Enterprise (or a test server).
 			Endpoints: vaultsync.Endpoints{
-				Web: envOr("FLUX_GITHUB_WEB", vaultsync.DefaultEndpoints.Web),
-				API: envOr("FLUX_GITHUB_API", vaultsync.DefaultEndpoints.API),
+				Web: envOr("REMVYN_GITHUB_WEB", vaultsync.DefaultEndpoints.Web),
+				API: envOr("REMVYN_GITHUB_API", vaultsync.DefaultEndpoints.API),
 			},
-			ClientID: envOr("FLUX_GITHUB_CLIENT_ID", githubClientID),
-			AppSlug:  envOr("FLUX_GITHUB_APP_SLUG", githubAppSlug),
+			ClientID: envOr("REMVYN_GITHUB_CLIENT_ID", githubClientID),
+			AppSlug:  envOr("REMVYN_GITHUB_APP_SLUG", githubAppSlug),
 		},
 	})
 	if err != nil {
 		a.initErr = err.Error()
-		wruntime.LogErrorf(ctx, "flux: initialisation failed: %v", err)
+		wruntime.LogErrorf(ctx, "remvyn: initialisation failed: %v", err)
 		return
 	}
 	a.core = c
@@ -129,7 +129,7 @@ func (a *App) domReady(context.Context) {
 func (a *App) notify(title, body string) {
 	go func() {
 		if a.notifyReady.Load() {
-			err := wruntime.SendNotification(a.ctx, wruntime.NotificationOptions{ID: fmt.Sprintf("flux-%d", time.Now().UnixNano()), Title: title, Body: body})
+			err := wruntime.SendNotification(a.ctx, wruntime.NotificationOptions{ID: fmt.Sprintf("remvyn-%d", time.Now().UnixNano()), Title: title, Body: body})
 			if err == nil {
 				return
 			}
@@ -148,7 +148,7 @@ func (a *App) shutdown(context.Context) {
 	}
 }
 
-var errNotReady = errors.New("Flux failed to initialise; see Settings for details")
+var errNotReady = errors.New("Remvyn failed to initialise; see Settings for details")
 
 func (a *App) ready() error {
 	if a.core == nil {
@@ -523,7 +523,7 @@ func (a *App) ExportPrivateKey(id string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	path, err := wruntime.SaveFileDialog(a.ctx, wruntime.SaveDialogOptions{Title: "Export private key", DefaultFilename: "id_flux"})
+	path, err := wruntime.SaveFileDialog(a.ctx, wruntime.SaveDialogOptions{Title: "Export private key", DefaultFilename: "id_remvyn"})
 	if err != nil || path == "" {
 		return "", err
 	}
@@ -746,12 +746,12 @@ func (a *App) TestUptimeCheck(c models.UptimeCheck) (models.UptimeResult, error)
 
 // SendTestNotification shows a sample alert notification.
 func (a *App) SendTestNotification() {
-	a.notify("Flux alerts are working", "You'll see alerts like this when a rule fires.")
+	a.notify("Remvyn alerts are working", "You'll see alerts like this when a rule fires.")
 }
 
 // ---------------------------------------------------------------- master password
 
-// GetLockStatus reports whether a master password is set and Flux is locked.
+// GetLockStatus reports whether a master password is set and Remvyn is locked.
 func (a *App) GetLockStatus() models.LockStatus {
 	if a.core == nil {
 		return models.LockStatus{}
@@ -767,7 +767,7 @@ func (a *App) Unlock(password string) error {
 	return a.core.Unlock(password)
 }
 
-// Lock locks Flux until the master password is entered.
+// Lock locks Remvyn until the master password is entered.
 func (a *App) Lock() error {
 	if err := a.ready(); err != nil {
 		return err
@@ -840,7 +840,7 @@ func (a *App) SyncCancelLogin() {
 	}
 }
 
-// SyncRepos lists repositories the Flux GitHub app can access.
+// SyncRepos lists repositories the Remvyn GitHub app can access.
 func (a *App) SyncRepos() (core.SyncRepos, error) {
 	if err := a.ready(); err != nil {
 		return core.SyncRepos{}, err

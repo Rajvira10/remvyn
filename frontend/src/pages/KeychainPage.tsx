@@ -150,7 +150,7 @@ export function KeychainPage() {
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
         title={`Delete “${deleting?.name}”?`}
-        description="The private key is permanently removed from Flux. Export it first if you still need it."
+        description="The private key is permanently removed from Remvyn. Export it first if you still need it."
         confirmLabel="Delete key"
         destructive
         onConfirm={async () => {
@@ -236,7 +236,7 @@ function GenerateKeyDialog({ open, onOpenChange, onDone }: { open: boolean; onOp
           <div className="flex flex-col gap-1.5">
             <Label>Passphrase (optional)</Label>
             <Input type="password" value={form.passphrase} onChange={(e) => setForm({ ...form, passphrase: e.target.value })} />
-            <p className="text-[11.5px] text-muted-foreground">Encrypts the key file when exported. Flux stores it so you aren't asked on every connection.</p>
+            <p className="text-[11.5px] text-muted-foreground">Encrypts the key file when exported. Remvyn stores it so you aren't asked on every connection.</p>
           </div>
         </div>
         <DialogFooter>

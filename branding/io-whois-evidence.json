@@ -1,0 +1,88 @@
+[
+  {
+    "domain": "selqen.io",
+    "checked_utc": "2026-10-24T07:53:26.988553+00:00",
+    "method": "whois -h whois.nic.io selqen.io",
+    "source": "https://www.nic.io/whois-search.htm",
+    "exit_code": 0,
+    "result": [
+      "Domain not found."
+    ],
+    "error": ""
+  },
+  {
+    "domain": "veylun.io",
+    "checked_utc": "2026-10-24T07:53:27.011009+00:00",
+    "method": "whois -h whois.nic.io veylun.io",
+    "source": "https://www.nic.io/whois-search.htm",
+    "exit_code": 0,
+    "result": [
+      "Domain not found."
+    ],
+    "error": ""
+  },
+  {
+    "domain": "velqin.io",
+    "checked_utc": "2026-10-24T07:53:26.977245+00:00",
+    "method": "whois -h whois.nic.io velqin.io",
+    "source": "https://www.nic.io/whois-search.htm",
+    "exit_code": 0,
+    "result": [
+      "Domain not found."
+    ],
+    "error": ""
+  },
+  {
+    "domain": "osvren.io",
+    "checked_utc": "2026-10-24T07:53:26.993226+00:00",
+    "method": "whois -h whois.nic.io osvren.io",
+    "source": "https://www.nic.io/whois-search.htm",
+    "exit_code": 0,
+    "result": [
+      "Domain not found."
+    ],
+    "error": ""
+  },
+  {
+    "domain": "nivrel.io",
+    "checked_utc": "2026-10-24T07:53:27.665486+00:00",
+    "method": "whois -h whois.nic.io nivrel.io",
+    "source": "https://www.nic.io/whois-search.htm",
+    "exit_code": 0,
+    "result": [
+      "Domain not found."
+    ],
+    "error": ""
+  },
+  {
+    "domain": "auvren.io",
+    "checked_utc": "2026-10-24T07:53:27.661794+00:00",
+    "method": "whois -h whois.nic.io auvren.io",
+    "source": "https://www.nic.io/whois-search.htm",
+    "exit_code": 0,
+    "result": [
+      "Domain not found."
+    ],
+    "error": ""
+  },
+  {
+    "domain": "kivren.io",
+    "checked_utc": "2026-10-24T07:53:27.676082+00:00",
+    "method": "whois -h whois.nic.io kivren.io",
+    "source": "https://www.nic.io/whois-search.htm",
+    "exit_code": 0,
+    "result": [
+      "Domain not found."
+    ],
+    "error": ""
+  },
+  {
+    "domain": "telvra.io",
+    "checked_utc": "2026-10-24T07:53:27.674508+00:00",
+    "method": "whois -h whois.nic.io telvra.io",
+    "source": "https://www.nic.io/whois-search.htm",
+    "exit_code": 0,
+    "result": [],
+    "error": ""
+  }
+]

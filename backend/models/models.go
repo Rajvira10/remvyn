@@ -230,7 +230,7 @@ type Settings struct {
 	TerminalFontSize   int    `json:"terminalFontSize"`
 	TerminalFontFamily string `json:"terminalFontFamily"`
 	TerminalTheme      string `json:"terminalTheme"`
-	// AutoLockMinutes locks Flux after this much inactivity (0 = never);
+	// AutoLockMinutes locks Remvyn after this much inactivity (0 = never);
 	// only used with a master password.
 	AutoLockMinutes  int    `json:"autoLockMinutes"`
 	CursorStyle      string `json:"cursorStyle"` // block | bar | underline
@@ -242,11 +242,11 @@ type Settings struct {
 	ShowHiddenFiles  bool   `json:"showHiddenFiles"`
 	ConfirmOnClose   bool   `json:"confirmOnClose"`
 
-	// ProEnabled unlocks Flux Pro features (history, alerts, uptime checks,
+	// ProEnabled unlocks Remvyn Pro features (history, alerts, uptime checks,
 	// background monitoring and dashboards). It is a local switch until
 	// licensing is added.
 	ProEnabled bool `json:"proEnabled"`
-	// MonitorHostIDs are monitored in the background while Flux runs (Pro).
+	// MonitorHostIDs are monitored in the background while Remvyn runs (Pro).
 	MonitorHostIDs []string `json:"monitorHostIds"`
 	// MonitorIntervalSec is the background sampling interval.
 	MonitorIntervalSec int `json:"monitorIntervalSec"`

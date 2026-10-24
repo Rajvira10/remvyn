@@ -20,11 +20,11 @@ import (
 	"golang.org/x/crypto/ssh"
 	_ "modernc.org/sqlite"
 
-	"flux/backend/keys"
-	"flux/backend/models"
-	"flux/backend/sshconn"
-	"flux/backend/terminal"
-	"flux/backend/testutil"
+	"remvyn/backend/keys"
+	"remvyn/backend/models"
+	"remvyn/backend/sshconn"
+	"remvyn/backend/terminal"
+	"remvyn/backend/testutil"
 )
 
 // events records everything Core emits.
@@ -184,11 +184,11 @@ func TestTerminalSessionLifecycle(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 
-	waitFor(t, "banner", func() bool { return strings.Contains(f.ev.output(id), "Welcome to the Flux test server") })
-	if err := f.core.WriteTerminal(id, "echo hello flux\r"); err != nil {
+	waitFor(t, "banner", func() bool { return strings.Contains(f.ev.output(id), "Welcome to the Remvyn test server") })
+	if err := f.core.WriteTerminal(id, "echo hello remvyn\r"); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, "echo output", func() bool { return strings.Contains(f.ev.output(id), "hello flux\r\n$ ") })
+	waitFor(t, "echo output", func() bool { return strings.Contains(f.ev.output(id), "hello remvyn\r\n$ ") })
 
 	if err := f.core.WriteTerminal(id, "size\r"); err != nil {
 		t.Fatal(err)
@@ -439,7 +439,7 @@ func TestSFTPBrowseAndTransfer(t *testing.T) {
 	if !bytes.Equal(got, big) {
 		t.Fatal("downloaded file mismatch")
 	}
-	if _, err := os.Stat(filepath.Join(localDst, "proj", "a.txt.flux-part")); err == nil {
+	if _, err := os.Stat(filepath.Join(localDst, "proj", "a.txt.remvyn-part")); err == nil {
 		t.Fatal("temp file left behind")
 	}
 
@@ -808,5 +808,37 @@ func TestImportSSHConfigWithoutConfigFile(t *testing.T) {
 	// An explicitly chosen file that doesn't exist is a plain error.
 	if _, err := f.core.ImportSSHConfig(filepath.Join(t.TempDir(), "nope")); err == nil || sshconn.CodeOf(err) == CodeNoSSHConfig {
 		t.Fatalf("explicit missing file: %v", err)
+	}
+}
+
+func TestLegacyFluxDataIsMigrated(t *testing.T) {
+	base := t.TempDir()
+	old, dir := filepath.Join(base, "Flux"), filepath.Join(base, "Remvyn")
+	c, err := Open(context.Background(), Options{DataDir: old})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.SaveSnippet(models.Snippet{Name: "kept", Command: "uptime"}); err != nil {
+		t.Fatal(err)
+	}
+	c.Close()
+	// Simulate a database written by the Flux build.
+	if err := os.Rename(filepath.Join(old, "remvyn.db"), filepath.Join(old, legacyDBName)); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []string{"-wal", "-shm"} {
+		_ = os.Rename(filepath.Join(old, "remvyn.db"+s), filepath.Join(old, legacyDBName+s))
+	}
+	migrateLegacyDir(old, dir)
+	c2, err := Open(context.Background(), Options{DataDir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c2.Close()
+	if sn, _ := c2.Snippets(); len(sn) != 1 || sn[0].Name != "kept" {
+		t.Fatalf("snippets after migration = %+v", sn)
+	}
+	if _, err := os.Stat(old); !os.IsNotExist(err) {
+		t.Fatal("old folder should have moved")
 	}
 }

@@ -257,7 +257,7 @@ function RuleDialog({ rule, onOpenChange, onSaved, running }: { rule: ForwardRul
             </div>
           </div>
           <Label className="flex items-center justify-between font-normal">
-            Start automatically when Flux launches
+            Start automatically when Remvyn launches
             <Switch checked={r.autoStart} onCheckedChange={(autoStart) => set({ autoStart })} />
           </Label>
         </div>

@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"flux/backend/models"
-	"flux/backend/security"
-	"flux/backend/sshconn"
-	"flux/backend/vaultsync"
+	"remvyn/backend/models"
+	"remvyn/backend/security"
+	"remvyn/backend/sshconn"
+	"remvyn/backend/vaultsync"
 )
 
 // Lock and sync error codes.
@@ -21,7 +21,7 @@ const (
 	CodeNoPassword    = "no_master_password"
 )
 
-// EventLock is emitted when Flux locks or unlocks.
+// EventLock is emitted when Remvyn locks or unlocks.
 const EventLock = "lock:status"
 
 // Start runs background work once the UI is up: auto-start forwards,
@@ -43,7 +43,7 @@ func (c *Core) afterUnlock() {
 	c.sync.Wake()
 }
 
-// LockStatus reports whether a master password is set and whether Flux is
+// LockStatus reports whether a master password is set and whether Remvyn is
 // locked.
 func (c *Core) LockStatus() models.LockStatus {
 	c.keyMu.Lock()
@@ -248,7 +248,7 @@ func (c *Core) ResetVault() (models.Settings, error) {
 }
 
 func storageLocked() error {
-	return sshconn.Coded(CodeLocked, "Flux is locked; unlock it first", nil)
+	return sshconn.Coded(CodeLocked, "Remvyn is locked; unlock it first", nil)
 }
 
 // ---------------------------------------------------------------- sync
@@ -280,11 +280,11 @@ func (c *Core) SyncCancelLogin() { c.sync.CancelLogin() }
 // SyncRepos is the repository picker's data.
 type SyncRepos struct {
 	Repos []vaultsync.Repo `json:"repos"`
-	// Installed is false when the Flux GitHub app isn't installed anywhere.
+	// Installed is false when the Remvyn GitHub app isn't installed anywhere.
 	Installed bool `json:"installed"`
 }
 
-// SyncRepos lists repositories the Flux app can access.
+// SyncRepos lists repositories the Remvyn app can access.
 func (c *Core) SyncRepos() (SyncRepos, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

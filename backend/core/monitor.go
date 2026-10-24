@@ -6,15 +6,15 @@ import (
 	"slices"
 	"time"
 
-	"flux/backend/alerts"
-	"flux/backend/models"
-	"flux/backend/monitor"
-	"flux/backend/sshconn"
-	"flux/backend/storage"
-	"flux/backend/uptime"
+	"remvyn/backend/alerts"
+	"remvyn/backend/models"
+	"remvyn/backend/monitor"
+	"remvyn/backend/sshconn"
+	"remvyn/backend/storage"
+	"remvyn/backend/uptime"
 )
 
-// CodeProRequired marks errors for Flux Pro features used without Pro.
+// CodeProRequired marks errors for Remvyn Pro features used without Pro.
 const CodeProRequired = "pro_required"
 
 func (c *Core) initMonitoring(liveInterval, slowEvery time.Duration) {
@@ -63,7 +63,7 @@ func (c *Core) requirePro(feature string) error {
 	if c.pro() {
 		return nil
 	}
-	return sshconn.Coded(CodeProRequired, feature+" is a Flux Pro feature", nil)
+	return sshconn.Coded(CodeProRequired, feature+" is a Remvyn Pro feature", nil)
 }
 
 // applyMonitoring makes the running Pro services match settings.
@@ -77,7 +77,7 @@ func (c *Core) applyMonitoring() {
 		return
 	}
 	// Background monitoring dials with saved credentials, which are
-	// unavailable while Flux is locked.
+	// unavailable while Remvyn is locked.
 	if c.store.Locked() {
 		c.monitor.SetBackground(nil, 0)
 	} else {

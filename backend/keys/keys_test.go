@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
-	"flux/backend/models"
+	"remvyn/backend/models"
 )
 
 func TestGenerateAllTypes(t *testing.T) {

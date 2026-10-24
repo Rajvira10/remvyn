@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"flux/backend/sshconn"
+	"remvyn/backend/sshconn"
 )
 
 // The Wails JS runtime wraps errors with new Error(value), so the formatter

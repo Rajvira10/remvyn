@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"flux/backend/models"
+	"remvyn/backend/models"
 )
 
 // fastScript reads the cheap, frequently sampled metrics. Everything is
@@ -34,13 +34,13 @@ if command -v docker >/dev/null 2>&1; then
   echo @@dockerstats
   docker stats --no-stream --no-trunc --format '{{json .}}' 2>/dev/null
 else
-  echo flux:not-installed
+  echo remvyn:not-installed
 fi
 echo @@services
 if command -v systemctl >/dev/null 2>&1; then
   systemctl list-units --type=service --all --no-legend --plain --no-pager 2>&1
 else
-  echo flux:not-available
+  echo remvyn:not-available
 fi
 `
 
@@ -252,7 +252,7 @@ type dockerStat struct {
 
 func parseDocker(ps, stats []string) models.DockerInfo {
 	d := models.DockerInfo{Containers: []models.Container{}}
-	if len(ps) == 1 && ps[0] == "flux:not-installed" {
+	if len(ps) == 1 && ps[0] == "remvyn:not-installed" {
 		d.Error = "Docker is not installed"
 		return d
 	}
@@ -321,7 +321,7 @@ func parseDocker(ps, stats []string) models.DockerInfo {
 
 func parseServices(lines []string) models.ServicesInfo {
 	s := models.ServicesInfo{Items: []models.Service{}}
-	if len(lines) == 1 && lines[0] == "flux:not-available" {
+	if len(lines) == 1 && lines[0] == "remvyn:not-available" {
 		s.Error = "systemd is not available on this server"
 		return s
 	}

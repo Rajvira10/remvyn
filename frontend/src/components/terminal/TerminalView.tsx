@@ -103,7 +103,7 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
     }
 
     term.attachCustomKeyEventHandler((e) => {
-      // Nothing reaches the remote shell while Flux is locked.
+      // Nothing reaches the remote shell while Remvyn is locked.
       if (isLocked()) return false
       if (e.type !== 'keydown') return true
       // Copy: ⌘C on macOS; Ctrl+Shift+C elsewhere (plain Ctrl+C is SIGINT).

@@ -106,7 +106,7 @@ func (g *GitHub) oauthPost(ctx context.Context, path string, form url.Values, ou
 // StartDeviceFlow requests a code for the user to enter on github.com.
 func (g *GitHub) StartDeviceFlow(ctx context.Context) (DeviceCode, error) {
 	if g.ClientID == "" {
-		return DeviceCode{}, &APIError{Code: CodeNotSetUp, Message: "set up the Flux GitHub app first"}
+		return DeviceCode{}, &APIError{Code: CodeNotSetUp, Message: "set up the Remvyn GitHub app first"}
 	}
 	var r struct {
 		DeviceCode       string `json:"device_code"`
@@ -315,7 +315,7 @@ func (g *GitHub) GetRepo(ctx context.Context, fullName string) (Repo, error) {
 	var r apiRepo
 	status, err := g.do(ctx, http.MethodGet, "/repos/"+fullName, nil, &r)
 	if status == http.StatusNotFound {
-		return Repo{}, &APIError{Code: CodeNoAccess, Status: 404, Message: fmt.Sprintf("Flux can't see %s; make sure the Flux GitHub app has access to it", fullName)}
+		return Repo{}, &APIError{Code: CodeNoAccess, Status: 404, Message: fmt.Sprintf("Remvyn can't see %s; make sure the Remvyn GitHub app has access to it", fullName)}
 	}
 	return r.repo(), err
 }

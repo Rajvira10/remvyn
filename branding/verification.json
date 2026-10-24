@@ -1,0 +1,63 @@
+{
+  "renderer": "@resvg/resvg-js 2.6.2",
+  "exports": [
+    {
+      "source": "app-icon.svg",
+      "target": "app-icon-1024.png",
+      "width": 1024,
+      "height": 1024,
+      "svgSha256": "264cfd00d73d5885e1298d7168ed3ff158f5d1b4a69feb78494e30767e4a2d02",
+      "pngSha256": "233868bdcd56a05295fbeac41ac145784dc2c5ec72c23ec9e7af535eb38fc14d",
+      "exactRerenderMatch": true
+    },
+    {
+      "source": "mark.svg",
+      "target": "favicon-32.png",
+      "width": 32,
+      "height": 32,
+      "svgSha256": "c99808359aaf73ffb69365d4a9592fb68a6b479c3f5c956bfa741c2a637bead4",
+      "pngSha256": "ffa7d733e6364504a11d8ce08d0431da5cf13497afdda7bb6d619d6a03bd6a89",
+      "exactRerenderMatch": true
+    },
+    {
+      "source": "mark.svg",
+      "target": "mark-16.png",
+      "width": 16,
+      "height": 16,
+      "svgSha256": "c99808359aaf73ffb69365d4a9592fb68a6b479c3f5c956bfa741c2a637bead4",
+      "pngSha256": "7af39014c394abfa1292d54a7f2d12e98593dc9e4b185c468c2565ae1e56947a",
+      "exactRerenderMatch": true
+    },
+    {
+      "source": "mark.svg",
+      "target": "mark-24.png",
+      "width": 24,
+      "height": 24,
+      "svgSha256": "c99808359aaf73ffb69365d4a9592fb68a6b479c3f5c956bfa741c2a637bead4",
+      "pngSha256": "4b80682d49023d43db631ebf43d53327ad90fbd691b35acb61ce52e50206829a",
+      "exactRerenderMatch": true
+    }
+  ],
+  "approvedLettering": {
+    "byteIdentical": true,
+    "sha256": "d5514e4b67dc6570d4fa54da89e52468a68a5286fdeb1f8a8e833a720ba70709"
+  },
+  "android": {
+    "layer": 108,
+    "safeCircleCenter": [
+      54,
+      54
+    ],
+    "safeCircleRadius": 33,
+    "artworkBounds": [
+      30.959999999999997,
+      30.959999999999997,
+      77.03999999999999,
+      77.03999999999999
+    ],
+    "conservativeHullRadius": 32.583480477076115,
+    "hullPointCount": 25,
+    "insideSafeCircle": true
+  },
+  "scope": "Design artifacts only; visual reading is a designer assessment."
+}

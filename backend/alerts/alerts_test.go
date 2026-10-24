@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"flux/backend/models"
+	"remvyn/backend/models"
 )
 
 type memStore struct {

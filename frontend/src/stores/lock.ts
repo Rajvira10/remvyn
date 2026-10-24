@@ -22,5 +22,5 @@ export const useLock = create<LockState>((set) => ({
   setSync: (sync) => set({ sync }),
 }))
 
-/** True while Flux is locked; app shortcuts are ignored then. */
+/** True while Remvyn is locked; app shortcuts are ignored then. */
 export const isLocked = () => useLock.getState().status?.locked ?? false

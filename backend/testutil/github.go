@@ -15,7 +15,7 @@ import (
 	"sync"
 )
 
-// FakeGitHub implements the slice of GitHub that Flux sync uses: device-flow
+// FakeGitHub implements the slice of GitHub that Remvyn sync uses: device-flow
 // sign-in, app installations, and the Git Data / contents APIs.
 type FakeGitHub struct {
 	*httptest.Server

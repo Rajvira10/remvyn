@@ -13,8 +13,8 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
-	"flux/backend/models"
-	"flux/backend/sshconn"
+	"remvyn/backend/models"
+	"remvyn/backend/sshconn"
 )
 
 // Emitter delivers events to the UI.
@@ -104,7 +104,7 @@ func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionIn
 	}
 	// Servers commonly reject environment variables; failure is harmless.
 	_ = sess.Setenv("COLORTERM", "truecolor")
-	_ = sess.Setenv("TERM_PROGRAM", "Flux")
+	_ = sess.Setenv("TERM_PROGRAM", "Remvyn")
 
 	stdin, err := sess.StdinPipe()
 	if err != nil {

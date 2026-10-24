@@ -7,26 +7,26 @@ plugins {
 }
 
 // Release signing comes from a properties file kept outside the repo:
-// FLUX_SIGNING=/path/to/signing.properties (storeFile, storePassword, keyAlias, keyPassword).
+// REMVYN_SIGNING=/path/to/signing.properties (storeFile, storePassword, keyAlias, keyPassword).
 val signing = Properties().apply {
-    val path = System.getenv("FLUX_SIGNING") ?: rootProject.file("signing.properties").path
+    val path = System.getenv("REMVYN_SIGNING") ?: rootProject.file("signing.properties").path
     val f = file(path)
     if (f.exists()) f.inputStream().use { load(it) }
 }
 
 android {
-    namespace = "io.github.rajvira10.flux"
+    namespace = "io.github.rajvira10.remvyn"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "io.github.rajvira10.flux"
+        applicationId = "io.github.rajvira10.remvyn"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "2.0.0"
         // Optional built-in GitHub App (same as the desktop's -ldflags).
-        buildConfigField("String", "GITHUB_CLIENT_ID", "\"${System.getenv("FLUX_GITHUB_CLIENT_ID") ?: ""}\"")
-        buildConfigField("String", "GITHUB_APP_SLUG", "\"${System.getenv("FLUX_GITHUB_APP_SLUG") ?: ""}\"")
+        buildConfigField("String", "GITHUB_CLIENT_ID", "\"${System.getenv("REMVYN_GITHUB_CLIENT_ID") ?: ""}\"")
+        buildConfigField("String", "GITHUB_APP_SLUG", "\"${System.getenv("REMVYN_GITHUB_APP_SLUG") ?: ""}\"")
     }
 
     signingConfigs {

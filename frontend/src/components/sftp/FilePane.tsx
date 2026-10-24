@@ -46,7 +46,7 @@ export interface PaneProps {
   transferIcon: ReactNode
 }
 
-const DRAG_MIME = 'application/x-flux-paths'
+const DRAG_MIME = 'application/x-remvyn-paths'
 
 export function FilePane(p: PaneProps) {
   const [pathInput, setPathInput] = useState('')

@@ -433,7 +433,7 @@ func (s *Server) exec(ch ssh.Channel, cmd string) int {
 }
 
 func (s *Server) fakeShell(ch ssh.Channel, size *ptySize) int {
-	io.WriteString(ch, "Welcome to the Flux test server\r\n$ ")
+	io.WriteString(ch, "Welcome to the Remvyn test server\r\n$ ")
 	var line []byte
 	buf := make([]byte, 1024)
 	for {

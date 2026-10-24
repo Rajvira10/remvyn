@@ -1,4 +1,4 @@
-// Package storage persists Flux data in SQLite (pure Go driver, no CGO).
+// Package storage persists Remvyn data in SQLite (pure Go driver, no CGO).
 // Passwords, private keys and passphrases are sealed with the vault before
 // they are written; they never appear in the database in plaintext.
 package storage
@@ -16,9 +16,9 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"flux/backend/ids"
-	"flux/backend/models"
-	"flux/backend/security"
+	"remvyn/backend/ids"
+	"remvyn/backend/models"
+	"remvyn/backend/security"
 )
 
 // ErrNotFound is returned when a record does not exist.
@@ -29,7 +29,7 @@ var ErrLocked error = lockedError{}
 
 type lockedError struct{}
 
-func (lockedError) Error() string   { return "Flux is locked; unlock it with your master password" }
+func (lockedError) Error() string   { return "Remvyn is locked; unlock it with your master password" }
 func (lockedError) ErrCode() string { return "locked" }
 
 // Store is the SQLite-backed persistence layer.

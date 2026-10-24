@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"flux/backend/models"
-	"flux/backend/sshconn"
+	"remvyn/backend/models"
+	"remvyn/backend/sshconn"
 )
 
 // Events emitted by the manager.
@@ -140,7 +140,7 @@ func (m *Manager) Unwatch(hostID string) {
 	}
 }
 
-// SetBackground sets the hosts sampled continuously while Flux runs.
+// SetBackground sets the hosts sampled continuously while Remvyn runs.
 func (m *Manager) SetBackground(hostIDs []string, interval time.Duration) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

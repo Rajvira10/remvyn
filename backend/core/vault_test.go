@@ -8,20 +8,20 @@ import (
 	"testing"
 	"time"
 
-	"flux/backend/models"
-	"flux/backend/sshconn"
-	"flux/backend/testutil"
-	"flux/backend/vaultsync"
+	"remvyn/backend/models"
+	"remvyn/backend/sshconn"
+	"remvyn/backend/testutil"
+	"remvyn/backend/vaultsync"
 )
 
-const repo = "octo/flux-vault"
+const repo = "octo/remvyn-vault"
 
 func openDevice(t *testing.T, dir string, gh *testutil.FakeGitHub) *Core {
 	t.Helper()
 	opts := Options{DataDir: dir}
 	if gh != nil {
 		opts.Sync = vaultsync.Options{Endpoints: vaultsync.Endpoints{Web: gh.URL, API: gh.URL}, ClientID: "Iv1.test",
-			AppSlug: "flux-test", Interval: time.Hour, Debounce: time.Hour, PollUnit: time.Millisecond}
+			AppSlug: "remvyn-test", Interval: time.Hour, Debounce: time.Hour, PollUnit: time.Millisecond}
 	}
 	c, err := Open(context.Background(), opts)
 	if err != nil {
@@ -469,7 +469,7 @@ func TestSyncSignInErrors(t *testing.T) {
 		t.Fatalf("inaccessible repo: %v", err)
 	}
 	st := a.SyncStatus()
-	if !strings.HasSuffix(st.InstallURL, "/apps/flux-test/installations/new") || !strings.Contains(st.NewRepoURL, "visibility=private") {
+	if !strings.HasSuffix(st.InstallURL, "/apps/remvyn-test/installations/new") || !strings.Contains(st.NewRepoURL, "visibility=private") {
 		t.Fatalf("setup links: %+v", st)
 	}
 
@@ -478,10 +478,10 @@ func TestSyncSignInErrors(t *testing.T) {
 	if _, err := b.SyncStartLogin(); code(err) != vaultsync.CodeNotSetUp {
 		t.Fatalf("no app: %v", err)
 	}
-	if _, err := b.SyncSetApp("Iv1.abc", "https://github.com/apps/my-flux"); err != nil {
+	if _, err := b.SyncSetApp("Iv1.abc", "https://github.com/apps/my-remvyn"); err != nil {
 		t.Fatal(err)
 	}
-	if st := b.SyncStatus(); !st.AppConfigured || st.AppSlug != "my-flux" || st.BuiltInApp {
+	if st := b.SyncStatus(); !st.AppConfigured || st.AppSlug != "my-remvyn" || st.BuiltInApp {
 		t.Fatalf("custom app: %+v", st)
 	}
 }

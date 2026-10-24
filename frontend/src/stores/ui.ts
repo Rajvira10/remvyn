@@ -21,9 +21,9 @@ export const useUI = create<UIState>((set) => ({
   paletteOpen: false,
   shortcutsOpen: false,
   editingHostId: null,
-  monitorOpen: localStorage.getItem('flux.monitorOpen') === '1',
+  monitorOpen: localStorage.getItem('remvyn.monitorOpen') === '1',
   setMonitorOpen: (monitorOpen) => {
-    localStorage.setItem('flux.monitorOpen', monitorOpen ? '1' : '0')
+    localStorage.setItem('remvyn.monitorOpen', monitorOpen ? '1' : '0')
     set({ monitorOpen })
   },
   setPage: (page) => set({ page }),

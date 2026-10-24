@@ -73,7 +73,7 @@ export function SettingsPage() {
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
         <div className="mx-auto flex max-w-3xl flex-col gap-5 p-6">
-          {info?.initError && <div className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-xs text-danger">Flux failed to initialise: {info.initError}</div>}
+          {info?.initError && <div className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-xs text-danger">Remvyn failed to initialise: {info.initError}</div>}
 
           <Section title="Appearance">
             <Field label="Theme">
@@ -171,13 +171,13 @@ export function SettingsPage() {
           </Section>
 
           <Section
-            title="Flux Pro"
+            title="Remvyn Pro"
             description="Historical metrics, custom alerts, uptime monitoring and the multi-server dashboard."
           >
             <Field
               label={
                 <span className="flex items-center gap-2">
-                  Enable Flux Pro <ProBadge />
+                  Enable Remvyn Pro <ProBadge />
                 </span>
               }
               hint="Payments aren’t connected yet. This switch unlocks Pro on this computer."
@@ -186,7 +186,7 @@ export function SettingsPage() {
             </Field>
           </Section>
 
-          <Section title="Monitoring" description="Live metrics are free. Background monitoring, history and alerts need Flux Pro and run while Flux is open.">
+          <Section title="Monitoring" description="Live metrics are free. Background monitoring, history and alerts need Remvyn Pro and run while Remvyn is open.">
             <Field label="Background check interval" hint="How often monitored servers are sampled when you aren’t looking at them.">
               <div className="flex items-center gap-2">
                 <NumField min={5} max={3600} className="w-20" value={form.monitorIntervalSec} onCommit={(monitorIntervalSec) => void apply({ monitorIntervalSec })} />
@@ -225,7 +225,7 @@ export function SettingsPage() {
               </Button>
             </Field>
             <Field label="Version" hint={info?.platform}>
-              <span className="font-mono text-xs text-muted-foreground">Flux {info?.version}</span>
+              <span className="font-mono text-xs text-muted-foreground">Remvyn {info?.version}</span>
             </Field>
           </Section>
         </div>
@@ -233,7 +233,7 @@ export function SettingsPage() {
       <ConfirmDialog
         open={confirmWipe}
         onOpenChange={setConfirmWipe}
-        title="Delete all Flux data?"
+        title="Delete all Remvyn data?"
         description="All sessions are disconnected. Hosts, saved passwords, private keys, snippets, forwarding rules and known hosts are permanently deleted. Export any keys you need first."
         confirmLabel="Delete everything"
         destructive

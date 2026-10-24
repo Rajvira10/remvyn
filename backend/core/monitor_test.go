@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"flux/backend/models"
-	"flux/backend/sshconn"
+	"remvyn/backend/models"
+	"remvyn/backend/sshconn"
 )
 
 func monitorFixture(t *testing.T) (*fixture, *[]string, *sync.Mutex) {

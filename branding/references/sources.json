@@ -1,0 +1,86 @@
+[
+  {
+    "name": "Termius",
+    "page": "https://termius.com",
+    "asset": "https://framerusercontent.com/images/p7fs9iEFzckw8YZe84MoQfRQ.png",
+    "file": "termius.png",
+    "bytes": 1049
+  },
+  {
+    "name": "Tabby",
+    "page": "https://tabby.sh",
+    "asset": "https://tabby.sh/41c0b2191a91f83bee77.png",
+    "file": "tabby.png",
+    "bytes": 3653
+  },
+  {
+    "name": "Warp",
+    "page": "https://www.warp.dev",
+    "asset": "https://www.warp.dev/img/logos/warp-pixel-icon.svg",
+    "file": "warp.svg",
+    "bytes": 4443
+  },
+  {
+    "name": "Remmina",
+    "page": "https://remmina.org",
+    "asset": "https://remmina.org/assets/images/org.remmina.Remmina.svg",
+    "file": "remmina.svg",
+    "bytes": 8067
+  },
+  {
+    "name": "Royal TS",
+    "page": "https://www.royalapps.com/ts",
+    "asset": "https://www.royalapps.com/images/header_logo_royalts_win_active.png",
+    "file": "royal-ts.png",
+    "bytes": 2666
+  },
+  {
+    "name": "Stripe",
+    "page": "https://stripe.com/newsroom",
+    "asset": "https://images.stripeassets.com/fzn2n1nzq965/1hgcBNd12BfT9VLgbId7By/01d91920114b124fb4cf6d448f9f06eb/favicon.svg",
+    "file": "stripe.svg",
+    "bytes": 412
+  },
+  {
+    "name": "Skrill",
+    "page": "https://www.skrill.com/en/",
+    "asset": "https://www.skrill.com/typo3conf/ext/sitepackage/Resources/Public/images/icons/apple-touch-icon.png",
+    "file": "skrill.png",
+    "bytes": 13775
+  },
+  {
+    "name": "Sentry",
+    "page": "https://sentry.io/about/media-resources/",
+    "asset": "https://sentry.io/favicon.ico",
+    "file": "sentry.ico",
+    "bytes": 15406
+  },
+  {
+    "name": "Supabase",
+    "page": "https://supabase.com/brand-assets",
+    "asset": "https://supabase.com/dashboard/img/supabase-logo.svg",
+    "file": "supabase.svg",
+    "bytes": 1109
+  },
+  {
+    "name": "Render",
+    "page": "https://render.com",
+    "asset": "https://render.com/icon.svg?icon.00d01gt742wgb.svg?dpl=64774b7776",
+    "file": "render.svg",
+    "bytes": 508
+  },
+  {
+    "name": "Raycast",
+    "page": "https://www.raycast.com",
+    "asset": "https://www.raycast.com/favicon-production.png",
+    "file": "raycast.png",
+    "bytes": 18876
+  },
+  {
+    "name": "Replit",
+    "page": "https://replit.com",
+    "asset": "https://replit.com/public/icons/favicon-prompt-192-rebrand.png",
+    "file": "replit.png",
+    "bytes": 612
+  }
+]

@@ -5,15 +5,15 @@ import (
 	"os"
 	"testing"
 
-	"flux/backend/models"
+	"remvyn/backend/models"
 )
 
 // TestWriteMobileKeyFixture writes keys the desktop generates, for the
-// Android app's JSch compatibility test. Run with FLUX_WRITE_FIXTURE=<file>.
+// Android app's JSch compatibility test. Run with REMVYN_WRITE_FIXTURE=<file>.
 func TestWriteMobileKeyFixture(t *testing.T) {
-	out := os.Getenv("FLUX_WRITE_FIXTURE")
+	out := os.Getenv("REMVYN_WRITE_FIXTURE")
 	if out == "" {
-		t.Skip("set FLUX_WRITE_FIXTURE to write the fixture")
+		t.Skip("set REMVYN_WRITE_FIXTURE to write the fixture")
 	}
 	var keys []map[string]string
 	for _, in := range []models.KeyGenerateInput{

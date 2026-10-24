@@ -1,4 +1,4 @@
-// Command devsshd runs Flux's in-process test SSH server for manual testing:
+// Command devsshd runs Remvyn's in-process test SSH server for manual testing:
 // password auth, a tiny shell, SFTP and port forwarding.
 //
 //	go run ./tools/devsshd -addr 127.0.0.1:2223 -user demo -password demo
@@ -13,7 +13,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
-	"flux/backend/testutil"
+	"remvyn/backend/testutil"
 )
 
 func main() {

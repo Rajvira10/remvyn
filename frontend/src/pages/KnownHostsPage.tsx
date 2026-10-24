@@ -15,12 +15,12 @@ export function KnownHostsPage() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-14 shrink-0 items-center gap-3 border-b px-5">
         <h1 className="text-[15px] font-semibold">Known hosts</h1>
-        <span className="text-xs text-muted-foreground">Server keys you have trusted. Flux warns you if a server's key changes.</span>
+        <span className="text-xs text-muted-foreground">Server keys you have trusted. Remvyn warns you if a server's key changes.</span>
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-5">
         {knownHosts.length === 0 ? (
           <EmptyState icon={ShieldCheckIcon} title="No trusted hosts yet">
-            The first time you connect to a server, Flux shows its key fingerprint and asks you to confirm it.
+            The first time you connect to a server, Remvyn shows its key fingerprint and asks you to confirm it.
           </EmptyState>
         ) : (
           <table className="w-full text-[13px]">

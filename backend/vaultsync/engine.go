@@ -31,8 +31,8 @@ import (
 	"strings"
 	"time"
 
-	"flux/backend/security"
-	"flux/backend/storage"
+	"remvyn/backend/security"
+	"remvyn/backend/storage"
 )
 
 var b64Std = base64.StdEncoding
@@ -121,7 +121,7 @@ func (c *Cipher) open(path string, content []byte) (payload, error) {
 	var p payload
 	ct, err := b64Std.DecodeString(strings.TrimSpace(string(content)))
 	if err != nil || len(ct) < c.aead.NonceSize() {
-		return p, fmt.Errorf("%s is not a Flux record", path)
+		return p, fmt.Errorf("%s is not a Remvyn record", path)
 	}
 	n := c.aead.NonceSize()
 	plain, err := c.aead.Open(nil, ct[:n], ct[n:], []byte(path))
@@ -163,10 +163,10 @@ func vaultDocFor(key []byte, password string, created int64) ([]byte, error) {
 func OpenVaultDoc(raw []byte, password string) ([]byte, error) {
 	var d vaultDoc
 	if err := json.Unmarshal(raw, &d); err != nil || d.Format != vaultFormat {
-		return nil, errors.New("this repository doesn't contain a Flux vault")
+		return nil, errors.New("this repository doesn't contain a Remvyn vault")
 	}
 	if d.Version > 1 {
-		return nil, errors.New("this vault was created by a newer version of Flux; update Flux to sync")
+		return nil, errors.New("this vault was created by a newer version of Remvyn; update Remvyn to sync")
 	}
 	return d.Key.Unwrap(password)
 }

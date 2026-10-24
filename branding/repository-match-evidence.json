@@ -1,0 +1,36 @@
+[
+  {
+    "url": "https://api.github.com/repos/vikions/SELQEN",
+    "status": 200,
+    "evidence": {
+      "full_name": "vikions/SELQEN",
+      "description": null,
+      "homepage": "https://selqen.vercel.app",
+      "stargazers_count": 0,
+      "language": "TypeScript",
+      "updated_at": "2026-10-07T08:23:45Z"
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/Dabot11/Veylun",
+    "status": 200,
+    "evidence": {
+      "full_name": "Dabot11/Veylun",
+      "description": null,
+      "homepage": null,
+      "stargazers_count": 0,
+      "language": "TypeScript",
+      "updated_at": "2026-10-23T08:15:57Z"
+    }
+  },
+  {
+    "url": "https://raw.githubusercontent.com/vikions/SELQEN/main/README.md",
+    "status": 200,
+    "evidence": "# SELQEN\n\n**Know what you're signing.**\n\nSELQEN is a browser safety layer for **Robinhood Stock Tokens** on **Robinhood Chain**.\n\nIt runs as a Chrome extension beside the dApps users already use and turns fragmented asset, pricing, corporate-action and trade-context data into a simple review before the user signs.\n\n**Live app:** https://selqen.vercel.app  \n**Source:** https://github.com/vikions/SELQEN\n\n**Robinhood Chain mainnet contract:** [SelqenReceiptRegistry \u00b7 0x51bfB2A08E7680786eD54a00eE4d915Bab6B3867](https://robinhoodchain.blockscout.com/address/0x51bfB2A08E7680786eD54a00eE4d915Bab6B3867)\n\n---\n\n## Why SELQEN\n\nA ticker and a swap quote are not enough to safely understand a tokenized stock.\n\nA Stock Token can look familiar while pointing to the wrong contract. Corporate actions can change multipliers. Price sources can become stale or disagree. Trading state can change. A user may be looking at a quote without seeing the evidence b"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/Dabot11/Veylun/main/README.md",
+    "status": 200,
+    "evidence": "# Veylun: El Santuario Olvidado\n\nMVP de aventura 3D original para navegador, con un nivel de cinco zonas,\ncombate de espada/escudo, tres enemigos, acertijo, dos checkpoints y victoria\nal restaurar el altar. Babylon.js + TypeScript estricto + Vite, sin backend.\nVeylun, Ruen y el t\u00edtulo del nivel son nombres de trabajo.\n\n**[Jugar en Chrome](https://dabot11.github.io/Veylun/)** \u2014 publicado en GitHub Pages.\n\n## Iniciar en Chrome\n\nNode.js 24 LTS y npm:\n\n```sh\nnpm install\nnpm run dev\n```\n\nAbre en Chrome la direcci\u00f3n que imprime Vite. Pulsa **Nueva partida**.\nActiva la aceleraci\u00f3n gr\u00e1fica del navegador. Un clic en la escena captura el\nrat\u00f3n; si no est\u00e1 disponible, arrastra para girar la c\u00e1mara. Escape pausa.\n\n```sh\nnpm test\nnpm run build\nnpm run preview\n```\n\nEl build comprueba TypeScript y genera `dist/` con rutas relativas. Se puede\nservir en GitHub Pages o cualquier hosting est\u00e1tico. La publicaci\u00f3n en la rama\n`gh-pages` se realiza con `npm r"
+  }
+]

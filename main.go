@@ -35,7 +35,7 @@ func main() {
 	}
 
 	err := wails.Run(&options.App{
-		Title:     "Flux",
+		Title:     "Remvyn",
 		Width:     1360,
 		Height:    860,
 		MinWidth:  900,
@@ -53,7 +53,7 @@ func main() {
 		Mac: &mac.Options{
 			TitleBar: mac.TitleBarHiddenInset(),
 			About: &mac.AboutInfo{
-				Title:   "Flux",
+				Title:   "Remvyn",
 				Message: "SSH client · v" + Version,
 			},
 		},

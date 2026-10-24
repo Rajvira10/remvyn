@@ -23,9 +23,9 @@ export async function setPro(on: boolean) {
   if (!st) return
   try {
     await useSettings.getState().save({ ...st, proEnabled: on } as Settings)
-    if (on) toast.success('Flux Pro is on', { description: 'History, alerts, uptime checks and background monitoring are unlocked.' })
+    if (on) toast.success('Remvyn Pro is on', { description: 'History, alerts, uptime checks and background monitoring are unlocked.' })
   } catch (e) {
-    toast.error('Could not change Flux Pro', { description: errorMessage(e) })
+    toast.error('Could not change Remvyn Pro', { description: errorMessage(e) })
   }
 }
 
@@ -73,7 +73,7 @@ export function ProGate({ feature, description, children, compact }: { feature: 
         ))}
       </ul>
       <Button onClick={() => void setPro(true)} className="bg-violet-600 text-white hover:bg-violet-600/90">
-        <SparklesIcon /> Upgrade to Flux Pro
+        <SparklesIcon /> Upgrade to Remvyn Pro
       </Button>
       <p className="text-[11px] text-muted-foreground">Payments aren’t connected yet. This unlocks Pro on this computer so you can try it.</p>
     </div>

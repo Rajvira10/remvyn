@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Flux" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/flux_background</item>
+    <style name="Theme.Remvyn" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/remvyn_background</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>

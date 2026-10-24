@@ -114,7 +114,7 @@ type MonitorStatus struct {
 	State string `json:"state"`
 	Error string `json:"error"`
 	// Source is "session" when reusing an open terminal's connection, or
-	// "direct" when Flux connected just for monitoring.
+	// "direct" when Remvyn connected just for monitoring.
 	Source      string `json:"source"`
 	Background  bool   `json:"background"`
 	IntervalSec int    `json:"intervalSec"`

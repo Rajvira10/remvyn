@@ -3,7 +3,7 @@ import { api } from '@/lib/api'
 import { useLock } from '@/stores/lock'
 import { useSettings } from '@/stores/settings'
 
-/** Locks Flux after the configured idle time (only with a master password). */
+/** Locks Remvyn after the configured idle time (only with a master password). */
 export function useAutoLock() {
   const protectedVault = useLock((s) => s.status?.protected && !s.status.locked)
   const minutes = useSettings((s) => s.settings?.autoLockMinutes ?? 0)

@@ -12,19 +12,19 @@ import (
 	"sync"
 	"time"
 
-	"flux/backend/alerts"
-	"flux/backend/files"
-	"flux/backend/forward"
-	"flux/backend/keys"
-	"flux/backend/models"
-	"flux/backend/monitor"
-	"flux/backend/security"
-	"flux/backend/sshconfig"
-	"flux/backend/sshconn"
-	"flux/backend/storage"
-	"flux/backend/terminal"
-	"flux/backend/uptime"
-	"flux/backend/vaultsync"
+	"remvyn/backend/alerts"
+	"remvyn/backend/files"
+	"remvyn/backend/forward"
+	"remvyn/backend/keys"
+	"remvyn/backend/models"
+	"remvyn/backend/monitor"
+	"remvyn/backend/security"
+	"remvyn/backend/sshconfig"
+	"remvyn/backend/sshconn"
+	"remvyn/backend/storage"
+	"remvyn/backend/terminal"
+	"remvyn/backend/uptime"
+	"remvyn/backend/vaultsync"
 )
 
 // Emitter delivers events to the UI.
@@ -82,16 +82,47 @@ type Core struct {
 	pending map[string]context.CancelFunc
 }
 
-// DefaultDataDir returns the per-user data directory, honouring FLUX_DATA_DIR.
+// DefaultDataDir returns the per-user data directory, honouring REMVYN_DATA_DIR.
 func DefaultDataDir() (string, error) {
-	if d := os.Getenv("FLUX_DATA_DIR"); d != "" {
+	if d := os.Getenv("REMVYN_DATA_DIR"); d != "" {
+		return d, nil
+	}
+	if d := os.Getenv("FLUX_DATA_DIR"); d != "" { // name before the rename
 		return d, nil
 	}
 	base, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(base, "Flux"), nil
+	dir := filepath.Join(base, "Remvyn")
+	migrateLegacyDir(filepath.Join(base, "Flux"), dir)
+	return dir, nil
+}
+
+// The app was called Flux before; its data folder and database are moved
+// over once so existing hosts, keys and settings carry across.
+const legacyDBName = "flux-ssh.db"
+
+func migrateLegacyDir(old, dir string) {
+	if _, err := os.Stat(dir); err == nil {
+		return
+	}
+	if fi, err := os.Stat(old); err == nil && fi.IsDir() {
+		_ = os.Rename(old, dir)
+	}
+}
+
+func migrateLegacyDB(dir, db string) {
+	if _, err := os.Stat(db); err == nil {
+		return
+	}
+	old := filepath.Join(dir, legacyDBName)
+	if _, err := os.Stat(old); err != nil {
+		return
+	}
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		_ = os.Rename(old+suffix, db+suffix)
+	}
 }
 
 // Open initialises storage and services.
@@ -122,7 +153,7 @@ func Open(ctx context.Context, opts Options) (*Core, error) {
 	}
 	c := &Core{
 		DataDir:   opts.DataDir,
-		DBPath:    filepath.Join(opts.DataDir, "flux-ssh.db"),
+		DBPath:    filepath.Join(opts.DataDir, "remvyn.db"),
 		emit:      emit,
 		pending:   map[string]context.CancelFunc{},
 		notify:    opts.Notify,
@@ -130,6 +161,7 @@ func Open(ctx context.Context, opts Options) (*Core, error) {
 		dek:       ks.Key,
 		protected: ks.Protected,
 	}
+	migrateLegacyDB(c.DataDir, c.DBPath)
 	if c.store, err = storage.Open(c.DBPath, vault); err != nil {
 		return nil, err
 	}
@@ -641,7 +673,7 @@ func (c *Core) ImportSSHConfig(path string) (models.SSHConfigImport, error) {
 		res.Imported++
 	}
 	if jumped > 0 {
-		res.Warnings = append(res.Warnings, fmt.Sprintf("%d host(s) use ProxyJump, which Flux does not support yet", jumped))
+		res.Warnings = append(res.Warnings, fmt.Sprintf("%d host(s) use ProxyJump, which Remvyn does not support yet", jumped))
 	}
 	return res, nil
 }

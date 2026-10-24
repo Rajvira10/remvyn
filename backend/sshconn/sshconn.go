@@ -17,8 +17,8 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 
-	"flux/backend/keys"
-	"flux/backend/models"
+	"remvyn/backend/keys"
+	"remvyn/backend/models"
 )
 
 // Error codes understood by the frontend.
@@ -218,7 +218,7 @@ func Dial(ctx context.Context, t Target, o Options) (*Client, error) {
 			return hostKeyErr
 		},
 		Timeout:       o.Timeout,
-		ClientVersion: "SSH-2.0-Flux_1.0",
+		ClientVersion: "SSH-2.0-Remvyn_2.0",
 	}
 	c, chans, reqs, err := ssh.NewClientConn(conn, addr, cfg)
 	if err != nil {

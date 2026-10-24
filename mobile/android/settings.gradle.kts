@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "Flux"
+rootProject.name = "Remvyn"
 include(":app")

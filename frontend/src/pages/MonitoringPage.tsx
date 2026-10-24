@@ -112,7 +112,7 @@ function Dashboard({ onOpen }: { onOpen: (id: string) => void }) {
   if (hosts.length === 0) {
     return (
       <EmptyState icon={ServerIcon} title="No hosts to monitor" className="h-auto py-20">
-        Add a host in Hosts first. Flux reads CPU, memory, disk, network, Docker and services over SSH; nothing needs to be installed on the server.
+        Add a host in Hosts first. Remvyn reads CPU, memory, disk, network, Docker and services over SSH; nothing needs to be installed on the server.
       </EmptyState>
     )
   }
@@ -125,7 +125,7 @@ function Dashboard({ onOpen }: { onOpen: (id: string) => void }) {
           <ProBadge />
           {pro && (
             <>
-              <span className="text-[11px] text-muted-foreground">checked every {interval}s while Flux is open</span>
+              <span className="text-[11px] text-muted-foreground">checked every {interval}s while Remvyn is open</span>
               <Button size="sm" variant="outline" className="ml-auto" onClick={() => setChoosing(true)}>
                 <PlusIcon /> Choose servers
               </Button>
@@ -252,7 +252,7 @@ function ChooseServersDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         <DialogHeader>
           <DialogTitle>Monitored servers</DialogTitle>
           <DialogDescription>
-            These servers are checked in the background while Flux is open, building history and triggering alerts. Flux reuses an open terminal’s connection, or connects with the host’s saved credentials.
+            These servers are checked in the background while Remvyn is open, building history and triggering alerts. Remvyn reuses an open terminal’s connection, or connects with the host’s saved credentials.
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-72 overflow-y-auto rounded-md border p-1">
@@ -399,7 +399,7 @@ function HistorySection({ hostId }: { hostId: string }) {
             <HistoryChart times={times} max={100} format={(v) => pct(v)} gapMs={gap} series={[{ label: 'Used', color: 'var(--danger)', values: points.map((p) => p.disk) }]} />
           </ChartCard>
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">History is recorded while Flux is open and this server is monitored or being viewed. Gaps mean Flux was closed.</p>
+        <p className="mt-2 text-[11px] text-muted-foreground">History is recorded while Remvyn is open and this server is monitored or being viewed. Gaps mean Remvyn was closed.</p>
       </ProGate>
     </section>
   )
@@ -424,7 +424,7 @@ const METRICS: { v: AlertMetric; label: string; unit: string; threshold?: number
   { v: 'load', label: 'Load average', unit: '', threshold: 4, help: '1-minute load average' },
   { v: 'services_failed', label: 'Failed services', unit: '', threshold: 0, help: 'systemd units in the failed state' },
   { v: 'containers_stopped', label: 'Stopped containers', unit: '', threshold: 0, help: 'Docker containers that are not running' },
-  { v: 'host_unreachable', label: 'Server unreachable', unit: '', help: 'Flux can’t connect to or read from the server' },
+  { v: 'host_unreachable', label: 'Server unreachable', unit: '', help: 'Remvyn can’t connect to or read from the server' },
   { v: 'uptime_down', label: 'Uptime check down', unit: '', help: 'A URL or port check is failing' },
 ]
 
@@ -637,7 +637,7 @@ function RuleDialog({ rule, checks, onOpenChange, onSaved }: { rule: AlertRule |
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{rule?.id ? 'Edit alert rule' : 'New alert rule'}</DialogTitle>
-          <DialogDescription>Flux notifies you when the condition holds for the chosen time, and again when it clears.</DialogDescription>
+          <DialogDescription>Remvyn notifies you when the condition holds for the chosen time, and again when it clears.</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
@@ -769,7 +769,7 @@ function UptimeTab() {
     <div className="p-5">
       <div className="mb-3 flex items-center gap-2">
         <h2 className="text-[11.5px] font-semibold tracking-wide text-muted-foreground uppercase">Checks</h2>
-        <span className="text-[11px] text-muted-foreground">probed from this computer while Flux is open</span>
+        <span className="text-[11px] text-muted-foreground">probed from this computer while Remvyn is open</span>
         <Button size="sm" className="ml-auto" onClick={() => setEditing(newCheck())}>
           <PlusIcon /> New check
         </Button>

@@ -19,9 +19,9 @@ import (
 
 	"github.com/pkg/sftp"
 
-	"flux/backend/ids"
-	"flux/backend/models"
-	"flux/backend/sshconn"
+	"remvyn/backend/ids"
+	"remvyn/backend/models"
+	"remvyn/backend/sshconn"
 )
 
 // EventTransfer carries models.Transfer updates.
@@ -546,7 +546,7 @@ func (m *Manager) Download(sessionID string, remotePaths []string, localDir stri
 			}
 			// Write to a temp file and rename so a cancelled download never
 			// leaves a truncated file under the real name.
-			tmp := it.dst + ".flux-part"
+			tmp := it.dst + ".remvyn-part"
 			dst, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
 			if err != nil {
 				return err
