@@ -54,6 +54,7 @@ Remvyn was called Flux during development. On first launch it moves the old `Flu
 Download from [Releases](https://github.com/Rajvira10/remvyn/releases):
 
 - **macOS**: `Remvyn-<version>-macOS-universal.dmg` (Apple Silicon and Intel). Drag Remvyn to Applications. The app isn't notarized yet, so the first time, right-click it and choose **Open** (or run `xattr -dr com.apple.quarantine /Applications/Remvyn.app`).
+- **Linux** (x86_64; Arch/Omarchy, Ubuntu 22.04+, Debian 12+, Fedora): `Remvyn-<version>-linux-x86_64.tar.gz`. Install GTK 3 and WebKitGTK 4.1 (Arch/Omarchy: `sudo pacman -S --needed gtk3 webkit2gtk-4.1`), unpack, and run `./install.sh` (per-user, no root). On Arch you can instead build a package with [`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD) and `makepkg -si`.
 - **Android**: `Remvyn-<version>-android.apk` (Android 8+). Open it on your phone and allow installing from your browser or file manager.
 
 ## Android app
@@ -126,6 +127,7 @@ wails doctor
 wails dev                     # hot-reload development
 wails build                   # → build/bin/Remvyn.app (macOS)
 wails build -platform darwin/universal   # Intel + Apple Silicon
+packaging/linux/build.sh      # Linux x86_64 tarball, built in Docker (Ubuntu 22.04 base)
 open build/bin/Remvyn.app
 ```
 
@@ -232,7 +234,7 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 | Platform | Status |
 | --- | --- |
 | macOS (Apple Silicon) | Built and tested: macOS 26, Go 1.26, Wails 2.17. |
-| Linux, including Arch | Not yet tested. Needs `gtk3` and `webkit2gtk` (Arch: `pacman -S gtk3 webkit2gtk-4.1`, then build with `-tags webkit2_41`). |
+| Linux, including Arch/Omarchy | x86_64 release build (WebKitGTK 4.1, built on Ubuntu 22.04 so it runs on newer distros). Launch-tested in an Arch container; not yet tried on real hardware. |
 | Windows | Not yet tested. Needs the WebView2 runtime. SSH agent auth is not implemented on Windows. |
 
 ## Known limitations

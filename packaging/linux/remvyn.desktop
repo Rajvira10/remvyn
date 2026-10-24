@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Remvyn
+GenericName=SSH Client
+Comment=SSH client with server monitoring and encrypted sync
+Exec=remvyn
+Icon=remvyn
+Terminal=false
+Categories=Network;RemoteAccess;System;
+Keywords=ssh;sftp;terminal;server;monitoring;
+StartupWMClass=remvyn

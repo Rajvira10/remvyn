@@ -1,0 +1,24 @@
+# Maintainer: rajvira10 <rajvirahmedshuvo10@gmail.com>
+# Binary package built from the GitHub release tarball.
+#   makepkg -si
+pkgname=remvyn-bin
+pkgver=2.0.0
+pkgrel=1
+pkgdesc="SSH client with server monitoring and end-to-end encrypted sync"
+arch=('x86_64')
+url="https://github.com/Rajvira10/remvyn"
+license=('custom')
+depends=('gtk3' 'webkit2gtk-4.1')
+optdepends=('openssh: SSH agent authentication')
+provides=('remvyn')
+conflicts=('remvyn')
+options=('!strip' '!debug')
+source=("Remvyn-$pkgver-linux-x86_64.tar.gz::$url/releases/download/v$pkgver/Remvyn-$pkgver-linux-x86_64.tar.gz")
+sha256sums=('7c6d0a9872e51b82afb919f6f7448b367486925115f707ae5c2b1f8339352502')
+
+package() {
+  cd "Remvyn-$pkgver-linux-x86_64"
+  install -Dm755 remvyn "$pkgdir/usr/bin/remvyn"
+  install -Dm644 remvyn.desktop "$pkgdir/usr/share/applications/remvyn.desktop"
+  install -Dm644 remvyn.png "$pkgdir/usr/share/icons/hicolor/1024x1024/apps/remvyn.png"
+}
