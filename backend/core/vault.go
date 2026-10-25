@@ -32,6 +32,7 @@ func (c *Core) Start() {
 	unlocked := !c.store.Locked()
 	c.keyMu.Unlock()
 	c.StartMonitoring()
+	c.startAgent()
 	if unlocked {
 		c.afterUnlock()
 	}
@@ -136,6 +137,7 @@ func (c *Core) Lock() error {
 	c.dek = nil
 	c.keyMu.Unlock()
 	c.sync.Lock()
+	c.agentStop()
 	c.applyMonitoring()
 	c.emitLock()
 	return nil

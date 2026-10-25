@@ -53,7 +53,7 @@ export function QuickConnect() {
     <DialogPrimitive.Root open={paletteOpen} onOpenChange={setPaletteOpen}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40" />
-        <DialogPrimitive.Content className="fixed top-[18%] left-1/2 z-50 w-full max-w-lg -translate-x-1/2 overflow-hidden rounded-xl border bg-popover shadow-2xl" aria-describedby={undefined}>
+        <DialogPrimitive.Content className="fixed inset-x-0 top-[18%] z-50 mx-auto w-full max-w-lg overflow-hidden rounded-xl border bg-popover shadow-2xl" aria-describedby={undefined}>
           <DialogPrimitive.Title className="sr-only">Quick connect</DialogPrimitive.Title>
           <div className="flex items-center gap-2 border-b px-3">
             <SearchIcon className="size-4 text-muted-foreground" />

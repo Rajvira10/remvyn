@@ -38,12 +38,14 @@ type events struct {
 	samples []models.Metrics
 	status  map[string]models.MonitorStatus
 	alerts  []models.AlertEvent
+	// agent approval requests
+	approvals chan models.AgentApproval
 }
 
 func newEvents() *events {
 	return &events{data: map[string]*bytes.Buffer{}, exits: map[string]models.SessionExit{},
 		prompts: make(chan models.HostKeyPrompt, 16), fwd: map[string]models.ForwardStatus{}, xfer: map[string]models.Transfer{},
-		status: map[string]models.MonitorStatus{}}
+		status: map[string]models.MonitorStatus{}, approvals: make(chan models.AgentApproval, 16)}
 }
 
 func (e *events) emit(name string, payload any) {
@@ -73,6 +75,8 @@ func (e *events) emit(name string, payload any) {
 	case name == "monitor:status":
 		st := payload.(models.MonitorStatus)
 		e.status[st.HostID] = st
+	case name == EventAgentApproval:
+		e.approvals <- payload.(models.AgentApproval)
 	case name == "alert:event":
 		e.alerts = append(e.alerts, payload.(models.AlertEvent))
 	}

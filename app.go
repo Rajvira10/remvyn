@@ -96,6 +96,7 @@ func (a *App) startup(ctx context.Context) {
 			ClientID: envOr("REMVYN_GITHUB_CLIENT_ID", githubClientID),
 			AppSlug:  envOr("REMVYN_GITHUB_APP_SLUG", githubAppSlug),
 		},
+		AgentCommand: agentCommand(),
 	})
 	if err != nil {
 		a.initErr = err.Error()
@@ -229,6 +230,14 @@ func (a *App) SaveHost(in models.HostInput) (models.Host, error) {
 		return in.Host, err
 	}
 	return a.core.SaveHost(in)
+}
+
+// RevealHostPassword returns a host's saved password so it can be shown in the editor.
+func (a *App) RevealHostPassword(id string) (string, error) {
+	if err := a.ready(); err != nil {
+		return "", err
+	}
+	return a.core.HostPassword(id)
 }
 
 // DeleteHost removes a host.
@@ -888,3 +897,68 @@ func (a *App) SyncWake() {
 }
 
 func wruntimeMinimise(a *App) { wruntime.WindowMinimise(a.ctx) }
+
+// ---------------------------------------------------------------- AI agents
+
+// GetAgentStatus describes AI agent access (MCP bridge).
+func (a *App) GetAgentStatus() models.AgentStatus {
+	if a.core == nil {
+		return models.AgentStatus{Command: agentCommand(), Grants: []models.AgentGrant{}}
+	}
+	return a.core.AgentStatus()
+}
+
+// SetAgentEnabled turns AI agent access on or off.
+func (a *App) SetAgentEnabled(on bool) (models.Settings, error) {
+	if err := a.ready(); err != nil {
+		return models.Settings{}, err
+	}
+	return a.core.SetAgentEnabled(on)
+}
+
+// SetAgentHostMode opens a host to agents ("ask" or "auto") or closes it ("").
+func (a *App) SetAgentHostMode(hostID, mode string) (models.Settings, error) {
+	if err := a.ready(); err != nil {
+		return models.Settings{}, err
+	}
+	return a.core.SetAgentHostMode(hostID, mode)
+}
+
+// RevokeAgentGrants makes hosts in "ask" mode ask again.
+func (a *App) RevokeAgentGrants() {
+	if a.core != nil {
+		a.core.RevokeAgentGrants()
+	}
+}
+
+// PendingAgentApprovals lists agent actions waiting for approval.
+func (a *App) PendingAgentApprovals() []models.AgentApproval {
+	if a.core == nil {
+		return []models.AgentApproval{}
+	}
+	return a.core.PendingAgentApprovals()
+}
+
+// ResolveAgentApproval answers an approval: deny, once or session.
+func (a *App) ResolveAgentApproval(id, decision string) bool {
+	if a.core == nil {
+		return false
+	}
+	return a.core.ResolveAgentApproval(id, decision)
+}
+
+// ListAgentLog returns recent agent actions, newest first.
+func (a *App) ListAgentLog(limit int) ([]models.AgentLogEntry, error) {
+	if err := a.ready(); err != nil {
+		return []models.AgentLogEntry{}, err
+	}
+	return a.core.AgentLog(limit)
+}
+
+// ClearAgentLog deletes the agent activity log.
+func (a *App) ClearAgentLog() error {
+	if err := a.ready(); err != nil {
+		return err
+	}
+	return a.core.ClearAgentLog()
+}

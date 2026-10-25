@@ -1,10 +1,11 @@
-import { CloudAlertIcon, CloudCheckIcon, CloudIcon, FolderIcon, LayoutGridIcon, LockIcon, PlusIcon, RefreshCwIcon, TerminalIcon, XIcon } from 'lucide-react'
+import { BotIcon, CloudAlertIcon, CloudCheckIcon, CloudIcon, FolderIcon, LayoutGridIcon, LockIcon, PlusIcon, RefreshCwIcon, TerminalIcon, XIcon } from 'lucide-react'
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { Logo } from '@/components/common/Logo'
 import { Tooltip } from '@/components/ui/tooltip'
 import { api } from '@/lib/api'
 import { appKey, cn, isMac, relativeTime } from '@/lib/utils'
+import { useAgent } from '@/stores/agent'
 import { useLock } from '@/stores/lock'
 import { useSessions, type Tab } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
@@ -109,18 +110,32 @@ export function TabBar() {
   )
 }
 
-/** Sync state and the lock button, at the right of the title bar. */
+/** Agent access, sync state and the lock button, at the right of the title bar. */
 function StatusButtons() {
   const lock = useLock((s) => s.status)
   const sync = useLock((s) => s.sync)
+  const agentOn = useSettings((s) => !!s.settings?.agentEnabled)
+  const agentRunning = useAgent((s) => s.status?.running ?? 0)
   const btn = 'no-drag flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground'
   const openSettings = () => {
     useSessions.getState().activate('vault')
     useUI.getState().setPage('settings')
   }
-  if (!lock?.protected && !sync?.connected) return null
+  const openAgents = () => {
+    useSessions.getState().activate('vault')
+    useUI.getState().setPage('agents')
+  }
+  if (!lock?.protected && !sync?.connected && !agentOn) return null
   return (
     <div className="mr-2 flex items-center gap-0.5">
+      {agentOn && (
+        <Tooltip content={agentRunning ? `AI agent working (${agentRunning} running)` : 'AI agents can use your servers'}>
+          <button onClick={openAgents} className={cn(btn, 'relative')} aria-label="AI agent access">
+            <BotIcon className={cn('size-4', agentRunning > 0 && 'text-primary')} />
+            {agentRunning > 0 && <span className="absolute top-1.5 right-1.5 size-1.5 animate-pulse rounded-full bg-primary" />}
+          </button>
+        </Tooltip>
+      )}
       {sync?.connected && (
         <Tooltip
           content={

@@ -22,6 +22,7 @@ Remvyn is a desktop SSH client in the spirit of Termius. It saves your servers, 
 - **Known hosts**: trust on first use with an explicit fingerprint check. A changed host key shows a man-in-the-middle warning with both fingerprints, and rejecting it is the default action. You can review and forget trusted hosts.
 - **Monitoring**: live CPU, memory, disk, network, Docker containers, services and top processes beside the terminal (free), plus history, alerts, uptime checks and a multi-server dashboard with Remvyn Pro. See [Monitoring](#monitoring).
 - **Master password and app lock**: optional master password, auto-lock after inactivity, and ⌘L to lock. See [Master password and sync](#master-password-and-sync).
+- **AI agents**: let Claude Code (or any MCP client) run commands and edit files on servers you choose. Remvyn makes the connections with its own saved credentials, so the agent never sees a key or password; you can approve each action. See [AI agents](#ai-agents-claude-code).
 - **Sync**: keep your vault in sync between computers through a private GitHub repository, end-to-end encrypted. Sign in with GitHub; no server needed.
 - **Settings**: theme, terminal appearance, keepalive and connect timeout, SFTP defaults, close confirmation, and clearing all data.
 
@@ -117,6 +118,39 @@ REMVYN_GITHUB_WEB=http://127.0.0.1:2280 REMVYN_GITHUB_API=http://127.0.0.1:2280 
   REMVYN_GITHUB_CLIENT_ID=dev REMVYN_GITHUB_APP_SLUG=remvyn-dev REMVYN_DATA_DIR=/tmp/remvyn-a wails dev
 ```
 
+## AI agents (Claude Code)
+
+Remvyn includes an [MCP](https://modelcontextprotocol.io) server, so Claude Code can work on your servers without you putting SSH keys on the machine it runs on or pasting passwords into it.
+
+```text
+Claude Code ──MCP (stdio)──▶ remvyn mcp ──unix socket (0600)──▶ Remvyn app ──SSH──▶ your servers
+```
+
+1. Open **AI agents** in the sidebar, turn on **Allow AI agents**, and choose access per server:
+   - **No access** (the default): the server is invisible to agents.
+   - **Ask first**: every action appears in Remvyn with **Deny**, **Allow once** or **Allow for 30 min**. You also get a desktop notification. Unanswered requests are denied after 5 minutes.
+   - **Always allow**: actions run without asking.
+2. Run the command shown on that page once. On macOS it is:
+
+   ```bash
+   claude mcp add --scope user remvyn -- /Applications/Remvyn.app/Contents/MacOS/Remvyn mcp
+   ```
+
+   Other MCP clients use the same command (`<path to Remvyn> mcp`); the page shows the JSON config.
+3. Ask Claude something like "check disk space and nginx status on prod-web".
+
+Tools: `list_hosts`, `run_command` (non-interactive, exit code, stdout and stderr, timeout up to 30 minutes), `read_file`, `write_file` (atomic, keeps permissions) and `list_dir`, over SFTP.
+
+Safeguards:
+
+- The agent never receives a password, key or passphrase. Remvyn connects with the vault's credentials and returns only the output.
+- Agents can't make Remvyn trust a new host key. Connect to a server once yourself first.
+- Turning access off, locking Remvyn or auto-lock stops running commands, refuses pending requests and closes agent connections immediately.
+- Every action is recorded in the activity log, with its command and output encrypted like your passwords.
+- The socket lives in the data folder and only your user account can open it. Access settings are per device and are never synced.
+
+Remvyn has to be running for agents to reach it; otherwise the agent is told to ask you to open it.
+
 ## Run and build
 
 ```bash
@@ -208,6 +242,7 @@ backend/
   storage/             SQLite (modernc.org/sqlite, pure Go)
   security/            AES-256-GCM vault for secrets; master-password key wrapping (Argon2id)
   vaultsync/           GitHub sync: device-flow sign-in, Git Data API remote, encrypted records, merge engine
+  mcp/                 MCP server for AI agents: stdio protocol, `remvyn mcp` bridge, app socket
   testutil/            in-process SSH server and fake GitHub for tests
 tools/devsshd/         run the test server for manual testing
 tools/devgithub/       run the fake GitHub for trying sync
@@ -227,6 +262,7 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 - Synced data is end-to-end encrypted with a key that only exists wrapped by your master password; GitHub stores ciphertext. Records are authenticated, so tampered or swapped files are rejected, but anyone with write access to the repository could delete synced items (and the deletion would sync); Git history keeps the old versions. The GitHub token and sync key are sealed with the local data key, so they're unusable while Remvyn is locked.
 - Host keys are always verified. New hosts need explicit confirmation, and a changed key is flagged and rejected by default.
 - Private keys never leave the Go backend; the UI only ever receives public metadata.
+- AI agents get no access unless you turn it on and open individual servers. They never receive credentials, can't trust new host keys, and in "Ask first" mode every action waits for your approval. Output from a server can contain text written to mislead an agent (prompt injection), so prefer "Ask first" for servers that matter.
 - Forwarding rules bind to `127.0.0.1` by default, and the UI warns before you bind to other interfaces.
 
 ## Platform support

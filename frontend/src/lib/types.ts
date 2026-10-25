@@ -188,6 +188,56 @@ export interface Settings {
   monitorIntervalSec: number
   metricsRetentionDays: number
   alertNotifications: boolean
+  agentEnabled: boolean
+  /** host ID → 'ask' | 'auto'; missing = no agent access */
+  agentHosts: Record<string, AgentMode>
+}
+
+export type AgentMode = 'ask' | 'auto'
+export type AgentDecision = 'deny' | 'once' | 'session'
+
+export interface AgentApproval {
+  id: string
+  client: string
+  hostId: string
+  hostLabel: string
+  remote: string
+  tool: string
+  title: string
+  detail: string
+  preview?: string
+  createdAt: number
+  expiresAt: number
+}
+
+export interface AgentLogEntry {
+  id: string
+  at: number
+  client: string
+  hostId: string
+  hostLabel: string
+  tool: string
+  summary: string
+  status: 'ok' | 'failed' | 'error' | 'denied'
+  approval: '' | 'auto' | 'once' | 'session'
+  exitCode?: number
+  durationMs: number
+  output: string
+}
+
+export interface AgentGrant {
+  hostId: string
+  until: number
+}
+
+export interface AgentStatus {
+  enabled: boolean
+  listening: boolean
+  listenError?: string
+  socketPath: string
+  command: string[]
+  running: number
+  grants: AgentGrant[]
 }
 
 export interface SSHConfigImport {

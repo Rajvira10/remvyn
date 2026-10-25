@@ -142,7 +142,7 @@ func Open(path string, vault *security.Vault) (*Store, error) {
 	} else {
 		db.SetMaxOpenConns(4)
 	}
-	if _, err := db.Exec(schema + monitorSchema + syncSchema); err != nil {
+	if _, err := db.Exec(schema + monitorSchema + syncSchema + agentSchema); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("initialise schema: %w", err)
 	}
@@ -771,7 +771,7 @@ func (s *Store) SaveSettings(ctx context.Context, st models.Settings) error {
 func (s *Store) ClearAll(ctx context.Context) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM forwards; DELETE FROM hosts; DELETE FROM groups; DELETE FROM keys;
 		DELETE FROM snippets; DELETE FROM known_hosts; DELETE FROM settings; DELETE FROM metrics_minute; DELETE FROM alert_rules;
-		DELETE FROM alert_events; DELETE FROM uptime_checks; DELETE FROM uptime_results; DELETE FROM sync_state;`)
+		DELETE FROM alert_events; DELETE FROM uptime_checks; DELETE FROM uptime_results; DELETE FROM sync_state; DELETE FROM agent_log;`)
 	if err == nil {
 		_, _ = s.db.ExecContext(ctx, `PRAGMA wal_checkpoint(TRUNCATE); VACUUM;`)
 	}

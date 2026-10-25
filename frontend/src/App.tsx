@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Toaster, toast } from 'sonner'
+import { AgentApprovalDialog } from '@/components/agent/AgentApprovalDialog'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { LoadingBlock } from '@/components/common/Spinner'
 import { HostEditor } from '@/components/hosts/HostEditor'
@@ -16,7 +17,8 @@ import { useAutoLock } from '@/hooks/useAutoLock'
 import { useHotkeys } from '@/hooks/useHotkeys'
 import { useResolvedTheme } from '@/hooks/useTheme'
 import { api, errorMessage, events, onEvent } from '@/lib/api'
-import type { AlertEvent, ForwardStatus, LockStatus, Metrics, MonitorStatus, SyncStatus, Transfer } from '@/lib/types'
+import type { AgentApproval, AgentLogEntry, AgentStatus, AlertEvent, ForwardStatus, LockStatus, Metrics, MonitorStatus, SyncStatus, Transfer } from '@/lib/types'
+import { AgentsPage } from '@/pages/AgentsPage'
 import { ForwardingPage } from '@/pages/ForwardingPage'
 import { HostsPage } from '@/pages/HostsPage'
 import { KeychainPage } from '@/pages/KeychainPage'
@@ -24,6 +26,7 @@ import { KnownHostsPage } from '@/pages/KnownHostsPage'
 import { MonitoringPage } from '@/pages/MonitoringPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { SnippetsPage } from '@/pages/SnippetsPage'
+import { useAgent } from '@/stores/agent'
 import { useLock } from '@/stores/lock'
 import { useMonitor } from '@/stores/monitor'
 import { useSessions } from '@/stores/sessions'
@@ -46,6 +49,7 @@ export default function App() {
       useVault.getState().loadAll(),
       useTransfers.getState().load(),
       useMonitor.getState().loadAlerts(),
+      useAgent.getState().load(),
     ])
       .catch((e) => toast.error('Could not reach the Remvyn backend', { description: errorMessage(e) }))
       .finally(() => setReady(true))
@@ -61,6 +65,10 @@ export default function App() {
       onEvent<SyncStatus>(events.SYNC_STATUS, (s) => useLock.getState().setSync(s)),
       // Another device changed the vault.
       onEvent(events.VAULT_CHANGED, () => void useVault.getState().loadAll()),
+      onEvent<AgentStatus>(events.AGENT_STATUS, (s) => useAgent.getState().setStatus(s)),
+      onEvent<AgentApproval>(events.AGENT_APPROVAL, (a) => useAgent.getState().addApproval(a)),
+      onEvent<string>(events.AGENT_APPROVAL_DONE, (id) => useAgent.getState().removeApproval(id)),
+      onEvent<AgentLogEntry>(events.AGENT_ACTIVITY, (e) => useAgent.getState().addLog(e)),
       onEvent<Transfer>(events.TRANSFER, (t) => {
         const prev = useTransfers.getState().byId[t.id]
         useTransfers.getState().apply(t)
@@ -141,6 +149,7 @@ export default function App() {
                     {page === 'forwarding' && <ForwardingPage />}
                     {page === 'snippets' && <SnippetsPage />}
                     {page === 'knownhosts' && <KnownHostsPage />}
+                    {page === 'agents' && <AgentsPage />}
                     {page === 'settings' && <SettingsPage />}
                   </ErrorBoundary>
                 </main>
@@ -157,6 +166,7 @@ export default function App() {
       </div>
       <HostEditor />
       <HostKeyDialog />
+      <AgentApprovalDialog />
       <QuickConnect />
       <ShortcutsDialog />
       {closeDialog}

@@ -10,6 +10,10 @@ export function CancelTransfer(arg1) {
   return window['go']['main']['App']['CancelTransfer'](arg1);
 }
 
+export function ClearAgentLog() {
+  return window['go']['main']['App']['ClearAgentLog']();
+}
+
 export function ClearAppData() {
   return window['go']['main']['App']['ClearAppData']();
 }
@@ -78,6 +82,10 @@ export function GenerateKey(arg1) {
   return window['go']['main']['App']['GenerateKey'](arg1);
 }
 
+export function GetAgentStatus() {
+  return window['go']['main']['App']['GetAgentStatus']();
+}
+
 export function GetAppInfo() {
   return window['go']['main']['App']['GetAppInfo']();
 }
@@ -108,6 +116,10 @@ export function ImportSSHConfigFile() {
 
 export function InstallPublicKey(arg1, arg2, arg3) {
   return window['go']['main']['App']['InstallPublicKey'](arg1, arg2, arg3);
+}
+
+export function ListAgentLog(arg1) {
+  return window['go']['main']['App']['ListAgentLog'](arg1);
 }
 
 export function ListAlertEvents() {
@@ -198,6 +210,10 @@ export function OpenTerminal(arg1, arg2, arg3) {
   return window['go']['main']['App']['OpenTerminal'](arg1, arg2, arg3);
 }
 
+export function PendingAgentApprovals() {
+  return window['go']['main']['App']['PendingAgentApprovals']();
+}
+
 export function ReadKeyFile() {
   return window['go']['main']['App']['ReadKeyFile']();
 }
@@ -238,12 +254,24 @@ export function ResizeTerminal(arg1, arg2, arg3) {
   return window['go']['main']['App']['ResizeTerminal'](arg1, arg2, arg3);
 }
 
+export function ResolveAgentApproval(arg1, arg2) {
+  return window['go']['main']['App']['ResolveAgentApproval'](arg1, arg2);
+}
+
 export function ResolveHostKey(arg1, arg2) {
   return window['go']['main']['App']['ResolveHostKey'](arg1, arg2);
 }
 
 export function RevealDataDir() {
   return window['go']['main']['App']['RevealDataDir']();
+}
+
+export function RevealHostPassword(arg1) {
+  return window['go']['main']['App']['RevealHostPassword'](arg1);
+}
+
+export function RevokeAgentGrants() {
+  return window['go']['main']['App']['RevokeAgentGrants']();
 }
 
 export function SaveAlertRule(arg1) {
@@ -272,6 +300,14 @@ export function SaveUptimeCheck(arg1) {
 
 export function SendTestNotification() {
   return window['go']['main']['App']['SendTestNotification']();
+}
+
+export function SetAgentEnabled(arg1) {
+  return window['go']['main']['App']['SetAgentEnabled'](arg1);
+}
+
+export function SetAgentHostMode(arg1, arg2) {
+  return window['go']['main']['App']['SetAgentHostMode'](arg1, arg2);
 }
 
 export function SetMasterPassword(arg1, arg2) {

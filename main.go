@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"log"
+	"os"
 
 	"runtime"
 
@@ -22,6 +23,11 @@ var assets embed.FS
 var icon []byte
 
 func main() {
+	// `remvyn mcp` is the AI agent bridge, launched by MCP clients; it
+	// never opens a window.
+	if len(os.Args) > 1 && os.Args[1] == "mcp" {
+		os.Exit(runMCP())
+	}
 	app := NewApp()
 
 	// macOS routes ⌘C/⌘V/⌘A in text fields through the Edit menu.

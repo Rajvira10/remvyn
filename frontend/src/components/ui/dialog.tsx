@@ -11,19 +11,22 @@ function DialogContent({ className, children, ...props }: React.ComponentProps<t
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-      <DialogPrimitive.Content
-        className={cn(
-          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-w-md',
-          className,
-        )}
-        {...props}
-      >
-        {children}
-        <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-60 transition-opacity hover:opacity-100 focus:outline-none [&_svg]:size-4">
-          <XIcon />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      </DialogPrimitive.Content>
+      {/* Centred with flexbox, not translate(-50%): a fractional-pixel transform makes WebKit render text blurry. */}
+      <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
+        <DialogPrimitive.Content
+          className={cn(
+            'pointer-events-auto relative grid w-full max-w-[calc(100%-2rem)] gap-4 rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-w-md',
+            className,
+          )}
+          {...props}
+        >
+          {children}
+          <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-60 transition-opacity hover:opacity-100 focus:outline-none [&_svg]:size-4">
+            <XIcon />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </div>
     </DialogPrimitive.Portal>
   )
 }

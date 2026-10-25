@@ -64,6 +64,128 @@ export namespace main {
 
 export namespace models {
 	
+	export class AgentApproval {
+	    id: string;
+	    client: string;
+	    hostId: string;
+	    hostLabel: string;
+	    remote: string;
+	    tool: string;
+	    title: string;
+	    detail: string;
+	    preview?: string;
+	    createdAt: number;
+	    expiresAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentApproval(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.client = source["client"];
+	        this.hostId = source["hostId"];
+	        this.hostLabel = source["hostLabel"];
+	        this.remote = source["remote"];
+	        this.tool = source["tool"];
+	        this.title = source["title"];
+	        this.detail = source["detail"];
+	        this.preview = source["preview"];
+	        this.createdAt = source["createdAt"];
+	        this.expiresAt = source["expiresAt"];
+	    }
+	}
+	export class AgentGrant {
+	    hostId: string;
+	    until: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentGrant(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hostId = source["hostId"];
+	        this.until = source["until"];
+	    }
+	}
+	export class AgentLogEntry {
+	    id: string;
+	    at: number;
+	    client: string;
+	    hostId: string;
+	    hostLabel: string;
+	    tool: string;
+	    summary: string;
+	    status: string;
+	    approval: string;
+	    exitCode?: number;
+	    durationMs: number;
+	    output: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentLogEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.at = source["at"];
+	        this.client = source["client"];
+	        this.hostId = source["hostId"];
+	        this.hostLabel = source["hostLabel"];
+	        this.tool = source["tool"];
+	        this.summary = source["summary"];
+	        this.status = source["status"];
+	        this.approval = source["approval"];
+	        this.exitCode = source["exitCode"];
+	        this.durationMs = source["durationMs"];
+	        this.output = source["output"];
+	    }
+	}
+	export class AgentStatus {
+	    enabled: boolean;
+	    listening: boolean;
+	    listenError?: string;
+	    socketPath: string;
+	    command: string[];
+	    running: number;
+	    grants: AgentGrant[];
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.listening = source["listening"];
+	        this.listenError = source["listenError"];
+	        this.socketPath = source["socketPath"];
+	        this.command = source["command"];
+	        this.running = source["running"];
+	        this.grants = this.convertValues(source["grants"], AgentGrant);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class AlertEvent {
 	    id: number;
 	    ruleId: string;
@@ -828,6 +950,8 @@ export namespace models {
 	    monitorIntervalSec: number;
 	    metricsRetentionDays: number;
 	    alertNotifications: boolean;
+	    agentEnabled: boolean;
+	    agentHosts: Record<string, string>;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -853,6 +977,8 @@ export namespace models {
 	        this.monitorIntervalSec = source["monitorIntervalSec"];
 	        this.metricsRetentionDays = source["metricsRetentionDays"];
 	        this.alertNotifications = source["alertNotifications"];
+	        this.agentEnabled = source["agentEnabled"];
+	        this.agentHosts = source["agentHosts"];
 	    }
 	}
 	export class Snippet {

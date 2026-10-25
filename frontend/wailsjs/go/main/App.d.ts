@@ -9,6 +9,8 @@ export function CancelConnect(arg1:string):Promise<void>;
 
 export function CancelTransfer(arg1:string):Promise<boolean>;
 
+export function ClearAgentLog():Promise<void>;
+
 export function ClearAppData():Promise<models.Settings>;
 
 export function ClearTransfers():Promise<void>;
@@ -43,6 +45,8 @@ export function ForwardStatuses():Promise<Array<models.ForwardStatus>>;
 
 export function GenerateKey(arg1:models.KeyGenerateInput):Promise<models.Key>;
 
+export function GetAgentStatus():Promise<models.AgentStatus>;
+
 export function GetAppInfo():Promise<main.AppInfo>;
 
 export function GetLockStatus():Promise<models.LockStatus>;
@@ -58,6 +62,8 @@ export function ImportSSHConfig():Promise<models.SSHConfigImport>;
 export function ImportSSHConfigFile():Promise<models.SSHConfigImport>;
 
 export function InstallPublicKey(arg1:string,arg2:string,arg3:models.ConnectOptions):Promise<void>;
+
+export function ListAgentLog(arg1:number):Promise<Array<models.AgentLogEntry>>;
 
 export function ListAlertEvents():Promise<Array<models.AlertEvent>>;
 
@@ -103,6 +109,8 @@ export function OpenSFTP(arg1:string,arg2:string,arg3:models.ConnectOptions):Pro
 
 export function OpenTerminal(arg1:string,arg2:string,arg3:models.ConnectOptions):Promise<models.SessionInfo>;
 
+export function PendingAgentApprovals():Promise<Array<models.AgentApproval>>;
+
 export function ReadKeyFile():Promise<string>;
 
 export function RemoteHome(arg1:string):Promise<string>;
@@ -123,9 +131,15 @@ export function ResetVault():Promise<models.Settings>;
 
 export function ResizeTerminal(arg1:string,arg2:number,arg3:number):Promise<void>;
 
+export function ResolveAgentApproval(arg1:string,arg2:string):Promise<boolean>;
+
 export function ResolveHostKey(arg1:string,arg2:boolean):Promise<boolean>;
 
 export function RevealDataDir():Promise<void>;
+
+export function RevealHostPassword(arg1:string):Promise<string>;
+
+export function RevokeAgentGrants():Promise<void>;
 
 export function SaveAlertRule(arg1:models.AlertRule):Promise<models.AlertRule>;
 
@@ -140,6 +154,10 @@ export function SaveSnippet(arg1:models.Snippet):Promise<models.Snippet>;
 export function SaveUptimeCheck(arg1:models.UptimeCheck):Promise<models.UptimeCheck>;
 
 export function SendTestNotification():Promise<void>;
+
+export function SetAgentEnabled(arg1:boolean):Promise<models.Settings>;
+
+export function SetAgentHostMode(arg1:string,arg2:string):Promise<models.Settings>;
 
 export function SetMasterPassword(arg1:string,arg2:string):Promise<models.LockStatus>;
 

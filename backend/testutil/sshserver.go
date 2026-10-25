@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -426,6 +427,19 @@ func (s *Server) exec(ch ssh.Channel, cmd string) int {
 			s.AuthorizedLines = append(s.AuthorizedLines, line)
 		}
 		s.mu.Unlock()
+		return 0
+	}
+	switch cmd {
+	case "fail": // stderr and a non-zero exit
+		fmt.Fprint(ch.Stderr(), "boom\n")
+		return 3
+	case "hang": // runs until the client closes the session (or 30s)
+		for i := 0; i < 300; i++ {
+			if _, err := ch.Stderr().Write([]byte(".")); err != nil {
+				return 0
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
 		return 0
 	}
 	fmt.Fprintf(ch, "exec: %s\n", cmd)

@@ -33,6 +33,11 @@ import type {
   RepoInfo,
   SyncRepos,
   SyncStatus,
+  AgentApproval,
+  AgentDecision,
+  AgentLogEntry,
+  AgentMode,
+  AgentStatus,
 } from './types'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -47,6 +52,7 @@ export const api = {
 
   hosts: (): Promise<Host[]> => call.ListHosts(),
   saveHost: (h: HostInput): Promise<Host> => call.SaveHost(h),
+  revealHostPassword: (id: string): Promise<string> => call.RevealHostPassword(id),
   deleteHost: (id: string): Promise<void> => call.DeleteHost(id),
   groups: (): Promise<Group[]> => call.ListGroups(),
   saveGroup: (g: Group): Promise<Group> => call.SaveGroup(g),
@@ -138,6 +144,15 @@ export const api = {
   syncNow: (): Promise<SyncStatus> => call.SyncNow(),
   syncWake: (): Promise<void> => call.SyncWake(),
 
+  agentStatus: (): Promise<AgentStatus> => call.GetAgentStatus(),
+  setAgentEnabled: (on: boolean): Promise<Settings> => call.SetAgentEnabled(on),
+  setAgentHostMode: (hostId: string, mode: AgentMode | ''): Promise<Settings> => call.SetAgentHostMode(hostId, mode),
+  revokeAgentGrants: (): Promise<void> => call.RevokeAgentGrants(),
+  pendingAgentApprovals: (): Promise<AgentApproval[]> => call.PendingAgentApprovals(),
+  resolveAgentApproval: (id: string, decision: AgentDecision): Promise<boolean> => call.ResolveAgentApproval(id, decision),
+  agentLog: (limit: number): Promise<AgentLogEntry[]> => call.ListAgentLog(limit),
+  clearAgentLog: (): Promise<void> => call.ClearAgentLog(),
+
 }
 
 export const events = {
@@ -155,6 +170,10 @@ export const events = {
   LOCK: 'lock:status',
   SYNC_STATUS: 'sync:status',
   VAULT_CHANGED: 'vault:changed',
+  AGENT_APPROVAL: 'agent:approval',
+  AGENT_APPROVAL_DONE: 'agent:approval-done',
+  AGENT_ACTIVITY: 'agent:activity',
+  AGENT_STATUS: 'agent:status',
 } as const
 
 export function onEvent<T>(name: string, cb: (data: T) => void): () => void {

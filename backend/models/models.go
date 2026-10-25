@@ -254,7 +254,19 @@ type Settings struct {
 	MetricsRetentionDays int `json:"metricsRetentionDays"`
 	// AlertNotifications shows desktop notifications for alerts.
 	AlertNotifications bool `json:"alertNotifications"`
+
+	// AgentEnabled lets AI agents (Claude Code, over MCP) use hosts opened
+	// to them in AgentHosts. Per device: never synced.
+	AgentEnabled bool `json:"agentEnabled"`
+	// AgentHosts maps host ID → AgentAsk or AgentAuto. Missing = no access.
+	AgentHosts map[string]string `json:"agentHosts"`
 }
+
+// Agent access modes for a host.
+const (
+	AgentAsk  = "ask"  // every action waits for approval in Remvyn
+	AgentAuto = "auto" // actions run without asking
+)
 
 // DefaultSettings returns defaults.
 func DefaultSettings() Settings {
@@ -277,6 +289,7 @@ func DefaultSettings() Settings {
 		MonitorIntervalSec:   30,
 		MetricsRetentionDays: 30,
 		AlertNotifications:   true,
+		AgentHosts:           map[string]string{},
 	}
 }
 
@@ -296,4 +309,66 @@ type LockStatus struct {
 	Locked        bool `json:"locked"`
 	MinLength     int  `json:"minLength"`
 	SyncConnected bool `json:"syncConnected"`
+}
+
+// AgentApproval asks the user to allow an AI agent's action.
+type AgentApproval struct {
+	ID        string `json:"id"`
+	Client    string `json:"client"` // e.g. "Claude Code"
+	HostID    string `json:"hostId"`
+	HostLabel string `json:"hostLabel"`
+	Remote    string `json:"remote"` // user@host:port
+	Tool      string `json:"tool"`
+	Title     string `json:"title"`  // "run a command"
+	Detail    string `json:"detail"` // the command or path
+	// Preview is extra context, e.g. the start of a file being written.
+	Preview   string `json:"preview,omitempty"`
+	CreatedAt int64  `json:"createdAt"`
+	ExpiresAt int64  `json:"expiresAt"`
+}
+
+// Approval decisions.
+const (
+	AgentDeny    = "deny"
+	AgentOnce    = "once"
+	AgentSession = "session" // allow this host for AgentGrantMinutes
+)
+
+// AgentGrantMinutes is how long "allow for now" lasts.
+const AgentGrantMinutes = 30
+
+// AgentLogEntry records one agent action.
+type AgentLogEntry struct {
+	ID        string `json:"id"`
+	At        int64  `json:"at"`
+	Client    string `json:"client"`
+	HostID    string `json:"hostId"`
+	HostLabel string `json:"hostLabel"`
+	Tool      string `json:"tool"`
+	Summary   string `json:"summary"` // command or path
+	// Status is ok, failed (ran but failed), error, denied or blocked.
+	Status string `json:"status"`
+	// Approval is auto, once, session or "" (not approved).
+	Approval   string `json:"approval"`
+	ExitCode   *int   `json:"exitCode,omitempty"`
+	DurationMs int64  `json:"durationMs"`
+	Output     string `json:"output"` // trimmed result shown to the agent
+}
+
+// AgentGrant is a temporary "allow without asking" for a host.
+type AgentGrant struct {
+	HostID string `json:"hostId"`
+	Until  int64  `json:"until"`
+}
+
+// AgentStatus describes the agent bridge.
+type AgentStatus struct {
+	Enabled     bool   `json:"enabled"`
+	Listening   bool   `json:"listening"`
+	ListenError string `json:"listenError,omitempty"`
+	SocketPath  string `json:"socketPath"`
+	// Command is what an MCP client runs to reach Remvyn.
+	Command []string     `json:"command"`
+	Running int          `json:"running"`
+	Grants  []AgentGrant `json:"grants"`
 }

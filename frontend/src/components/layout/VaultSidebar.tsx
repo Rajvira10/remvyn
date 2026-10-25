@@ -1,7 +1,8 @@
-import { ActivityIcon, CableIcon, CodeIcon, KeyboardIcon, KeyRoundIcon, ServerIcon, SettingsIcon, ShieldCheckIcon } from 'lucide-react'
+import { ActivityIcon, BotIcon, CableIcon, CodeIcon, KeyboardIcon, KeyRoundIcon, ServerIcon, SettingsIcon, ShieldCheckIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { cn } from '@/lib/utils'
 import { useUI, type VaultPage } from '@/stores/ui'
+import { useAgent } from '@/stores/agent'
 import { useMonitor } from '@/stores/monitor'
 import { useVault } from '@/stores/vault'
 
@@ -15,6 +16,7 @@ export function VaultSidebar() {
     knownhosts: s.knownHosts.length,
   })))
   const openAlerts = useMonitor((s) => Object.keys(s.openAlerts).length)
+  const agentRunning = useAgent((s) => s.status?.running ?? 0)
   const items: { id: VaultPage; label: string; icon: typeof ServerIcon; count?: number; live?: boolean }[] = [
     { id: 'hosts', label: 'Hosts', icon: ServerIcon, count: counts.hosts },
     { id: 'monitoring', label: 'Monitoring', icon: ActivityIcon },
@@ -22,6 +24,7 @@ export function VaultSidebar() {
     { id: 'forwarding', label: 'Port forwarding', icon: CableIcon, count: counts.forwarding, live: true },
     { id: 'snippets', label: 'Snippets', icon: CodeIcon, count: counts.snippets },
     { id: 'knownhosts', label: 'Known hosts', icon: ShieldCheckIcon, count: counts.knownhosts },
+    { id: 'agents', label: 'AI agents', icon: BotIcon, count: agentRunning, live: true },
   ]
   return (
     <nav className="flex w-[200px] shrink-0 flex-col border-r bg-sidebar">

@@ -16,6 +16,7 @@ import (
 	"remvyn/backend/files"
 	"remvyn/backend/forward"
 	"remvyn/backend/keys"
+	"remvyn/backend/mcp"
 	"remvyn/backend/models"
 	"remvyn/backend/monitor"
 	"remvyn/backend/security"
@@ -44,6 +45,13 @@ type Options struct {
 	MonitorSlowEvery time.Duration
 	// Sync configures GitHub sync (endpoints, built-in app, timings).
 	Sync vaultsync.Options
+	// AgentSocket overrides the AI agent socket path (tests).
+	AgentSocket string
+	// AgentCommand is how MCP clients launch the bridge, e.g.
+	// ["/Applications/Remvyn.app/Contents/MacOS/Remvyn", "mcp"].
+	AgentCommand []string
+	// AgentApprovalTimeout bounds how long an approval waits (tests).
+	AgentApprovalTimeout time.Duration
 }
 
 // Core is the application service layer.
@@ -67,6 +75,7 @@ type Core struct {
 	stop      chan struct{}
 	closeOnce sync.Once
 	sync      *vaultsync.Service
+	agent     *agentState
 
 	// keyMu guards the master-password state.
 	keyMu     sync.Mutex
@@ -77,6 +86,8 @@ type Core struct {
 
 	mu       sync.RWMutex
 	settings models.Settings
+	// saveMu serialises settings writes.
+	saveMu sync.Mutex
 
 	connMu  sync.Mutex
 	pending map[string]context.CancelFunc
@@ -187,6 +198,11 @@ func Open(ctx context.Context, opts Options) (*Core, error) {
 		return nil, err
 	}
 	c.store.OnChange(c.sync.Changed)
+	sock := opts.AgentSocket
+	if sock == "" {
+		sock = mcp.SocketPath(c.DataDir)
+	}
+	c.agent = newAgentState(sock, opts.AgentCommand, opts.AgentApprovalTimeout)
 	return c, nil
 }
 
@@ -220,6 +236,7 @@ func (c *Core) close() {
 	}
 	c.connMu.Unlock()
 	close(c.stop)
+	c.closeAgent()
 	c.sync.Close()
 	c.monitor.StopAll()
 	c.uptime.StopAll()
@@ -284,12 +301,16 @@ func (c *Core) UpdateSettings(s models.Settings) (models.Settings, error) {
 		return c.Settings(), errors.New("history retention must be between 1 and 365 days")
 	}
 	s.MonitorHostIDs = c.existingHostIDs(s.MonitorHostIDs)
-	if err := c.store.SaveSettings(context.Background(), s); err != nil {
+	c.saveMu.Lock()
+	// Agent access only changes through SetAgentEnabled/SetAgentHostMode, so
+	// a stale settings form can't undo the kill switch.
+	cur := c.Settings()
+	s.AgentEnabled, s.AgentHosts = cur.AgentEnabled, cur.AgentHosts
+	err := c.saveSettingsLocked(s)
+	c.saveMu.Unlock()
+	if err != nil {
 		return c.Settings(), err
 	}
-	c.mu.Lock()
-	c.settings = s
-	c.mu.Unlock()
 	c.applyMonitoring()
 	return s, nil
 }
@@ -435,6 +456,11 @@ func (c *Core) SaveHost(in models.HostInput) (models.Host, error) {
 	return c.store.SaveHost(context.Background(), in)
 }
 
+// HostPassword returns a host's saved password ("" if none).
+func (c *Core) HostPassword(id string) (string, error) {
+	return c.store.HostPassword(context.Background(), id)
+}
+
 // DeleteHost removes a host and stops its forwards.
 func (c *Core) DeleteHost(id string) error {
 	ctx := context.Background()
@@ -445,6 +471,9 @@ func (c *Core) DeleteHost(id string) error {
 		}
 	}
 	c.forgetMonitoredHost(id)
+	if c.Settings().AgentHosts[id] != "" {
+		_, _ = c.SetAgentHostMode(id, "")
+	}
 	return c.store.DeleteHost(ctx, id)
 }
 
@@ -726,6 +755,7 @@ func (c *Core) ClearAppData() (models.Settings, error) {
 	c.mu.Lock()
 	c.settings = def
 	c.mu.Unlock()
+	c.agentStop()
 	c.applyMonitoring()
 	return def, nil
 }

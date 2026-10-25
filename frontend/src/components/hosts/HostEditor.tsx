@@ -1,4 +1,4 @@
-import { KeyRoundIcon, LockIcon, UsersIcon } from 'lucide-react'
+import { EyeIcon, EyeOffIcon, KeyRoundIcon, LockIcon, UsersIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -46,6 +46,8 @@ export function HostEditor() {
   const [host, setHost] = useState<Host>(blank)
   const [password, setPassword] = useState('')
   const [passwordTouched, setPasswordTouched] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [revealed, setRevealed] = useState(false)
   const [newGroup, setNewGroup] = useState('')
   const [groupChoice, setGroupChoice] = useState(NO_GROUP)
   const [busy, setBusy] = useState(false)
@@ -56,11 +58,29 @@ export function HostEditor() {
     setHost(h)
     setPassword('')
     setPasswordTouched(false)
+    setShowPassword(false)
+    setRevealed(false)
     setNewGroup('')
     setGroupChoice(h.groupId || NO_GROUP)
   }, [open, existing])
 
   const set = (patch: Partial<Host>) => setHost((h) => ({ ...h, ...patch }))
+
+  const savedHidden = !!existing?.hasPassword && !passwordTouched && !revealed
+
+  const toggleShowPassword = async () => {
+    // The saved password isn't sent to the editor until asked for; load it on first reveal.
+    if (!showPassword && savedHidden && existing) {
+      try {
+        setPassword(await api.revealHostPassword(existing.id))
+        setRevealed(true)
+      } catch (e) {
+        toast.error('Could not load the saved password', { description: errorMessage(e) })
+        return
+      }
+    }
+    setShowPassword((v) => !v)
+  }
 
   const save = async () => {
     setBusy(true)
@@ -146,23 +166,48 @@ export function HostEditor() {
             </div>
           </div>
           {host.authMethod === 'password' && (
-            <Field label="Password" className="col-span-6" hint={existing?.hasPassword && !passwordTouched ? 'A password is saved. Type to replace it, or leave blank to keep it.' : 'Leave blank to be asked when connecting.'}>
+            <Field
+              label="Password"
+              className="col-span-6"
+              hint={
+                savedHidden
+                  ? 'A password is saved. Type to replace it, or leave blank to keep it.'
+                  : existing?.hasPassword && !passwordTouched
+                    ? 'This is the saved password. Edit it to change it.'
+                    : 'Leave blank to be asked when connecting.'
+              }
+            >
               <div className="flex gap-2">
-                <Input
-                  type="password"
-                  placeholder={existing?.hasPassword && !passwordTouched ? '••••••••' : 'Password'}
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value)
-                    setPasswordTouched(true)
-                  }}
-                />
+                <div className="relative flex-1">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder={savedHidden ? '••••••••' : 'Password'}
+                    value={password}
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="pr-9"
+                    onChange={(e) => {
+                      setPassword(e.target.value)
+                      setPasswordTouched(true)
+                    }}
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={toggleShowPassword}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOffIcon className="size-3.5" /> : <EyeIcon className="size-3.5" />}
+                  </button>
+                </div>
                 {existing?.hasPassword && (
                   <Button
                     variant="outline"
                     onClick={() => {
                       setPassword('')
                       setPasswordTouched(true)
+                      setRevealed(false)
                     }}
                   >
                     Forget
