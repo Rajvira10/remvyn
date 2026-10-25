@@ -91,9 +91,11 @@ func (ac *agentConn) alive() bool {
 	}
 }
 
-// agentConn reuses or opens a connection. Host keys must already be trusted:
-// an agent can never make Remvyn trust a new key.
-func (c *Core) agentConn(ctx context.Context, h models.Host) (*agentConn, error) {
+// agentConn reuses or opens a connection. An unknown or changed host key is
+// shown to the user only when they approved this action themselves; on hosts
+// that run without approval it is refused, so an agent alone can never make
+// Remvyn trust a new key.
+func (c *Core) agentConn(ctx context.Context, h models.Host, userApproved bool) (*agentConn, error) {
 	a := c.agent
 	a.mu.Lock()
 	if ac := a.conns[h.ID]; ac != nil && ac.alive() {
@@ -102,7 +104,11 @@ func (c *Core) agentConn(ctx context.Context, h models.Host) (*agentConn, error)
 		return ac, nil
 	}
 	a.mu.Unlock()
-	client, _, err := c.dialWith(ctx, h.ID, models.ConnectOptions{}, c.quiet.Callback())
+	verify := c.quiet.Callback()
+	if userApproved {
+		verify = c.verifier.Callback()
+	}
+	client, _, err := c.dialWith(ctx, h.ID, models.ConnectOptions{}, verify)
 	if err != nil {
 		return nil, err
 	}

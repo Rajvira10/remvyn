@@ -159,6 +159,40 @@ func TestAgentNeverTrustsNewHostKeys(t *testing.T) {
 	}
 }
 
+// After the user approves an action themselves, an unknown host key is put to
+// them in the normal host-key dialog instead of being refused.
+func TestAgentApprovedActionAsksAboutNewHostKey(t *testing.T) {
+	f := setup(t)
+	f.openToAgents(models.AgentAsk)
+	run := func() chan mcp.Result {
+		ch := make(chan mcp.Result, 1)
+		go func() { ch <- agentCall(f, mcp.ToolRunCommand, map[string]any{"host": "test", "command": "id"}) }()
+		return ch
+	}
+	prompt := func() models.HostKeyPrompt {
+		select {
+		case p := <-f.ev.prompts:
+			return p
+		case <-time.After(5 * time.Second):
+			t.Fatal("no host-key prompt")
+		}
+		return models.HostKeyPrompt{}
+	}
+
+	res := run()
+	f.core.ResolveAgentApproval((<-f.ev.approvals).ID, models.AgentOnce)
+	f.core.ResolveHostKey(prompt().ID, false)
+	mustFail(t, <-res, "didn't confirm")
+
+	res = run()
+	f.core.ResolveAgentApproval((<-f.ev.approvals).ID, models.AgentOnce)
+	f.core.ResolveHostKey(prompt().ID, true)
+	mustOK(t, <-res, "exec: id")
+	if kh, _ := f.core.KnownHosts(); len(kh) != 1 {
+		t.Fatalf("known hosts = %+v", kh)
+	}
+}
+
 func TestAgentAskModeNeedsApproval(t *testing.T) {
 	f := setup(t)
 	f.trustHost()

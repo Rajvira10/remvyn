@@ -144,7 +144,7 @@ Tools: `list_hosts`, `run_command` (non-interactive, exit code, stdout and stder
 Safeguards:
 
 - The agent never receives a password, key or passphrase. Remvyn connects with the vault's credentials and returns only the output.
-- Agents can't make Remvyn trust a new host key. Connect to a server once yourself first.
+- An agent alone can never make Remvyn trust a new host key. When you approve an action on a server whose key isn't trusted yet, Remvyn shows you the usual fingerprint check; on "Always allow" servers an unknown key is refused.
 - Turning access off, locking Remvyn or auto-lock stops running commands, refuses pending requests and closes agent connections immediately.
 - Every action is recorded in the activity log, with its command and output encrypted like your passwords.
 - The socket lives in the data folder and only your user account can open it. Access settings are per device and are never synced.
@@ -262,7 +262,7 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 - Synced data is end-to-end encrypted with a key that only exists wrapped by your master password; GitHub stores ciphertext. Records are authenticated, so tampered or swapped files are rejected, but anyone with write access to the repository could delete synced items (and the deletion would sync); Git history keeps the old versions. The GitHub token and sync key are sealed with the local data key, so they're unusable while Remvyn is locked.
 - Host keys are always verified. New hosts need explicit confirmation, and a changed key is flagged and rejected by default.
 - Private keys never leave the Go backend; the UI only ever receives public metadata.
-- AI agents get no access unless you turn it on and open individual servers. They never receive credentials, can't trust new host keys, and in "Ask first" mode every action waits for your approval. Output from a server can contain text written to mislead an agent (prompt injection), so prefer "Ask first" for servers that matter.
+- AI agents get no access unless you turn it on and open individual servers. They never receive credentials, can't get a new host key trusted without you, and in "Ask first" mode every action waits for your approval. Output from a server can contain text written to mislead an agent (prompt injection), so prefer "Ask first" for servers that matter.
 - Forwarding rules bind to `127.0.0.1` by default, and the UI warns before you bind to other interfaces.
 
 ## Platform support

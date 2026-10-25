@@ -333,6 +333,7 @@ func (c *collector) sample(live bool, interval time.Duration) error {
 	if err != nil {
 		return err
 	}
+	r.taken = at
 	if r.hasSlow {
 		c.lastSlow = at
 		c.docker, c.services = r.docker, r.services

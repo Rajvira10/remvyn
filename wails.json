@@ -7,13 +7,13 @@
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
-    "name": "rajvirkolpolok",
-    "email": "rajvir@kolpolok.com"
+    "name": "rajvira10",
+    "email": "rajvirahmedshuvo10@gmail.com"
   },
   "info": {
     "companyName": "Remvyn",
     "productName": "Remvyn",
-    "productVersion": "1.0.0",
-    "comments": "Lightweight HTTP debugging proxy"
+    "productVersion": "2.1.0",
+    "comments": "SSH client with server monitoring and encrypted sync"
   }
 }

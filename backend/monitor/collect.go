@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"remvyn/backend/models"
 )
@@ -46,7 +47,10 @@ fi
 
 // raw is one parsed sample before rates are computed.
 type raw struct {
-	at        int64
+	at int64
+	// taken is the precise sampling time; rates use it when set, since
+	// two samples can land in the same millisecond.
+	taken     time.Time
 	os        string
 	kernel    string
 	hostname  string
@@ -417,6 +421,9 @@ func compute(hostID string, cur raw, prev *raw) models.Metrics {
 	secs := 0.0
 	if prev != nil {
 		secs = float64(cur.at-prev.at) / 1000
+		if !cur.taken.IsZero() && !prev.taken.IsZero() {
+			secs = cur.taken.Sub(prev.taken).Seconds()
+		}
 	}
 	for _, name := range cur.netOrder {
 		v := cur.net[name]

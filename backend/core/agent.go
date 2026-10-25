@@ -369,7 +369,7 @@ func (c *Core) AgentCall(ctx context.Context, call mcp.Call) mcp.Result {
 	entry.Approval = approval
 
 	start := time.Now()
-	ac, err := c.agentConn(ctx, h)
+	ac, err := c.agentConn(ctx, h, approval == models.AgentOnce || approval == models.AgentSession)
 	var out agentOutcome
 	if err != nil {
 		out = agentOutcome{text: agentDialError(h, err), isErr: true}
@@ -549,7 +549,7 @@ func agentDialError(h models.Host, err error) string {
 	case sshconn.CodePassphraseRequired:
 		return fmt.Sprintf("The SSH key for %s needs a passphrase that isn't saved in Remvyn. Ask the user to save it in Keychain.", h.Label)
 	case sshconn.CodeHostKeyRejected:
-		return fmt.Sprintf("Remvyn doesn't trust %s's host key yet, or the key has changed. Ask the user to connect to it once from Remvyn and check the key.", h.Label)
+		return fmt.Sprintf("Remvyn doesn't trust %s's host key yet, or the key has changed, and the user didn't confirm it. Ask the user to connect to it once from Remvyn and check the key.", h.Label)
 	case sshconn.CodeAuth:
 		return fmt.Sprintf("The server rejected the saved credentials for %s: %v", h.Label, err)
 	case CodeLocked:

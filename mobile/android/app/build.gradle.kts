@@ -22,8 +22,8 @@ android {
         applicationId = "io.github.rajvira10.remvyn"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "2.0.0"
+        versionCode = 2
+        versionName = "2.1.0"
         // Optional built-in GitHub App (same as the desktop's -ldflags).
         buildConfigField("String", "GITHUB_CLIENT_ID", "\"${System.getenv("REMVYN_GITHUB_CLIENT_ID") ?: ""}\"")
         buildConfigField("String", "GITHUB_APP_SLUG", "\"${System.getenv("REMVYN_GITHUB_APP_SLUG") ?: ""}\"")
