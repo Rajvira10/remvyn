@@ -14,6 +14,9 @@ Remvyn is a desktop SSH client in the spirit of Termius. It saves your servers, 
   - Dual-pane browser, local and remote, with breadcrumbs, a typed path bar and hidden-file toggle.
   - Multi-select, drag and drop between panes, mkdir, rename, and recursive delete with confirmation.
   - Recursive uploads and downloads with progress, cancellation and overwrite confirmation. Downloads use a temp file and rename, so a cancelled download never leaves a truncated file behind.
+  - Built-in editor: double-click a text file to edit it in a tab, with syntax highlighting, find and replace, and Ctrl/⌘+S. Saves warn if the file changed since you opened it.
+  - Open with an installed editor (VS Code, Cursor, Sublime, JetBrains IDEs, …); remote files are uploaded back on every save.
+  - Right-click menu: cut, copy, paste, duplicate, copy path, compress to .zip/.tar.gz, extract, new file, rename, permissions and delete.
 - **Keychain**:
   - Generate Ed25519, ECDSA or RSA keys, optionally passphrase-protected, or import OpenSSH/PEM keys from a paste or a file.
   - Copy the public key, install it on a host (like `ssh-copy-id`), or export the private key with `0600` permissions.

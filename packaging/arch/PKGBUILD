@@ -2,7 +2,7 @@
 # Binary package built from the GitHub release tarball.
 #   makepkg -si
 pkgname=remvyn-bin
-pkgver=2.2.0
+pkgver=2.3.0
 pkgrel=1
 pkgdesc="SSH client with server monitoring and end-to-end encrypted sync"
 arch=('x86_64')
@@ -14,7 +14,7 @@ provides=('remvyn')
 conflicts=('remvyn')
 options=('!strip' '!debug')
 source=("Remvyn-$pkgver-linux-x86_64.tar.gz::$url/releases/download/v$pkgver/Remvyn-$pkgver-linux-x86_64.tar.gz")
-sha256sums=('842166e0ecf249af2da0e4d60bf3e855f24b76b9c16c28f1eb3a9bfc04fd243f')
+sha256sums=('a24fb14e3881ffcec6a866f34b6908a73ea2eb0d11fc082bc601c621b3003d4a')
 
 package() {
   cd "Remvyn-$pkgver-linux-x86_64"
