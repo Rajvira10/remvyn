@@ -412,6 +412,38 @@ export namespace models {
 		    return a;
 		}
 	}
+	export class Editor {
+	    id: string;
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Editor(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	    }
+	}
+	export class FileContent {
+	    path: string;
+	    content: string;
+	    size: number;
+	    modTime: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FileContent(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.content = source["content"];
+	        this.size = source["size"];
+	        this.modTime = source["modTime"];
+	    }
+	}
 	
 	export class ForwardRule {
 	    id: string;

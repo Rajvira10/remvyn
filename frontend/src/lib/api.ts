@@ -4,8 +4,11 @@ import * as App from '../../wailsjs/go/main/App'
 import { ClipboardGetText, ClipboardSetText, EventsOn } from '../../wailsjs/runtime/runtime'
 import type {
   AppInfo,
+  ArchiveFormat,
   ConnectOptions,
   DirListing,
+  Editor,
+  FileContent,
   ForwardRule,
   ForwardStatus,
   Group,
@@ -87,6 +90,31 @@ export const api = {
   transfers: (): Promise<Transfer[]> => call.ListTransfers(),
   cancelTransfer: (id: string): Promise<boolean> => call.CancelTransfer(id),
   clearTransfers: (): Promise<void> => call.ClearTransfers(),
+
+  readRemoteText: (id: string, path: string): Promise<FileContent> => call.ReadRemoteText(id, path),
+  writeRemoteText: (id: string, path: string, content: string, expectModTime: number): Promise<FileContent> =>
+    call.WriteRemoteText(id, path, content, expectModTime),
+  readLocalText: (path: string): Promise<FileContent> => call.ReadLocalText(path),
+  writeLocalText: (path: string, content: string, expectModTime: number): Promise<FileContent> =>
+    call.WriteLocalText(path, content, expectModTime),
+  createRemoteFile: (id: string, dir: string, name: string): Promise<string> => call.CreateRemoteFile(id, dir, name),
+  createLocalFile: (dir: string, name: string): Promise<string> => call.CreateLocalFile(dir, name),
+  copyRemote: (id: string, paths: string[], dir: string): Promise<void> => call.CopyRemote(id, paths, dir),
+  moveRemote: (id: string, paths: string[], dir: string): Promise<void> => call.MoveRemote(id, paths, dir),
+  copyLocal: (paths: string[], dir: string): Promise<void> => call.CopyLocal(paths, dir),
+  moveLocal: (paths: string[], dir: string): Promise<void> => call.MoveLocal(paths, dir),
+  compressRemote: (id: string, dir: string, names: string[], archiveName: string, format: ArchiveFormat): Promise<string> =>
+    call.CompressRemote(id, dir, names, archiveName, format),
+  compressLocal: (dir: string, names: string[], archiveName: string, format: ArchiveFormat): Promise<string> =>
+    call.CompressLocal(dir, names, archiveName, format),
+  extractRemote: (id: string, archive: string, intoFolder: boolean): Promise<string> => call.ExtractRemote(id, archive, intoFolder),
+  extractLocal: (archive: string, intoFolder: boolean): Promise<string> => call.ExtractLocal(archive, intoFolder),
+  chmodRemote: (id: string, path: string, mode: number): Promise<void> => call.ChmodRemote(id, path, mode),
+  editors: (): Promise<Editor[]> => call.ListEditors(),
+  openLocalWith: (editorId: string, path: string): Promise<void> => call.OpenLocalWith(editorId, path),
+  revealLocal: (path: string): Promise<void> => call.RevealLocal(path),
+  openRemoteWith: (id: string, path: string, editorId: string): Promise<void> => call.OpenRemoteWith(id, path, editorId),
+  forceEditUpload: (id: string, path: string): Promise<void> => call.ForceEditUpload(id, path),
 
   keys: (): Promise<Key[]> => call.ListKeys(),
   generateKey: (k: KeyGenerateInput): Promise<Key> => call.GenerateKey(k),
@@ -176,6 +204,7 @@ export const events = {
   FORWARD_STATUS: 'forward:status',
   TRANSFER: 'transfer:update',
   SFTP_CLOSED: 'sftp:closed',
+  EDIT_SYNC: 'edit:sync',
   MONITOR_SAMPLE: 'monitor:sample',
   MONITOR_STATUS: 'monitor:status',
   ALERT: 'alert:event',

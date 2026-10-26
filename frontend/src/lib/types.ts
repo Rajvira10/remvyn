@@ -148,6 +148,31 @@ export interface DirListing {
   entries: FileEntry[]
 }
 
+/** A text file opened in the built-in editor. modTime is the version that was read. */
+export interface FileContent {
+  path: string
+  content: string
+  size: number
+  modTime: number
+}
+
+/** An editor installed on this computer. */
+export interface Editor {
+  id: string
+  name: string
+}
+
+export type ArchiveFormat = 'zip' | 'tar.gz'
+
+/** Result of uploading a file edited in an external editor. */
+export interface EditSync {
+  sessionId: string
+  path: string
+  name: string
+  conflict: boolean
+  error: string
+}
+
 export type TransferState = 'queued' | 'running' | 'done' | 'failed' | 'cancelled'
 
 export interface Transfer {
