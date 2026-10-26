@@ -21,7 +21,7 @@ import (
 )
 
 // Version is the application version.
-const Version = "2.1.1"
+const Version = "2.1.2"
 
 // The public GitHub App used for "Sign in with GitHub" sync. Override at
 // build time:
@@ -682,7 +682,7 @@ func (a *App) ContainerAction(hostID, container, action string) error {
 	return a.core.ContainerAction(hostID, container, action)
 }
 
-// MetricsHistory returns history for the last rangeMinutes (Pro).
+// MetricsHistory returns history for the last rangeMinutes.
 func (a *App) MetricsHistory(hostID string, rangeMinutes int) ([]models.MetricPoint, error) {
 	if err := a.ready(); err != nil {
 		return []models.MetricPoint{}, err
@@ -698,7 +698,7 @@ func (a *App) ListAlertRules() ([]models.AlertRule, error) {
 	return a.core.AlertRules()
 }
 
-// SaveAlertRule creates or updates an alert rule (Pro).
+// SaveAlertRule creates or updates an alert rule.
 func (a *App) SaveAlertRule(r models.AlertRule) (models.AlertRule, error) {
 	if err := a.ready(); err != nil {
 		return r, err
@@ -730,7 +730,7 @@ func (a *App) ListUptime() ([]models.UptimeSummary, error) {
 	return a.core.UptimeSummaries()
 }
 
-// SaveUptimeCheck creates or updates an uptime check (Pro).
+// SaveUptimeCheck creates or updates an uptime check.
 func (a *App) SaveUptimeCheck(c models.UptimeCheck) (models.UptimeCheck, error) {
 	if err := a.ready(); err != nil {
 		return c, err

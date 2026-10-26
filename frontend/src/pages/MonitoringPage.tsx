@@ -22,7 +22,6 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { HostAvatar } from '@/components/hosts/HostAvatar'
 import { HistoryChart, Meter, formatRate, pct } from '@/components/monitor/charts'
 import { MonitorPanel, StatusLine } from '@/components/monitor/MonitorPanel'
-import { ProBadge, ProGate, useIsPro } from '@/components/monitor/ProGate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -68,14 +67,10 @@ export function MonitoringPage() {
           <Dashboard onOpen={setDetail} />
         </TabsContent>
         <TabsContent value="alerts" className="overflow-auto">
-          <ProGate feature="Custom alerts" description="Get a desktop notification when CPU, memory or disk stay high, a service fails, a container stops, a server goes offline or a site goes down.">
-            <AlertsTab />
-          </ProGate>
+          <AlertsTab />
         </TabsContent>
         <TabsContent value="uptime" className="overflow-auto">
-          <ProGate feature="Uptime monitoring" description="Check websites, APIs and ports on a schedule and track their availability and response times.">
-            <UptimeTab />
-          </ProGate>
+          <UptimeTab />
         </TabsContent>
       </Tabs>
     </div>
@@ -95,13 +90,12 @@ async function saveMonitored(ids: string[]) {
 }
 
 function Dashboard({ onOpen }: { onOpen: (id: string) => void }) {
-  const pro = useIsPro()
   const hosts = useVault((s) => s.hosts)
   const monitoredIds = useSettings((s) => s.settings?.monitorHostIds)
   const interval = useSettings((s) => s.settings?.monitorIntervalSec ?? 30)
   const [choosing, setChoosing] = useState(false)
   const monitored = useMemo(() => hosts.filter((h) => monitoredIds?.includes(h.id)), [hosts, monitoredIds])
-  const others = useMemo(() => hosts.filter((h) => !monitoredIds?.includes(h.id) || !pro), [hosts, monitoredIds, pro])
+  const others = useMemo(() => hosts.filter((h) => !monitoredIds?.includes(h.id)), [hosts, monitoredIds])
 
   // Load the current state for background-monitored hosts.
   useEffect(() => {
@@ -122,21 +116,12 @@ function Dashboard({ onOpen }: { onOpen: (id: string) => void }) {
       <section>
         <div className="mb-3 flex items-center gap-2">
           <h2 className="text-[11.5px] font-semibold tracking-wide text-muted-foreground uppercase">Monitored servers</h2>
-          <ProBadge />
-          {pro && (
-            <>
-              <span className="text-[11px] text-muted-foreground">checked every {interval}s while Remvyn is open</span>
-              <Button size="sm" variant="outline" className="ml-auto" onClick={() => setChoosing(true)}>
-                <PlusIcon /> Choose servers
-              </Button>
-            </>
-          )}
+          <span className="text-[11px] text-muted-foreground">checked every {interval}s while Remvyn is open</span>
+          <Button size="sm" variant="outline" className="ml-auto" onClick={() => setChoosing(true)}>
+            <PlusIcon /> Choose servers
+          </Button>
         </div>
-        {!pro ? (
-          <ProGate compact feature="Multi-server dashboard." description="Monitor several servers in the background, with history and alerts.">
-            {null}
-          </ProGate>
-        ) : monitored.length === 0 ? (
+        {monitored.length === 0 ? (
           <button
             onClick={() => setChoosing(true)}
             className="flex w-full flex-col items-center gap-1 rounded-xl border border-dashed py-8 text-[13px] text-muted-foreground hover:bg-accent/30"
@@ -155,8 +140,8 @@ function Dashboard({ onOpen }: { onOpen: (id: string) => void }) {
 
       <section>
         <div className="mb-2 flex items-center gap-2">
-          <h2 className="text-[11.5px] font-semibold tracking-wide text-muted-foreground uppercase">{pro ? 'Other hosts' : 'Hosts'}</h2>
-          <span className="text-[11px] text-muted-foreground">live metrics while you look · free</span>
+          <h2 className="text-[11.5px] font-semibold tracking-wide text-muted-foreground uppercase">Other hosts</h2>
+          <span className="text-[11px] text-muted-foreground">live metrics while you look</span>
         </div>
         <div className="divide-y overflow-hidden rounded-xl border">
           {others.map((h) => (
@@ -318,7 +303,6 @@ function HostDetail({ host, onBack }: { host: Host; onBack: () => void }) {
 }
 
 function HistorySection({ hostId }: { hostId: string }) {
-  const pro = useIsPro()
   const [range, setRange] = useState(60)
   const [points, setPoints] = useState<MetricPoint[]>([])
   const load = useCallback(async () => {
@@ -329,11 +313,10 @@ function HistorySection({ hostId }: { hostId: string }) {
     }
   }, [hostId, range])
   useEffect(() => {
-    if (!pro) return
     void load()
     const t = setInterval(() => void load(), 60_000)
     return () => clearInterval(t)
-  }, [load, pro])
+  }, [load])
 
   const times = points.map((p) => p.at)
   const bucket = points.length > 1 ? points[1].at - points[0].at : 60_000
@@ -343,64 +326,59 @@ function HistorySection({ hostId }: { hostId: string }) {
     <section>
       <div className="mb-3 flex items-center gap-2">
         <h2 className="text-[11.5px] font-semibold tracking-wide text-muted-foreground uppercase">History</h2>
-        <ProBadge />
-        {pro && (
-          <div className="ml-auto flex rounded-md border p-0.5">
-            {RANGES.map((r) => (
-              <button
-                key={r.minutes}
-                onClick={() => setRange(r.minutes)}
-                className={cn('rounded px-2.5 py-0.5 text-xs', range === r.minutes ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground')}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <ProGate compact feature="Historical metrics." description="See how CPU, memory, disk and traffic changed over hours, days and weeks.">
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-          <ChartCard title="CPU">
-            <HistoryChart
-              times={times}
-              max={100}
-              format={(v) => pct(v)}
-              gapMs={gap}
-              series={[
-                { label: 'Average', color: 'var(--primary)', values: points.map((p) => p.cpu) },
-                { label: 'Peak', color: 'var(--warning)', values: points.map((p) => p.cpuMax) },
-              ]}
-            />
-          </ChartCard>
-          <ChartCard title="Memory">
-            <HistoryChart
-              times={times}
-              max={100}
-              format={(v) => pct(v)}
-              gapMs={gap}
-              series={[
-                { label: 'Memory', color: 'var(--success)', values: points.map((p) => p.mem) },
-                { label: 'Swap', color: 'var(--warning)', values: points.map((p) => p.swap) },
-              ]}
-            />
-          </ChartCard>
-          <ChartCard title="Network">
-            <HistoryChart
-              times={times}
-              format={formatRate}
-              gapMs={gap}
-              series={[
-                { label: 'Received', color: 'var(--info)', values: points.map((p) => p.rx) },
-                { label: 'Sent', color: '#a78bfa', values: points.map((p) => p.tx) },
-              ]}
-            />
-          </ChartCard>
-          <ChartCard title="Disk (fullest)">
-            <HistoryChart times={times} max={100} format={(v) => pct(v)} gapMs={gap} series={[{ label: 'Used', color: 'var(--danger)', values: points.map((p) => p.disk) }]} />
-          </ChartCard>
+        <div className="ml-auto flex rounded-md border p-0.5">
+          {RANGES.map((r) => (
+            <button
+              key={r.minutes}
+              onClick={() => setRange(r.minutes)}
+              className={cn('rounded px-2.5 py-0.5 text-xs', range === r.minutes ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground')}
+            >
+              {r.label}
+            </button>
+          ))}
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">History is recorded while Remvyn is open and this server is monitored or being viewed. Gaps mean Remvyn was closed.</p>
-      </ProGate>
+      </div>
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+        <ChartCard title="CPU">
+          <HistoryChart
+            times={times}
+            max={100}
+            format={(v) => pct(v)}
+            gapMs={gap}
+            series={[
+              { label: 'Average', color: 'var(--primary)', values: points.map((p) => p.cpu) },
+              { label: 'Peak', color: 'var(--warning)', values: points.map((p) => p.cpuMax) },
+            ]}
+          />
+        </ChartCard>
+        <ChartCard title="Memory">
+          <HistoryChart
+            times={times}
+            max={100}
+            format={(v) => pct(v)}
+            gapMs={gap}
+            series={[
+              { label: 'Memory', color: 'var(--success)', values: points.map((p) => p.mem) },
+              { label: 'Swap', color: 'var(--warning)', values: points.map((p) => p.swap) },
+            ]}
+          />
+        </ChartCard>
+        <ChartCard title="Network">
+          <HistoryChart
+            times={times}
+            format={formatRate}
+            gapMs={gap}
+            series={[
+              { label: 'Received', color: 'var(--info)', values: points.map((p) => p.rx) },
+              { label: 'Sent', color: '#a78bfa', values: points.map((p) => p.tx) },
+            ]}
+          />
+        </ChartCard>
+        <ChartCard title="Disk (fullest)">
+          <HistoryChart times={times} max={100} format={(v) => pct(v)} gapMs={gap} series={[{ label: 'Used', color: 'var(--danger)', values: points.map((p) => p.disk) }]} />
+        </ChartCard>
+      </div>
+      <p className="mt-2 text-[11px] text-muted-foreground">History is recorded while Remvyn is open and this server is monitored or being viewed. Gaps mean Remvyn was closed.</p>
     </section>
   )
 }

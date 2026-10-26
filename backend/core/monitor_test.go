@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"remvyn/backend/models"
-	"remvyn/backend/sshconn"
 )
 
 func monitorFixture(t *testing.T) (*fixture, *[]string, *sync.Mutex) {
@@ -106,17 +105,6 @@ func TestLiveMonitoringBesideTerminal(t *testing.T) {
 		t.Fatal("accepted unknown action")
 	}
 
-	// Free tier: no history, alerts or uptime checks.
-	if _, err := f.core.MetricsHistory(f.host.ID, 60); sshconn.CodeOf(err) != CodeProRequired {
-		t.Fatalf("history without Pro: %v", err)
-	}
-	if _, err := f.core.SaveAlertRule(models.AlertRule{Metric: models.AlertCPU, Threshold: 90, Enabled: true}); sshconn.CodeOf(err) != CodeProRequired {
-		t.Fatalf("alerts without Pro: %v", err)
-	}
-	if _, err := f.core.SaveUptimeCheck(models.UptimeCheck{Kind: models.CheckTCP, Target: "127.0.0.1:1"}); sshconn.CodeOf(err) != CodeProRequired {
-		t.Fatalf("uptime without Pro: %v", err)
-	}
-
 	// Closing the viewer stops collection.
 	f.core.MonitorUnwatch(f.host.ID)
 	waitFor(t, "collector stops", func() bool { return f.monStatus(f.host.ID).State == "stopped" })
@@ -159,18 +147,16 @@ func TestMonitoringWithoutTerminal(t *testing.T) {
 	waitFor(t, "password error", func() bool { return strings.Contains(f.monStatus(h.ID).Error, "save this host's password") })
 }
 
-func TestProHistoryAlertsAndUptime(t *testing.T) {
+func TestHistoryAlertsAndUptime(t *testing.T) {
 	f, notes, mu := monitorFixture(t)
 	id := sessionID()
 	if _, err := f.core.OpenTerminal(id, f.host.ID, models.ConnectOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	f.core.CloseTerminal(id)
-	noteCount := func() int { mu.Lock(); defer mu.Unlock(); return len(*notes) }
 	lastNotes := func() string { mu.Lock(); defer mu.Unlock(); return strings.Join(*notes, "\n") }
 
 	st := f.core.Settings()
-	st.ProEnabled = true
 	st.MonitorHostIDs = []string{f.host.ID, "does-not-exist"}
 	st.MonitorIntervalSec = 5
 	saved, err := f.core.UpdateSettings(st)
@@ -257,18 +243,14 @@ func TestProHistoryAlertsAndUptime(t *testing.T) {
 		t.Fatal("invalid TCP target accepted")
 	}
 
-	// Turning Pro off stops background work and closes open alerts.
+	// Removing the host from background monitoring stops collection.
 	f.core.MonitorUnwatch(f.host.ID)
-	before := noteCount()
 	st = f.core.Settings()
-	st.ProEnabled = false
+	st.MonitorHostIDs = nil
 	if _, err := f.core.UpdateSettings(st); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, "background stopped", func() bool { return f.monStatus(f.host.ID).State == "stopped" })
-	if noteCount() == before || !strings.Contains(lastNotes(), "turned off") {
-		t.Fatalf("alerts should resolve when Pro is off:\n%s", lastNotes())
-	}
 
 	// Deleting a host removes its history and rules.
 	if err := f.core.DeleteHost(f.host.ID); err != nil {

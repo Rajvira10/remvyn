@@ -20,7 +20,7 @@ Remvyn is a desktop SSH client in the spirit of Termius. It saves your servers, 
 - **Port forwarding**: local (`-L`), remote (`-R`) and dynamic SOCKS5 (`-D`) rules, with start/stop, auto-start at launch, live connection and byte counters, and automatic stop with an error if the SSH link drops.
 - **Snippets**: saved commands you can send to any open terminal.
 - **Known hosts**: trust on first use with an explicit fingerprint check. A changed host key shows a man-in-the-middle warning with both fingerprints, and rejecting it is the default action. You can review and forget trusted hosts.
-- **Monitoring**: live CPU, memory, disk, network, Docker containers, services and top processes beside the terminal (free), plus history, alerts, uptime checks and a multi-server dashboard with Remvyn Pro. See [Monitoring](#monitoring).
+- **Monitoring**: live CPU, memory, disk, network, Docker containers, services and top processes beside the terminal, plus history, alerts, uptime checks and a multi-server dashboard. See [Monitoring](#monitoring).
 - **Master password and app lock**: optional master password, auto-lock after inactivity, and ⌘L to lock. See [Master password and sync](#master-password-and-sync).
 - **AI agents**: let Claude Code (or any MCP client) run commands and edit files on servers you choose. Remvyn makes the connections with its own saved credentials, so the agent never sees a key or password; you can approve each action. See [AI agents](#ai-agents-claude-code).
 - **Sync**: keep your vault in sync between computers through a private GitHub repository, end-to-end encrypted. Sign in with GitHub; no server needed.
@@ -30,18 +30,16 @@ Remvyn is a desktop SSH client in the spirit of Termius. It saves your servers, 
 
 Remvyn monitors Linux servers without an agent. It runs a short, read-only shell script over SSH (`/proc`, `df`, `ps`, `docker` and `systemctl`) and computes CPU and network rates from successive samples. Nothing is installed on the server.
 
-**Free**
+**Live**
 - A metrics panel beside every terminal (toolbar **Metrics** or ⌘I). It reuses the terminal's SSH connection, so there's no second login.
 - CPU (with load average), memory and swap, every disk, network throughput, Docker containers (with start, stop and restart), systemd services (failed first) and the busiest processes.
 - Live view for any host from **Monitoring**, sampled every 2 seconds while you look. Docker and services refresh every 10 seconds.
 
-**Remvyn Pro**
+**Background**
 - **Multi-server dashboard**: choose servers to monitor in the background (every 30 seconds by default) while Remvyn is open.
 - **Historical metrics**: per-minute averages and CPU peaks, charted over 1 hour to 30 days, kept for 30 days by default (up to a year).
 - **Custom alerts**: CPU, memory, swap, disk, load, failed services, stopped containers, an unreachable server, or a failing uptime check. Each rule has a threshold and a duration, sends a desktop notification and an in-app alert, and notifies again when it resolves.
 - **Uptime monitoring**: HTTP(S) and TCP checks run from this computer, with response time, 24-hour, 7-day and 30-day availability and recent results.
-
-Pro is a local switch (Settings → Remvyn Pro, or any upgrade button) until payments are added. Pro features are enforced in the backend, not just hidden in the UI.
 
 Background monitoring connects without prompting: it uses an open terminal's connection if there is one, otherwise the host's saved password or key and an already-trusted host key. If something is missing, the dashboard says what to do.
 
@@ -220,7 +218,7 @@ cd frontend && npx tsc -b && npx oxlint src
   - Parsing real-world `/proc`, `df`, Docker and systemd output, including containers and counter resets.
   - Live monitoring that reuses the terminal connection; direct connections, and their errors when credentials or host keys are missing.
   - Container actions and command-injection guards.
-  - Pro gating; background monitoring, history, alerts firing and resolving with notifications, and uptime checks.
+  - Background monitoring, history, alerts firing and resolving with notifications, and uptime checks.
   - A blocked notifier never stalls alert evaluation.
 - Master password: set, lock, wrong/right unlock, restart locked, change, remove, and reset after a forgotten password.
 - Sync, against an in-process fake GitHub (device flow and Git Data API) with two and three devices:
@@ -281,6 +279,6 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 - No local (non-SSH) terminal tabs, split panes, or session logging/recording.
 - Sync needs a GitHub account and a private repository for the vault. Same-item conflicts keep the newer edit; there's no field-level merge. Hosts created separately on two devices with the same name are kept as two hosts. No Touch ID unlock yet.
 - No team sharing.
-- Monitoring only runs while Remvyn is open (no agent or tray mode yet), supports Linux servers only, and Pro has no payment or licensing yet.
+- Monitoring only runs while Remvyn is open (no agent or tray mode yet) and supports Linux servers only.
 - The "install public key" command assumes a POSIX shell on the server.
 - The app icon is still the Wails default.

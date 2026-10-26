@@ -183,7 +183,6 @@ export interface Settings {
   connectTimeout: number
   showHiddenFiles: boolean
   confirmOnClose: boolean
-  proEnabled: boolean
   monitorHostIds: string[]
   monitorIntervalSec: number
   metricsRetentionDays: number

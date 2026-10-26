@@ -242,11 +242,7 @@ type Settings struct {
 	ShowHiddenFiles  bool   `json:"showHiddenFiles"`
 	ConfirmOnClose   bool   `json:"confirmOnClose"`
 
-	// ProEnabled unlocks Remvyn Pro features (history, alerts, uptime checks,
-	// background monitoring and dashboards). It is a local switch until
-	// licensing is added.
-	ProEnabled bool `json:"proEnabled"`
-	// MonitorHostIDs are monitored in the background while Remvyn runs (Pro).
+	// MonitorHostIDs are monitored in the background while Remvyn runs.
 	MonitorHostIDs []string `json:"monitorHostIds"`
 	// MonitorIntervalSec is the background sampling interval.
 	MonitorIntervalSec int `json:"monitorIntervalSec"`

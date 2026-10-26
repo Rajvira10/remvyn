@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { LoadingBlock } from '@/components/common/Spinner'
-import { ProBadge } from '@/components/monitor/ProGate'
 import { SecuritySection } from '@/components/settings/SecuritySection'
 import { Field, Section } from '@/components/settings/Section'
 import { SyncSection } from '@/components/settings/SyncSection'
@@ -170,23 +169,7 @@ export function SettingsPage() {
             </Field>
           </Section>
 
-          <Section
-            title="Remvyn Pro"
-            description="Historical metrics, custom alerts, uptime monitoring and the multi-server dashboard."
-          >
-            <Field
-              label={
-                <span className="flex items-center gap-2">
-                  Enable Remvyn Pro <ProBadge />
-                </span>
-              }
-              hint="Payments aren’t connected yet. This switch unlocks Pro on this computer."
-            >
-              <Switch checked={form.proEnabled} onCheckedChange={(proEnabled) => void apply({ proEnabled })} />
-            </Field>
-          </Section>
-
-          <Section title="Monitoring" description="Live metrics are free. Background monitoring, history and alerts need Remvyn Pro and run while Remvyn is open.">
+          <Section title="Monitoring" description="Background monitoring, history and alerts run while Remvyn is open.">
             <Field label="Background check interval" hint="How often monitored servers are sampled when you aren’t looking at them.">
               <div className="flex items-center gap-2">
                 <NumField min={5} max={3600} className="w-20" value={form.monitorIntervalSec} onCommit={(monitorIntervalSec) => void apply({ monitorIntervalSec })} />

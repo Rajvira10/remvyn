@@ -14,8 +14,6 @@ import (
 	"remvyn/backend/uptime"
 )
 
-// CodeProRequired marks errors for Remvyn Pro features used without Pro.
-const CodeProRequired = "pro_required"
 
 func (c *Core) initMonitoring(liveInterval, slowEvery time.Duration) {
 	c.alerts = alerts.New(alerts.Options{
@@ -34,9 +32,7 @@ func (c *Core) initMonitoring(liveInterval, slowEvery time.Duration) {
 		Emit:         c.emit,
 		Client:       c.monitorClient,
 		OnSample: func(m models.Metrics) {
-			if c.pro() {
-				_ = c.store.RecordMetrics(context.Background(), m)
-			}
+			_ = c.store.RecordMetrics(context.Background(), m)
 			c.alerts.OnSample(m)
 		},
 		OnError: func(hostID string, err error) { c.alerts.OnHostError(hostID, err) },
@@ -50,32 +46,17 @@ func (c *Core) initMonitoring(liveInterval, slowEvery time.Duration) {
 	_ = c.store.ResolveOpenAlerts(context.Background(), time.Now().UnixMilli())
 }
 
-// StartMonitoring starts background monitoring, alerts and uptime checks
-// (Pro). Call once the UI is up.
+// StartMonitoring starts background monitoring, alerts and uptime checks.
+// Call once the UI is up.
 func (c *Core) StartMonitoring() {
 	c.applyMonitoring()
 	go c.pruneLoop()
 }
 
-func (c *Core) pro() bool { return c.Settings().ProEnabled }
-
-func (c *Core) requirePro(feature string) error {
-	if c.pro() {
-		return nil
-	}
-	return sshconn.Coded(CodeProRequired, feature+" is a Remvyn Pro feature", nil)
-}
-
-// applyMonitoring makes the running Pro services match settings.
+// applyMonitoring makes the running background services match settings.
 func (c *Core) applyMonitoring() {
 	st := c.Settings()
 	ctx := context.Background()
-	if !st.ProEnabled {
-		c.monitor.SetBackground(nil, 0)
-		c.alerts.SetEnabled(false)
-		c.uptime.Sync(nil)
-		return
-	}
 	// Background monitoring dials with saved credentials, which are
 	// unavailable while Remvyn is locked.
 	if c.store.Locked() {
@@ -197,11 +178,8 @@ func (c *Core) ContainerAction(hostID, container, action string) error {
 	return c.monitor.ContainerAction(ctx, hostID, container, action)
 }
 
-// MetricsHistory returns aggregated history for the last rangeMinutes (Pro).
+// MetricsHistory returns aggregated history for the last rangeMinutes.
 func (c *Core) MetricsHistory(hostID string, rangeMinutes int) ([]models.MetricPoint, error) {
-	if err := c.requirePro("Historical metrics"); err != nil {
-		return []models.MetricPoint{}, err
-	}
 	if rangeMinutes <= 0 || rangeMinutes > 366*24*60 {
 		rangeMinutes = 60
 	}
@@ -215,11 +193,8 @@ func (c *Core) AlertRules() ([]models.AlertRule, error) {
 	return c.store.AlertRules(context.Background())
 }
 
-// SaveAlertRule creates or updates a rule (Pro).
+// SaveAlertRule creates or updates a rule.
 func (c *Core) SaveAlertRule(r models.AlertRule) (models.AlertRule, error) {
-	if err := c.requirePro("Custom alerts"); err != nil {
-		return r, err
-	}
 	if r.Metric == models.AlertUptime && r.CheckID != "" {
 		checks, _ := c.store.UptimeChecks(context.Background())
 		if !slices.ContainsFunc(checks, func(k models.UptimeCheck) bool { return k.ID == r.CheckID }) {
@@ -275,11 +250,8 @@ func (c *Core) UptimeSummaries() ([]models.UptimeSummary, error) {
 	return out, nil
 }
 
-// SaveUptimeCheck creates or updates a check (Pro).
+// SaveUptimeCheck creates or updates a check.
 func (c *Core) SaveUptimeCheck(chk models.UptimeCheck) (models.UptimeCheck, error) {
-	if err := c.requirePro("Uptime monitoring"); err != nil {
-		return chk, err
-	}
 	out, err := c.store.SaveUptimeCheck(context.Background(), chk)
 	if err == nil {
 		c.applyMonitoring()

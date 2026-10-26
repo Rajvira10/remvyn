@@ -22,8 +22,8 @@ android {
         applicationId = "io.github.rajvira10.remvyn"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "2.1.1"
+        versionCode = 4
+        versionName = "2.1.2"
         // Built-in GitHub App, same as the desktop; override with the env vars.
         buildConfigField("String", "GITHUB_CLIENT_ID", "\"${System.getenv("REMVYN_GITHUB_CLIENT_ID") ?: "Iv23liVRmducYJnHWSnT"}\"")
         buildConfigField("String", "GITHUB_APP_SLUG", "\"${System.getenv("REMVYN_GITHUB_APP_SLUG") ?: "remvyn-sync-rajvira10"}\"")
