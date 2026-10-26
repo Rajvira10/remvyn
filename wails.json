@@ -14,6 +14,7 @@
     "companyName": "Remvyn",
     "productName": "Remvyn",
     "productVersion": "2.1.1",
+    "copyright": "Copyright © 2026 rajvira10",
     "comments": "SSH client with server monitoring and encrypted sync"
   }
 }

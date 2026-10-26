@@ -26,7 +26,10 @@ import { useVault } from '@/stores/vault'
 
 /** Quotes a path for a POSIX shell when it needs it. */
 function shellQuote(s: string) {
-  return /^[\w@%+=:,./-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`
+  if (/^[\w@%+=:,./-]+$/.test(s)) return s
+  // Windows paths: double quotes work in cmd, PowerShell and Git Bash.
+  if (/^[A-Za-z]:\\/.test(s)) return `"${s}"`
+  return `'${s.replace(/'/g, `'\\''`)}'`
 }
 
 const toolLabel: Record<string, string> = {

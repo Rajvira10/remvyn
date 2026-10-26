@@ -56,6 +56,7 @@ Download from [Releases](https://github.com/Rajvira10/remvyn/releases):
 
 - **macOS**: `Remvyn-<version>-macOS-universal.dmg` (Apple Silicon and Intel). Drag Remvyn to Applications. The app isn't notarized yet, so the first time, right-click it and choose **Open** (or run `xattr -dr com.apple.quarantine /Applications/Remvyn.app`).
 - **Linux** (x86_64; Arch/Omarchy, Ubuntu 22.04+, Debian 12+, Fedora): `Remvyn-<version>-linux-x86_64.tar.gz`. Install GTK 3 and WebKitGTK 4.1 (Arch/Omarchy: `sudo pacman -S --needed gtk3 webkit2gtk-4.1`), unpack, and run `./install.sh` (per-user, no root). On Arch you can instead build a package with [`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD) and `makepkg -si`.
+- **Windows** (10/11, x64): `Remvyn-<version>-windows-x64-setup.exe` installs Remvyn with a Start menu entry and installs the WebView2 runtime if it's missing. `Remvyn-<version>-windows-x64.zip` is the same app without an installer. Neither is code-signed yet, so SmartScreen may warn; choose **More info → Run anyway**.
 - **Android**: `Remvyn-<version>-android.apk` (Android 8+). Open it on your phone and allow installing from your browser or file manager.
 
 ## Android app
@@ -162,6 +163,7 @@ wails dev                     # hot-reload development
 wails build                   # → build/bin/Remvyn.app (macOS)
 wails build -platform darwin/universal   # Intel + Apple Silicon
 packaging/linux/build.sh      # Linux x86_64 tarball, built in Docker (Ubuntu 22.04 base)
+wails build -platform windows/amd64 -nsis -webview2 download   # Windows exe + installer (needs makensis)
 open build/bin/Remvyn.app
 ```
 
@@ -271,7 +273,7 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 | --- | --- |
 | macOS (Apple Silicon) | Built and tested: macOS 26, Go 1.26, Wails 2.17. |
 | Linux, including Arch/Omarchy | x86_64 release build (WebKitGTK 4.1, built on Ubuntu 22.04 so it runs on newer distros). Launch-tested in an Arch container; not yet tried on real hardware. |
-| Windows | Not yet tested. Needs the WebView2 runtime. SSH agent auth is not implemented on Windows. |
+| Windows | x64 release build (cross-compiled from macOS with an NSIS installer). Not yet tested on real hardware. SSH agent auth is not implemented on Windows. Closing the window quits Remvyn, which stops AI agent access. |
 
 ## Known limitations
 
