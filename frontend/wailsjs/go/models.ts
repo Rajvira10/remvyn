@@ -945,7 +945,6 @@ export namespace models {
 	    connectTimeout: number;
 	    showHiddenFiles: boolean;
 	    confirmOnClose: boolean;
-	    proEnabled: boolean;
 	    monitorHostIds: string[];
 	    monitorIntervalSec: number;
 	    metricsRetentionDays: number;
@@ -972,7 +971,6 @@ export namespace models {
 	        this.connectTimeout = source["connectTimeout"];
 	        this.showHiddenFiles = source["showHiddenFiles"];
 	        this.confirmOnClose = source["confirmOnClose"];
-	        this.proEnabled = source["proEnabled"];
 	        this.monitorHostIds = source["monitorHostIds"];
 	        this.monitorIntervalSec = source["monitorIntervalSec"];
 	        this.metricsRetentionDays = source["metricsRetentionDays"];
