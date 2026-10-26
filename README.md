@@ -78,7 +78,7 @@ REMVYN_SIGNING=/path/to/signing.properties ./gradlew assembleRelease
 ./gradlew testDebugUnitTest                               # opens a vault and keys made by the Go code
 ```
 
-`signing.properties` holds `storeFile`, `storePassword`, `keyAlias` and `keyPassword`; keep it and the keystore out of the repo. `REMVYN_GITHUB_CLIENT_ID` / `REMVYN_GITHUB_APP_SLUG` build a GitHub App in, like the desktop.
+`signing.properties` holds `storeFile`, `storePassword`, `keyAlias` and `keyPassword`; keep it and the keystore out of the repo. `REMVYN_GITHUB_CLIENT_ID` / `REMVYN_GITHUB_APP_SLUG` build in a different GitHub App, like the desktop.
 
 ## Master password and sync
 
@@ -102,13 +102,13 @@ How it works:
 - Changing the master password re-wraps the key in the repository; other devices keep syncing and use the new password next time they join.
 - "Clear all data" and "Reset" disconnect sync first, so a wipe never propagates.
 
-**The GitHub App.** Sign-in needs a GitHub App with *Device Flow* enabled, *Expire user authorization tokens* turned off, and only *Repository → Contents: read and write*. Build it in:
+**The GitHub App.** Builds use the public [remvyn-sync-rajvira10](https://github.com/apps/remvyn-sync-rajvira10) app, so anyone can sign in with their own GitHub account and pick their own private repository. It uses GitHub's device flow, doesn't expire tokens, and asks only for *Repository → Contents: read and write* on the repositories you choose. To use a different app, build it in:
 
 ```bash
 wails build -ldflags "-X main.githubClientID=Iv23li... -X main.githubAppSlug=your-app-name"
 ```
 
-or set `REMVYN_GITHUB_CLIENT_ID` and `REMVYN_GITHUB_APP_SLUG`. Without one, Settings → Sync walks users through registering their own app. `REMVYN_GITHUB_WEB` / `REMVYN_GITHUB_API` point Remvyn at GitHub Enterprise.
+or set `REMVYN_GITHUB_CLIENT_ID` and `REMVYN_GITHUB_APP_SLUG`. Users can also enter their own app in Settings → Sync. `REMVYN_GITHUB_WEB` / `REMVYN_GITHUB_API` point Remvyn at GitHub Enterprise.
 
 To try sync locally without GitHub:
 
@@ -277,7 +277,7 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 
 - No jump hosts / ProxyJump, agent forwarding, X11 forwarding or Mosh yet. Hosts imported with `ProxyJump` are flagged during import.
 - No local (non-SSH) terminal tabs, split panes, or session logging/recording.
-- Sync needs a GitHub account and a GitHub App (built in, or registered by the user). Same-item conflicts keep the newer edit; there's no field-level merge. Hosts created separately on two devices with the same name are kept as two hosts. No Touch ID unlock yet.
+- Sync needs a GitHub account and a private repository for the vault. Same-item conflicts keep the newer edit; there's no field-level merge. Hosts created separately on two devices with the same name are kept as two hosts. No Touch ID unlock yet.
 - No team sharing.
 - Monitoring only runs while Remvyn is open (no agent or tray mode yet), supports Linux servers only, and Pro has no payment or licensing yet.
 - The "install public key" command assumes a POSIX shell on the server.

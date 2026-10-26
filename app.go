@@ -21,17 +21,18 @@ import (
 )
 
 // Version is the application version.
-const Version = "2.1.0"
+const Version = "2.1.1"
 
-// The GitHub App used for "Sign in with GitHub" sync. Set at build time:
+// The public GitHub App used for "Sign in with GitHub" sync. Override at
+// build time:
 //
-//	wails build -ldflags "-X main.githubClientID=Iv23... -X main.githubAppSlug=remvyn-sync"
+//	wails build -ldflags "-X main.githubClientID=Iv23... -X main.githubAppSlug=my-app"
 //
-// or with REMVYN_GITHUB_CLIENT_ID / REMVYN_GITHUB_APP_SLUG. Without one, users
-// can enter their own app in Settings → Sync.
+// or at run time with REMVYN_GITHUB_CLIENT_ID / REMVYN_GITHUB_APP_SLUG. Users
+// can still enter their own app in Settings → Sync.
 var (
-	githubClientID string
-	githubAppSlug  string
+	githubClientID = "Iv23liVRmducYJnHWSnT"
+	githubAppSlug  = "remvyn-sync-rajvira10"
 )
 
 func envOr(key, fallback string) string {
@@ -897,6 +898,16 @@ func (a *App) SyncWake() {
 }
 
 func wruntimeMinimise(a *App) { wruntime.WindowMinimise(a.ctx) }
+
+// showWindow brings Remvyn to the front, including after it was hidden.
+func (a *App) showWindow() {
+	if a.ctx == nil {
+		return
+	}
+	wruntime.Show(a.ctx)
+	wruntime.WindowUnminimise(a.ctx)
+	wruntime.WindowShow(a.ctx)
+}
 
 // ---------------------------------------------------------------- AI agents
 

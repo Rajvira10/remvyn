@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Builds dist/Remvyn-<version>-linux-x86_64.tar.gz inside Docker.
-# Optional: REMVYN_GITHUB_CLIENT_ID / REMVYN_GITHUB_APP_SLUG to build in the sync app.
+# Optional: REMVYN_GITHUB_CLIENT_ID / REMVYN_GITHUB_APP_SLUG to build in a different sync app.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 VERSION=$(sed -n 's/^const Version = "\(.*\)"/\1/p' app.go)
 docker build --platform linux/amd64 -t remvyn-linux-build packaging/linux
 mkdir -p dist
-LDFLAGS="-X main.githubClientID=${REMVYN_GITHUB_CLIENT_ID:-} -X main.githubAppSlug=${REMVYN_GITHUB_APP_SLUG:-}"
+LDFLAGS=""
+[ -n "${REMVYN_GITHUB_CLIENT_ID:-}" ] && LDFLAGS+=" -X main.githubClientID=$REMVYN_GITHUB_CLIENT_ID"
+[ -n "${REMVYN_GITHUB_APP_SLUG:-}" ] && LDFLAGS+=" -X main.githubAppSlug=$REMVYN_GITHUB_APP_SLUG"
 docker run --rm --platform linux/amd64 \
   -v "$PWD":/repo:ro -v "$PWD/dist":/out -v remvyn-gomod:/root/go/pkg/mod -v remvyn-npm:/root/.npm \
   -e LDFLAGS="$LDFLAGS" -e VERSION="$VERSION" remvyn-linux-build bash -euo pipefail -c '

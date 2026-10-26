@@ -135,7 +135,14 @@ const MODES: { v: AgentMode | ''; label: string }[] = [
 ]
 
 function HostsSection({ hosts, modes, enabled }: { hosts: Host[]; modes: Record<string, AgentMode>; enabled: boolean }) {
-  const grants = useAgent((s) => s.status?.grants ?? [])
+  const allGrants = useAgent((s) => s.status?.grants)
+  // Re-render every 30 seconds so expired "allowed until" labels go away.
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(t)
+  }, [])
+  const grants = (allGrants ?? []).filter((g) => g.until > now)
   const setMode = async (hostId: string, mode: AgentMode | '') => {
     try {
       useSettings.getState().setLocal(await api.setAgentHostMode(hostId, mode))

@@ -59,7 +59,17 @@ func main() {
 		OnDomReady:       app.domReady,
 		OnShutdown:       app.shutdown,
 		ErrorFormatter:   formatError,
-		Bind:             []interface{}{app},
+		// On macOS the close button hides Remvyn so it keeps serving AI
+		// agents and forwards; clicking the Dock icon brings it back and ⌘Q
+		// quits. Elsewhere there is no Dock to come back from, so it quits.
+		HideWindowOnClose: runtime.GOOS == "darwin",
+		// Opening Remvyn again shows the running window rather than a second
+		// copy fighting over the database and the agent socket.
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId:               "io.github.rajvira10.remvyn",
+			OnSecondInstanceLaunch: func(options.SecondInstanceData) { app.showWindow() },
+		},
+		Bind: []interface{}{app},
 		Linux: &linux.Options{
 			Icon: icon,
 			// Matches StartupWMClass in remvyn.desktop so launchers and

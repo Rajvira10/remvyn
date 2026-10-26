@@ -13,7 +13,7 @@
   "info": {
     "companyName": "Remvyn",
     "productName": "Remvyn",
-    "productVersion": "2.1.0",
+    "productVersion": "2.1.1",
     "comments": "SSH client with server monitoring and encrypted sync"
   }
 }
