@@ -21,7 +21,7 @@ import (
 )
 
 // Version is the application version.
-const Version = "2.1.2"
+const Version = "2.2.0"
 
 // The public GitHub App used for "Sign in with GitHub" sync. Override at
 // build time:
@@ -50,6 +50,7 @@ type App struct {
 	initErr string
 
 	notifyReady atomic.Bool
+	clip        clipState
 }
 
 // AppInfo describes the running application.
@@ -782,6 +783,7 @@ func (a *App) Lock() error {
 	if err := a.ready(); err != nil {
 		return err
 	}
+	a.clearCopiedSecret()
 	return a.core.Lock()
 }
 

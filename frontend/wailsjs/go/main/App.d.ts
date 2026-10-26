@@ -21,6 +21,8 @@ export function CloseTerminal(arg1:string):Promise<void>;
 
 export function ContainerAction(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function CopyVaultItemValue(arg1:string,arg2:string):Promise<void>;
+
 export function DeleteAlertRule(arg1:string):Promise<void>;
 
 export function DeleteForward(arg1:string):Promise<void>;
@@ -34,6 +36,8 @@ export function DeleteKey(arg1:string):Promise<void>;
 export function DeleteSnippet(arg1:string):Promise<void>;
 
 export function DeleteUptimeCheck(arg1:string):Promise<void>;
+
+export function DeleteVaultItem(arg1:string):Promise<void>;
 
 export function Download(arg1:string,arg2:Array<string>,arg3:string):Promise<string>;
 
@@ -89,6 +93,8 @@ export function ListTransfers():Promise<Array<models.Transfer>>;
 
 export function ListUptime():Promise<Array<models.UptimeSummary>>;
 
+export function ListVaultItems():Promise<Array<models.VaultItem>>;
+
 export function Lock():Promise<void>;
 
 export function MetricsHistory(arg1:string,arg2:number):Promise<Array<models.MetricPoint>>;
@@ -139,6 +145,8 @@ export function RevealDataDir():Promise<void>;
 
 export function RevealHostPassword(arg1:string):Promise<string>;
 
+export function RevealVaultItem(arg1:string):Promise<models.VaultSecret>;
+
 export function RevokeAgentGrants():Promise<void>;
 
 export function SaveAlertRule(arg1:models.AlertRule):Promise<models.AlertRule>;
@@ -153,6 +161,8 @@ export function SaveSnippet(arg1:models.Snippet):Promise<models.Snippet>;
 
 export function SaveUptimeCheck(arg1:models.UptimeCheck):Promise<models.UptimeCheck>;
 
+export function SaveVaultItem(arg1:models.VaultItemInput):Promise<models.VaultItem>;
+
 export function SendTestNotification():Promise<void>;
 
 export function SetAgentEnabled(arg1:boolean):Promise<models.Settings>;
@@ -160,6 +170,8 @@ export function SetAgentEnabled(arg1:boolean):Promise<models.Settings>;
 export function SetAgentHostMode(arg1:string,arg2:string):Promise<models.Settings>;
 
 export function SetMasterPassword(arg1:string,arg2:string):Promise<models.LockStatus>;
+
+export function SetVaultItemFavorite(arg1:string,arg2:boolean):Promise<void>;
 
 export function StartForward(arg1:string):Promise<void>;
 
@@ -192,5 +204,7 @@ export function Unlock(arg1:string):Promise<void>;
 export function UpdateSettings(arg1:models.Settings):Promise<models.Settings>;
 
 export function Upload(arg1:string,arg2:Array<string>,arg3:string):Promise<string>;
+
+export function VaultItemTOTP(arg1:string):Promise<models.TOTPCode>;
 
 export function WriteTerminal(arg1:string,arg2:string):Promise<void>;

@@ -25,10 +25,12 @@ import { KeychainPage } from '@/pages/KeychainPage'
 import { KnownHostsPage } from '@/pages/KnownHostsPage'
 import { MonitoringPage } from '@/pages/MonitoringPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { PasswordsPage } from '@/pages/PasswordsPage'
 import { SnippetsPage } from '@/pages/SnippetsPage'
 import { useAgent } from '@/stores/agent'
 import { useLock } from '@/stores/lock'
 import { useMonitor } from '@/stores/monitor'
+import { usePasswords } from '@/stores/passwords'
 import { useSessions } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
 import { useTransfers } from '@/stores/transfers'
@@ -47,6 +49,7 @@ export default function App() {
       useLock.getState().load(),
       useSettings.getState().load(),
       useVault.getState().loadAll(),
+      usePasswords.getState().load(),
       useTransfers.getState().load(),
       useMonitor.getState().loadAlerts(),
       useAgent.getState().load(),
@@ -61,10 +64,17 @@ export default function App() {
         useMonitor.getState().applyAlert(e)
         if (!e.resolvedAt) toast.error(`${e.ruleName} · ${e.subject}`, { description: e.message })
       }),
-      onEvent<LockStatus>(events.LOCK, (s) => useLock.getState().setStatus(s)),
+      onEvent<LockStatus>(events.LOCK, (s) => {
+        useLock.getState().setStatus(s)
+        if (s.locked) usePasswords.getState().clear()
+        else void usePasswords.getState().load()
+      }),
       onEvent<SyncStatus>(events.SYNC_STATUS, (s) => useLock.getState().setSync(s)),
       // Another device changed the vault.
-      onEvent(events.VAULT_CHANGED, () => void useVault.getState().loadAll()),
+      onEvent(events.VAULT_CHANGED, () => {
+        void useVault.getState().loadAll()
+        void usePasswords.getState().load()
+      }),
       onEvent<AgentStatus>(events.AGENT_STATUS, (s) => useAgent.getState().setStatus(s)),
       onEvent<AgentApproval>(events.AGENT_APPROVAL, (a) => useAgent.getState().addApproval(a)),
       onEvent<string>(events.AGENT_APPROVAL_DONE, (id) => useAgent.getState().removeApproval(id)),
@@ -145,6 +155,7 @@ export default function App() {
                   <ErrorBoundary resetKey={page}>
                     {page === 'hosts' && <HostsPage />}
                     {page === 'monitoring' && <MonitoringPage />}
+                    {page === 'passwords' && <PasswordsPage />}
                     {page === 'keychain' && <KeychainPage />}
                     {page === 'forwarding' && <ForwardingPage />}
                     {page === 'snippets' && <SnippetsPage />}

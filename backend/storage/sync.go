@@ -31,10 +31,11 @@ const (
 	KindForward   = "forward"
 	KindSnippet   = "snippet"
 	KindKnownHost = "knownhost"
+	KindVaultItem = "vaultitem"
 )
 
 // SyncKinds lists record kinds in dependency order.
-var SyncKinds = []string{KindGroup, KindKey, KindHost, KindForward, KindSnippet, KindKnownHost}
+var SyncKinds = []string{KindGroup, KindKey, KindHost, KindForward, KindSnippet, KindKnownHost, KindVaultItem}
 
 // SyncRecord is one synced item with its secrets in plaintext. It only ever
 // leaves the process encrypted.
@@ -216,7 +217,12 @@ func (s *Store) SyncSnapshot(ctx context.Context) ([]SyncRecord, error) {
 			return nil, err
 		}
 	}
-	return out, nil
+
+	items, err := s.syncItems(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return append(out, items...), nil
 }
 
 // ApplySyncRecord writes a record received from another device, keeping its
@@ -310,6 +316,8 @@ func (s *Store) ApplySyncRecord(ctx context.Context, r SyncRecord) error {
 			}
 		}
 		return tx.Commit()
+	case KindVaultItem:
+		return s.applySyncItem(ctx, r.ID, r.Data)
 	}
 	return fmt.Errorf("unknown record kind %q", r.Kind)
 }
@@ -334,6 +342,8 @@ func (s *Store) DeleteSyncRecord(ctx context.Context, kind, id string) error {
 		q = `DELETE FROM snippets WHERE id = ?`
 	case KindKnownHost:
 		q = `DELETE FROM known_hosts WHERE host = ?`
+	case KindVaultItem:
+		q = `DELETE FROM vault_items WHERE id = ?`
 	default:
 		return fmt.Errorf("unknown record kind %q", kind)
 	}

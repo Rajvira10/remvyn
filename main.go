@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"log"
 	"os"
 
@@ -66,7 +68,7 @@ func main() {
 		// Opening Remvyn again shows the running window rather than a second
 		// copy fighting over the database and the agent socket.
 		SingleInstanceLock: &options.SingleInstanceLock{
-			UniqueId:               "io.github.rajvira10.remvyn",
+			UniqueId:               instanceID(),
 			OnSecondInstanceLaunch: func(options.SecondInstanceData) { app.showWindow() },
 		},
 		Bind: []interface{}{app},
@@ -88,4 +90,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+// instanceID is the single-instance key. A custom REMVYN_DATA_DIR is a
+// separate vault, so it gets its own instance.
+func instanceID() string {
+	id := "io.github.rajvira10.remvyn"
+	if dir := os.Getenv("REMVYN_DATA_DIR"); dir != "" {
+		sum := sha256.Sum256([]byte(dir))
+		id += "." + hex.EncodeToString(sum[:6])
+	}
+	return id
 }

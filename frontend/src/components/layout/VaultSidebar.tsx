@@ -1,9 +1,10 @@
-import { ActivityIcon, BotIcon, CableIcon, CodeIcon, KeyboardIcon, KeyRoundIcon, ServerIcon, SettingsIcon, ShieldCheckIcon } from 'lucide-react'
+import { ActivityIcon, BotIcon, CableIcon, CodeIcon, KeyboardIcon, KeyRoundIcon, LockKeyholeIcon, ServerIcon, SettingsIcon, ShieldCheckIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { cn } from '@/lib/utils'
 import { useUI, type VaultPage } from '@/stores/ui'
 import { useAgent } from '@/stores/agent'
 import { useMonitor } from '@/stores/monitor'
+import { usePasswords } from '@/stores/passwords'
 import { useVault } from '@/stores/vault'
 
 export function VaultSidebar() {
@@ -15,11 +16,13 @@ export function VaultSidebar() {
     forwarding: Object.values(s.statuses).filter((x) => x.state === 'running').length,
     knownhosts: s.knownHosts.length,
   })))
+  const passwords = usePasswords((s) => s.items.length)
   const openAlerts = useMonitor((s) => Object.keys(s.openAlerts).length)
   const agentRunning = useAgent((s) => s.status?.running ?? 0)
   const items: { id: VaultPage; label: string; icon: typeof ServerIcon; count?: number; live?: boolean }[] = [
     { id: 'hosts', label: 'Hosts', icon: ServerIcon, count: counts.hosts },
     { id: 'monitoring', label: 'Monitoring', icon: ActivityIcon },
+    { id: 'passwords', label: 'Passwords', icon: LockKeyholeIcon, count: passwords },
     { id: 'keychain', label: 'Keychain', icon: KeyRoundIcon, count: counts.keychain },
     { id: 'forwarding', label: 'Port forwarding', icon: CableIcon, count: counts.forwarding, live: true },
     { id: 'snippets', label: 'Snippets', icon: CodeIcon, count: counts.snippets },

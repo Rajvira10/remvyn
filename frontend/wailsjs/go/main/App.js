@@ -34,6 +34,10 @@ export function ContainerAction(arg1, arg2, arg3) {
   return window['go']['main']['App']['ContainerAction'](arg1, arg2, arg3);
 }
 
+export function CopyVaultItemValue(arg1, arg2) {
+  return window['go']['main']['App']['CopyVaultItemValue'](arg1, arg2);
+}
+
 export function DeleteAlertRule(arg1) {
   return window['go']['main']['App']['DeleteAlertRule'](arg1);
 }
@@ -60,6 +64,10 @@ export function DeleteSnippet(arg1) {
 
 export function DeleteUptimeCheck(arg1) {
   return window['go']['main']['App']['DeleteUptimeCheck'](arg1);
+}
+
+export function DeleteVaultItem(arg1) {
+  return window['go']['main']['App']['DeleteVaultItem'](arg1);
 }
 
 export function Download(arg1, arg2, arg3) {
@@ -170,6 +178,10 @@ export function ListUptime() {
   return window['go']['main']['App']['ListUptime']();
 }
 
+export function ListVaultItems() {
+  return window['go']['main']['App']['ListVaultItems']();
+}
+
 export function Lock() {
   return window['go']['main']['App']['Lock']();
 }
@@ -270,6 +282,10 @@ export function RevealHostPassword(arg1) {
   return window['go']['main']['App']['RevealHostPassword'](arg1);
 }
 
+export function RevealVaultItem(arg1) {
+  return window['go']['main']['App']['RevealVaultItem'](arg1);
+}
+
 export function RevokeAgentGrants() {
   return window['go']['main']['App']['RevokeAgentGrants']();
 }
@@ -298,6 +314,10 @@ export function SaveUptimeCheck(arg1) {
   return window['go']['main']['App']['SaveUptimeCheck'](arg1);
 }
 
+export function SaveVaultItem(arg1) {
+  return window['go']['main']['App']['SaveVaultItem'](arg1);
+}
+
 export function SendTestNotification() {
   return window['go']['main']['App']['SendTestNotification']();
 }
@@ -312,6 +332,10 @@ export function SetAgentHostMode(arg1, arg2) {
 
 export function SetMasterPassword(arg1, arg2) {
   return window['go']['main']['App']['SetMasterPassword'](arg1, arg2);
+}
+
+export function SetVaultItemFavorite(arg1, arg2) {
+  return window['go']['main']['App']['SetVaultItemFavorite'](arg1, arg2);
 }
 
 export function StartForward(arg1) {
@@ -376,6 +400,10 @@ export function UpdateSettings(arg1) {
 
 export function Upload(arg1, arg2, arg3) {
   return window['go']['main']['App']['Upload'](arg1, arg2, arg3);
+}
+
+export function VaultItemTOTP(arg1) {
+  return window['go']['main']['App']['VaultItemTOTP'](arg1);
 }
 
 export function WriteTerminal(arg1, arg2) {

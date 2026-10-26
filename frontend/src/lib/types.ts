@@ -488,3 +488,46 @@ export interface RepoInfo extends SyncRepo {
   hasVault: boolean
   empty: boolean
 }
+
+export type VaultItemKind = 'login' | 'token' | 'note'
+
+/** A password vault item without its secrets. */
+export interface VaultItem {
+  id: string
+  kind: VaultItemKind
+  name: string
+  username: string
+  url: string
+  favorite: boolean
+  hasPassword: boolean
+  hasTotp: boolean
+  hasNotes: boolean
+  fieldCount: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface VaultField {
+  name: string
+  value: string
+  hidden: boolean
+}
+
+export interface VaultSecret {
+  password: string
+  totp: string
+  notes: string
+  fields: VaultField[]
+}
+
+export interface VaultItemInput {
+  item: VaultItem
+  /** null keeps the saved secret. */
+  secret: VaultSecret | null
+}
+
+export interface TOTPCode {
+  code: string
+  expiresAt: number
+  period: number
+}

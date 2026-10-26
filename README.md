@@ -18,6 +18,7 @@ Remvyn is a desktop SSH client in the spirit of Termius. It saves your servers, 
   - Generate Ed25519, ECDSA or RSA keys, optionally passphrase-protected, or import OpenSSH/PEM keys from a paste or a file.
   - Copy the public key, install it on a host (like `ssh-copy-id`), or export the private key with `0600` permissions.
 - **Port forwarding**: local (`-L`), remote (`-R`) and dynamic SOCKS5 (`-D`) rules, with start/stop, auto-start at launch, live connection and byte counters, and automatic stop with an error if the SSH link drops.
+- **Passwords**: a password vault for email and website logins, API tokens and secure notes, with a password generator, two-factor (TOTP) codes and extra fields. Encrypted like everything else and synced with the vault. See [Passwords](#passwords).
 - **Snippets**: saved commands you can send to any open terminal.
 - **Known hosts**: trust on first use with an explicit fingerprint check. A changed host key shows a man-in-the-middle warning with both fingerprints, and rejecting it is the default action. You can review and forget trusted hosts.
 - **Monitoring**: live CPU, memory, disk, network, Docker containers, services and top processes beside the terminal, plus history, alerts, uptime checks and a multi-server dashboard. See [Monitoring](#monitoring).
@@ -78,6 +79,17 @@ REMVYN_SIGNING=/path/to/signing.properties ./gradlew assembleRelease
 ```
 
 `signing.properties` holds `storeFile`, `storePassword`, `keyAlias` and `keyPassword`; keep it and the keystore out of the repo. `REMVYN_GITHUB_CLIENT_ID` / `REMVYN_GITHUB_APP_SLUG` build in a different GitHub App, like the desktop.
+
+## Passwords
+
+**Passwords** in the sidebar keeps the logins and secrets that aren't SSH credentials: email accounts, websites, API tokens, recovery codes.
+
+- **Logins** have a username, password, website and an optional two-factor secret. Paste the setup key (or `otpauth://` link) a site offers under its QR code and Remvyn shows the current 6-digit code with a countdown.
+- **API tokens** and **secure notes** for everything else. Any item can carry extra named fields (a client ID, an app password), each shown or masked.
+- New logins get a generated password (20 characters by default, using the system's secure random generator). Change the length or the character sets in the generator.
+- Secrets stay hidden until you click **Reveal**, and hide again after 30 seconds. **Copy** buttons put the value on the clipboard straight from the backend, and Remvyn clears a copied secret after 30 seconds (unless you've copied something else since) and when it locks.
+- Every field of an item, including its name, is encrypted with the vault key (AES-256-GCM), stored as two sealed blobs: the details shown in lists and the secrets, which are decrypted only when you reveal, copy or edit them. Locking Remvyn makes them unreadable, and they sync to your other devices end-to-end encrypted. AI agents never see them.
+- Set a master password to get the full benefit: without one, the vault key is stored on this computer.
 
 ## Master password and sync
 
@@ -241,6 +253,7 @@ backend/
   sshconfig/           ~/.ssh/config parser
   storage/             SQLite (modernc.org/sqlite, pure Go)
   security/            AES-256-GCM vault for secrets; master-password key wrapping (Argon2id)
+  totp/                two-factor codes (RFC 6238) for password vault items
   vaultsync/           GitHub sync: device-flow sign-in, Git Data API remote, encrypted records, merge engine
   mcp/                 MCP server for AI agents: stdio protocol, `remvyn mcp` bridge, app socket
   testutil/            in-process SSH server and fake GitHub for tests
@@ -258,7 +271,7 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 
 ## Security
 
-- Passwords, private keys and key passphrases are encrypted with AES-256-GCM before they are written to SQLite. Without a master password, the key lives in a separate `0600` file in the data folder, which protects against leaking the database file but not against someone who can read your home directory. With a master password, the key exists on disk only wrapped by an Argon2id-derived key, and in memory only while unlocked. Host names and other non-secret fields are not encrypted.
+- Passwords, private keys, key passphrases and password vault items are encrypted with AES-256-GCM before they are written to SQLite. Without a master password, the key lives in a separate `0600` file in the data folder, which protects against leaking the database file but not against someone who can read your home directory. With a master password, the key exists on disk only wrapped by an Argon2id-derived key, and in memory only while unlocked. Host names and other non-secret fields of hosts, keys and snippets are not encrypted; password vault items are encrypted in full, names included.
 - Synced data is end-to-end encrypted with a key that only exists wrapped by your master password; GitHub stores ciphertext. Records are authenticated, so tampered or swapped files are rejected, but anyone with write access to the repository could delete synced items (and the deletion would sync); Git history keeps the old versions. The GitHub token and sync key are sealed with the local data key, so they're unusable while Remvyn is locked.
 - Host keys are always verified. New hosts need explicit confirmation, and a changed key is flagged and rejected by default.
 - Private keys never leave the Go backend; the UI only ever receives public metadata.

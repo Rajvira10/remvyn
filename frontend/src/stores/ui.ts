@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type VaultPage = 'hosts' | 'monitoring' | 'keychain' | 'forwarding' | 'snippets' | 'knownhosts' | 'agents' | 'settings'
+export type VaultPage = 'hosts' | 'monitoring' | 'passwords' | 'keychain' | 'forwarding' | 'snippets' | 'knownhosts' | 'agents' | 'settings'
 
 interface UIState {
   page: VaultPage

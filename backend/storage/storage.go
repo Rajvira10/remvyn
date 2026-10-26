@@ -1,6 +1,7 @@
 // Package storage persists Remvyn data in SQLite (pure Go driver, no CGO).
-// Passwords, private keys and passphrases are sealed with the vault before
-// they are written; they never appear in the database in plaintext.
+// Passwords, private keys, passphrases and password vault items are sealed
+// with the vault before they are written; they never appear in the database
+// in plaintext.
 package storage
 
 import (
@@ -142,7 +143,7 @@ func Open(path string, vault *security.Vault) (*Store, error) {
 	} else {
 		db.SetMaxOpenConns(4)
 	}
-	if _, err := db.Exec(schema + monitorSchema + syncSchema + agentSchema); err != nil {
+	if _, err := db.Exec(schema + monitorSchema + syncSchema + agentSchema + itemSchema); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("initialise schema: %w", err)
 	}
@@ -771,7 +772,7 @@ func (s *Store) SaveSettings(ctx context.Context, st models.Settings) error {
 func (s *Store) ClearAll(ctx context.Context) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM forwards; DELETE FROM hosts; DELETE FROM groups; DELETE FROM keys;
 		DELETE FROM snippets; DELETE FROM known_hosts; DELETE FROM settings; DELETE FROM metrics_minute; DELETE FROM alert_rules;
-		DELETE FROM alert_events; DELETE FROM uptime_checks; DELETE FROM uptime_results; DELETE FROM sync_state; DELETE FROM agent_log;`)
+		DELETE FROM alert_events; DELETE FROM uptime_checks; DELETE FROM uptime_results; DELETE FROM sync_state; DELETE FROM agent_log; DELETE FROM vault_items;`)
 	if err == nil {
 		_, _ = s.db.ExecContext(ctx, `PRAGMA wal_checkpoint(TRUNCATE); VACUUM;`)
 	}

@@ -368,3 +368,59 @@ type AgentStatus struct {
 	Running int          `json:"running"`
 	Grants  []AgentGrant `json:"grants"`
 }
+
+// Password vault item kinds.
+const (
+	ItemLogin = "login"
+	ItemToken = "token"
+	ItemNote  = "note"
+)
+
+// VaultItem is a saved login, token or note, without its secrets. Every
+// field, including the name, is stored encrypted.
+type VaultItem struct {
+	ID          string `json:"id"`
+	Kind        string `json:"kind"`
+	Name        string `json:"name"`
+	Username    string `json:"username"`
+	URL         string `json:"url"`
+	Favorite    bool   `json:"favorite"`
+	HasPassword bool   `json:"hasPassword"`
+	HasTOTP     bool   `json:"hasTotp"`
+	HasNotes    bool   `json:"hasNotes"`
+	FieldCount  int    `json:"fieldCount"`
+	CreatedAt   int64  `json:"createdAt"`
+	UpdatedAt   int64  `json:"updatedAt"`
+}
+
+// VaultField is an extra named value on an item, such as a client ID or a
+// recovery code. Hidden fields are masked in the UI.
+type VaultField struct {
+	Name   string `json:"name"`
+	Value  string `json:"value"`
+	Hidden bool   `json:"hidden"`
+}
+
+// VaultSecret holds an item's secret parts. It is only decrypted on request.
+type VaultSecret struct {
+	// Password is the password for a login, or the token itself.
+	Password string `json:"password"`
+	// TOTP is a two-factor secret: base32, or an otpauth:// URI.
+	TOTP   string       `json:"totp"`
+	Notes  string       `json:"notes"`
+	Fields []VaultField `json:"fields"`
+}
+
+// VaultItemInput creates or updates an item. A nil Secret keeps the saved one.
+type VaultItemInput struct {
+	Item   VaultItem    `json:"item"`
+	Secret *VaultSecret `json:"secret"`
+}
+
+// TOTPCode is a current two-factor code.
+type TOTPCode struct {
+	Code string `json:"code"`
+	// ExpiresAt is when the code stops being valid (Unix ms).
+	ExpiresAt int64 `json:"expiresAt"`
+	Period    int   `json:"period"`
+}

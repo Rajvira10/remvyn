@@ -14,7 +14,6 @@ import (
 	"remvyn/backend/uptime"
 )
 
-
 func (c *Core) initMonitoring(liveInterval, slowEvery time.Duration) {
 	c.alerts = alerts.New(alerts.Options{
 		Store: c.store,

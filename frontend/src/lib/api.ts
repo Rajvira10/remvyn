@@ -38,6 +38,10 @@ import type {
   AgentLogEntry,
   AgentMode,
   AgentStatus,
+  TOTPCode,
+  VaultItem,
+  VaultItemInput,
+  VaultSecret,
 } from './types'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -93,6 +97,15 @@ export const api = {
   exportPrivateKey: (id: string): Promise<string> => call.ExportPrivateKey(id),
   installPublicKey: (hostId: string, keyId: string, opts: ConnectOptions): Promise<void> =>
     call.InstallPublicKey(hostId, keyId, opts),
+
+  vaultItems: (): Promise<VaultItem[]> => call.ListVaultItems(),
+  saveVaultItem: (input: VaultItemInput): Promise<VaultItem> => call.SaveVaultItem(input),
+  setVaultItemFavorite: (id: string, favorite: boolean): Promise<void> => call.SetVaultItemFavorite(id, favorite),
+  deleteVaultItem: (id: string): Promise<void> => call.DeleteVaultItem(id),
+  revealVaultItem: (id: string): Promise<VaultSecret> => call.RevealVaultItem(id),
+  vaultItemTotp: (id: string): Promise<TOTPCode> => call.VaultItemTOTP(id),
+  /** Copies a value in the backend; secrets are cleared from the clipboard after 30 s. */
+  copyVaultItemValue: (id: string, field: string): Promise<void> => call.CopyVaultItemValue(id, field),
 
   snippets: (): Promise<Snippet[]> => call.ListSnippets(),
   saveSnippet: (s: Snippet): Promise<Snippet> => call.SaveSnippet(s),
