@@ -460,6 +460,127 @@ func (a *App) ClearTransfers() {
 	}
 }
 
+// ---------------------------------------------------------------- file actions
+
+// ReadRemoteText opens a remote text file in the built-in editor.
+func (a *App) ReadRemoteText(id, path string) (models.FileContent, error) {
+	if err := a.ready(); err != nil {
+		return models.FileContent{}, err
+	}
+	return a.core.Files().ReadText(id, path)
+}
+
+// WriteRemoteText saves a remote text file. expectModTime is the version
+// that was opened (0 to overwrite unconditionally).
+func (a *App) WriteRemoteText(id, path, content string, expectModTime int64) (models.FileContent, error) {
+	if err := a.ready(); err != nil {
+		return models.FileContent{}, err
+	}
+	return a.core.Files().WriteText(id, path, content, expectModTime)
+}
+
+// ReadLocalText opens a local text file in the built-in editor.
+func (a *App) ReadLocalText(path string) (models.FileContent, error) { return files.ReadTextLocal(path) }
+
+// WriteLocalText saves a local text file.
+func (a *App) WriteLocalText(path, content string, expectModTime int64) (models.FileContent, error) {
+	return files.WriteTextLocal(path, content, expectModTime)
+}
+
+// CreateRemoteFile makes an empty remote file and returns its path.
+func (a *App) CreateRemoteFile(id, dir, name string) (string, error) {
+	if err := a.ready(); err != nil {
+		return "", err
+	}
+	return a.core.Files().CreateFile(id, dir, name)
+}
+
+// CreateLocalFile makes an empty local file and returns its path.
+func (a *App) CreateLocalFile(dir, name string) (string, error) { return files.CreateFileLocal(dir, name) }
+
+// CopyRemote copies remote entries into a remote directory.
+func (a *App) CopyRemote(id string, paths []string, dir string) error {
+	if err := a.ready(); err != nil {
+		return err
+	}
+	return a.core.Files().Copy(id, paths, dir)
+}
+
+// MoveRemote moves remote entries into a remote directory.
+func (a *App) MoveRemote(id string, paths []string, dir string) error {
+	if err := a.ready(); err != nil {
+		return err
+	}
+	return a.core.Files().Move(id, paths, dir)
+}
+
+// CopyLocal copies local entries into a local directory.
+func (a *App) CopyLocal(paths []string, dir string) error { return files.CopyLocal(paths, dir) }
+
+// MoveLocal moves local entries into a local directory.
+func (a *App) MoveLocal(paths []string, dir string) error { return files.MoveLocal(paths, dir) }
+
+// CompressRemote archives entries of dir on the server ("zip" or "tar.gz").
+func (a *App) CompressRemote(id, dir string, names []string, archiveName, format string) (string, error) {
+	if err := a.ready(); err != nil {
+		return "", err
+	}
+	return a.core.Files().Compress(id, dir, names, archiveName, format)
+}
+
+// CompressLocal archives entries of a local directory ("zip" or "tar.gz").
+func (a *App) CompressLocal(dir string, names []string, archiveName, format string) (string, error) {
+	return files.CompressLocal(dir, names, archiveName, format)
+}
+
+// ExtractRemote unpacks a remote archive next to it, or into a new folder.
+func (a *App) ExtractRemote(id, archive string, intoFolder bool) (string, error) {
+	if err := a.ready(); err != nil {
+		return "", err
+	}
+	return a.core.Files().Extract(id, archive, intoFolder)
+}
+
+// ExtractLocal unpacks a local archive next to it, or into a new folder.
+func (a *App) ExtractLocal(archive string, intoFolder bool) (string, error) {
+	return files.ExtractLocal(archive, intoFolder)
+}
+
+// ChmodRemote sets the permission bits of a remote entry.
+func (a *App) ChmodRemote(id, path string, mode uint32) error {
+	if err := a.ready(); err != nil {
+		return err
+	}
+	return a.core.Files().Chmod(id, path, mode)
+}
+
+// ListEditors returns the editors installed on this computer.
+func (a *App) ListEditors() []models.Editor { return files.Editors() }
+
+// OpenLocalWith opens a local file in an installed editor ("system" for the
+// default app).
+func (a *App) OpenLocalWith(editorID, path string) error { return files.OpenLocalWith(editorID, path) }
+
+// RevealLocal shows a local file in the system file manager.
+func (a *App) RevealLocal(path string) error { return files.RevealLocal(path) }
+
+// OpenRemoteWith opens a remote file in an installed editor; saves are
+// uploaded back and reported with "edit:sync" events.
+func (a *App) OpenRemoteWith(id, path, editorID string) error {
+	if err := a.ready(); err != nil {
+		return err
+	}
+	return a.core.Files().OpenRemoteWith(id, path, editorID)
+}
+
+// ForceEditUpload uploads an externally edited file over a newer server copy.
+func (a *App) ForceEditUpload(id, path string) error {
+	if err := a.ready(); err != nil {
+		return err
+	}
+	return a.core.Files().ForceEditUpload(id, path)
+}
+
 // ---------------------------------------------------------------- keychain
 
 // ListKeys returns keychain entries.

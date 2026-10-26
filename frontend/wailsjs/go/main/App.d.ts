@@ -9,6 +9,8 @@ export function CancelConnect(arg1:string):Promise<void>;
 
 export function CancelTransfer(arg1:string):Promise<boolean>;
 
+export function ChmodRemote(arg1:string,arg2:string,arg3:number):Promise<void>;
+
 export function ClearAgentLog():Promise<void>;
 
 export function ClearAppData():Promise<models.Settings>;
@@ -19,9 +21,21 @@ export function CloseSFTP(arg1:string):Promise<void>;
 
 export function CloseTerminal(arg1:string):Promise<void>;
 
+export function CompressLocal(arg1:string,arg2:Array<string>,arg3:string,arg4:string):Promise<string>;
+
+export function CompressRemote(arg1:string,arg2:string,arg3:Array<string>,arg4:string,arg5:string):Promise<string>;
+
 export function ContainerAction(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function CopyLocal(arg1:Array<string>,arg2:string):Promise<void>;
+
+export function CopyRemote(arg1:string,arg2:Array<string>,arg3:string):Promise<void>;
+
 export function CopyVaultItemValue(arg1:string,arg2:string):Promise<void>;
+
+export function CreateLocalFile(arg1:string,arg2:string):Promise<string>;
+
+export function CreateRemoteFile(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function DeleteAlertRule(arg1:string):Promise<void>;
 
@@ -42,6 +56,12 @@ export function DeleteVaultItem(arg1:string):Promise<void>;
 export function Download(arg1:string,arg2:Array<string>,arg3:string):Promise<string>;
 
 export function ExportPrivateKey(arg1:string):Promise<string>;
+
+export function ExtractLocal(arg1:string,arg2:boolean):Promise<string>;
+
+export function ExtractRemote(arg1:string,arg2:string,arg3:boolean):Promise<string>;
+
+export function ForceEditUpload(arg1:string,arg2:string):Promise<void>;
 
 export function ForgetKnownHost(arg1:string):Promise<void>;
 
@@ -72,6 +92,8 @@ export function ListAgentLog(arg1:number):Promise<Array<models.AgentLogEntry>>;
 export function ListAlertEvents():Promise<Array<models.AlertEvent>>;
 
 export function ListAlertRules():Promise<Array<models.AlertRule>>;
+
+export function ListEditors():Promise<Array<models.Editor>>;
 
 export function ListForwards():Promise<Array<models.ForwardRule>>;
 
@@ -111,6 +133,14 @@ export function MonitorUnwatch(arg1:string):Promise<void>;
 
 export function MonitorWatch(arg1:string):Promise<models.MonitorStatus>;
 
+export function MoveLocal(arg1:Array<string>,arg2:string):Promise<void>;
+
+export function MoveRemote(arg1:string,arg2:Array<string>,arg3:string):Promise<void>;
+
+export function OpenLocalWith(arg1:string,arg2:string):Promise<void>;
+
+export function OpenRemoteWith(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function OpenSFTP(arg1:string,arg2:string,arg3:models.ConnectOptions):Promise<models.SessionInfo>;
 
 export function OpenTerminal(arg1:string,arg2:string,arg3:models.ConnectOptions):Promise<models.SessionInfo>;
@@ -118,6 +148,10 @@ export function OpenTerminal(arg1:string,arg2:string,arg3:models.ConnectOptions)
 export function PendingAgentApprovals():Promise<Array<models.AgentApproval>>;
 
 export function ReadKeyFile():Promise<string>;
+
+export function ReadLocalText(arg1:string):Promise<models.FileContent>;
+
+export function ReadRemoteText(arg1:string,arg2:string):Promise<models.FileContent>;
 
 export function RemoteHome(arg1:string):Promise<string>;
 
@@ -144,6 +178,8 @@ export function ResolveHostKey(arg1:string,arg2:boolean):Promise<boolean>;
 export function RevealDataDir():Promise<void>;
 
 export function RevealHostPassword(arg1:string):Promise<string>;
+
+export function RevealLocal(arg1:string):Promise<void>;
 
 export function RevealVaultItem(arg1:string):Promise<models.VaultSecret>;
 
@@ -206,5 +242,9 @@ export function UpdateSettings(arg1:models.Settings):Promise<models.Settings>;
 export function Upload(arg1:string,arg2:Array<string>,arg3:string):Promise<string>;
 
 export function VaultItemTOTP(arg1:string):Promise<models.TOTPCode>;
+
+export function WriteLocalText(arg1:string,arg2:string,arg3:number):Promise<models.FileContent>;
+
+export function WriteRemoteText(arg1:string,arg2:string,arg3:string,arg4:number):Promise<models.FileContent>;
 
 export function WriteTerminal(arg1:string,arg2:string):Promise<void>;

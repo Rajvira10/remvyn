@@ -10,6 +10,10 @@ export function CancelTransfer(arg1) {
   return window['go']['main']['App']['CancelTransfer'](arg1);
 }
 
+export function ChmodRemote(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ChmodRemote'](arg1, arg2, arg3);
+}
+
 export function ClearAgentLog() {
   return window['go']['main']['App']['ClearAgentLog']();
 }
@@ -30,12 +34,36 @@ export function CloseTerminal(arg1) {
   return window['go']['main']['App']['CloseTerminal'](arg1);
 }
 
+export function CompressLocal(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['CompressLocal'](arg1, arg2, arg3, arg4);
+}
+
+export function CompressRemote(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['CompressRemote'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function ContainerAction(arg1, arg2, arg3) {
   return window['go']['main']['App']['ContainerAction'](arg1, arg2, arg3);
 }
 
+export function CopyLocal(arg1, arg2) {
+  return window['go']['main']['App']['CopyLocal'](arg1, arg2);
+}
+
+export function CopyRemote(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CopyRemote'](arg1, arg2, arg3);
+}
+
 export function CopyVaultItemValue(arg1, arg2) {
   return window['go']['main']['App']['CopyVaultItemValue'](arg1, arg2);
+}
+
+export function CreateLocalFile(arg1, arg2) {
+  return window['go']['main']['App']['CreateLocalFile'](arg1, arg2);
+}
+
+export function CreateRemoteFile(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CreateRemoteFile'](arg1, arg2, arg3);
 }
 
 export function DeleteAlertRule(arg1) {
@@ -76,6 +104,18 @@ export function Download(arg1, arg2, arg3) {
 
 export function ExportPrivateKey(arg1) {
   return window['go']['main']['App']['ExportPrivateKey'](arg1);
+}
+
+export function ExtractLocal(arg1, arg2) {
+  return window['go']['main']['App']['ExtractLocal'](arg1, arg2);
+}
+
+export function ExtractRemote(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ExtractRemote'](arg1, arg2, arg3);
+}
+
+export function ForceEditUpload(arg1, arg2) {
+  return window['go']['main']['App']['ForceEditUpload'](arg1, arg2);
 }
 
 export function ForgetKnownHost(arg1) {
@@ -136,6 +176,10 @@ export function ListAlertEvents() {
 
 export function ListAlertRules() {
   return window['go']['main']['App']['ListAlertRules']();
+}
+
+export function ListEditors() {
+  return window['go']['main']['App']['ListEditors']();
 }
 
 export function ListForwards() {
@@ -214,6 +258,22 @@ export function MonitorWatch(arg1) {
   return window['go']['main']['App']['MonitorWatch'](arg1);
 }
 
+export function MoveLocal(arg1, arg2) {
+  return window['go']['main']['App']['MoveLocal'](arg1, arg2);
+}
+
+export function MoveRemote(arg1, arg2, arg3) {
+  return window['go']['main']['App']['MoveRemote'](arg1, arg2, arg3);
+}
+
+export function OpenLocalWith(arg1, arg2) {
+  return window['go']['main']['App']['OpenLocalWith'](arg1, arg2);
+}
+
+export function OpenRemoteWith(arg1, arg2, arg3) {
+  return window['go']['main']['App']['OpenRemoteWith'](arg1, arg2, arg3);
+}
+
 export function OpenSFTP(arg1, arg2, arg3) {
   return window['go']['main']['App']['OpenSFTP'](arg1, arg2, arg3);
 }
@@ -228,6 +288,14 @@ export function PendingAgentApprovals() {
 
 export function ReadKeyFile() {
   return window['go']['main']['App']['ReadKeyFile']();
+}
+
+export function ReadLocalText(arg1) {
+  return window['go']['main']['App']['ReadLocalText'](arg1);
+}
+
+export function ReadRemoteText(arg1, arg2) {
+  return window['go']['main']['App']['ReadRemoteText'](arg1, arg2);
 }
 
 export function RemoteHome(arg1) {
@@ -280,6 +348,10 @@ export function RevealDataDir() {
 
 export function RevealHostPassword(arg1) {
   return window['go']['main']['App']['RevealHostPassword'](arg1);
+}
+
+export function RevealLocal(arg1) {
+  return window['go']['main']['App']['RevealLocal'](arg1);
 }
 
 export function RevealVaultItem(arg1) {
@@ -404,6 +476,14 @@ export function Upload(arg1, arg2, arg3) {
 
 export function VaultItemTOTP(arg1) {
   return window['go']['main']['App']['VaultItemTOTP'](arg1);
+}
+
+export function WriteLocalText(arg1, arg2, arg3) {
+  return window['go']['main']['App']['WriteLocalText'](arg1, arg2, arg3);
+}
+
+export function WriteRemoteText(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['WriteRemoteText'](arg1, arg2, arg3, arg4);
 }
 
 export function WriteTerminal(arg1, arg2) {

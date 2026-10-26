@@ -194,6 +194,21 @@ type DirListing struct {
 	Entries []FileEntry `json:"entries"`
 }
 
+// FileContent is a text file opened in the built-in editor. ModTime is the
+// version that was read; pass it back on save to detect concurrent edits.
+type FileContent struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+	Size    int64  `json:"size"`
+	ModTime int64  `json:"modTime"`
+}
+
+// Editor is an external editor installed on this computer.
+type Editor struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // Transfer directions and states.
 const (
 	TransferUpload   = "upload"

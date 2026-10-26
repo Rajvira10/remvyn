@@ -6,6 +6,7 @@ import { Tooltip } from '@/components/ui/tooltip'
 import { api } from '@/lib/api'
 import { appKey, cn, isMac, relativeTime } from '@/lib/utils'
 import { useAgent } from '@/stores/agent'
+import { useEditorState } from '@/stores/editor'
 import { useLock } from '@/stores/lock'
 import { useSessions, type Tab } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
@@ -15,16 +16,25 @@ export function useCloseTab() {
   const [pending, setPending] = useState<Tab | null>(null)
   const request = (t: Tab) => {
     const confirm = useSettings.getState().settings?.confirmOnClose ?? true
-    if (confirm && t.state === 'connected') setPending(t)
+    const unsaved = useEditorState.getState().unsaved[t.key] ?? 0
+    if (unsaved || (confirm && t.state === 'connected')) setPending(t)
     else useSessions.getState().close(t.key)
   }
+  const unsaved = useEditorState((s) => (pending ? (s.unsaved[pending.key] ?? 0) : 0))
   const dialog = (
     <ConfirmDialog
       open={!!pending}
       onOpenChange={(o) => !o && setPending(null)}
       title={`Close ${pending?.title}?`}
-      description={pending?.kind === 'sftp' ? 'The SFTP session and any running transfers will be stopped.' : 'The SSH session will be disconnected.'}
-      confirmLabel="Close"
+      description={
+        unsaved
+          ? `${unsaved} open file${unsaved === 1 ? ' has' : 's have'} unsaved changes that will be lost.`
+          : pending?.kind === 'sftp'
+            ? 'The SFTP session and any running transfers will be stopped.'
+            : 'The SSH session will be disconnected.'
+      }
+      confirmLabel={unsaved ? 'Close without saving' : 'Close'}
+      destructive={!!unsaved}
       onConfirm={() => {
         if (pending) useSessions.getState().close(pending.key)
       }}

@@ -53,11 +53,12 @@ type Manager struct {
 	mu        sync.Mutex
 	sessions  map[string]*sftpSession
 	transfers map[string]*transfer
+	edits     map[string]*editWatch
 }
 
 // New creates a Manager.
 func New(emit Emitter) *Manager {
-	return &Manager{emit: emit, sessions: map[string]*sftpSession{}, transfers: map[string]*transfer{}}
+	return &Manager{emit: emit, sessions: map[string]*sftpSession{}, transfers: map[string]*transfer{}, edits: map[string]*editWatch{}}
 }
 
 // Open starts the SFTP subsystem on client and takes ownership of it.
@@ -118,6 +119,7 @@ func (m *Manager) Close(id string) {
 	for _, c := range cancels {
 		c()
 	}
+	m.stopEdits(id)
 	if ok {
 		s.sftp.Close()
 		s.client.Close()
