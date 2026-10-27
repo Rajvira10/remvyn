@@ -250,7 +250,8 @@ backend/
   core/                service layer wiring everything together (no Wails dependency)
   sshconn/             dialing, auth methods, keepalive, host-key verification and prompt broker
   terminal/            PTY shell sessions streaming base64 output events
-  files/               SFTP and local file operations, recursive transfers with progress
+  files/               SFTP and local file operations, recursive transfers with progress, remote text
+                       editing, copy/move/compress/extract, open with an installed editor
   forward/             -L / -R / SOCKS5 -D forwarding
   keys/                key generation, parsing and passphrases
   sshconfig/           ~/.ssh/config parser
@@ -259,14 +260,14 @@ backend/
   totp/                two-factor codes (RFC 6238) for password vault items
   vaultsync/           GitHub sync: device-flow sign-in, Git Data API remote, encrypted records, merge engine
   mcp/                 MCP server for AI agents: stdio protocol, `remvyn mcp` bridge, app socket
+  monitor/             agentless metrics collection (script, parser, per-host collectors)
+  alerts/              alert rule evaluation, firing and resolving
+  uptime/              HTTP/TCP uptime probes
   testutil/            in-process SSH server and fake GitHub for tests
 tools/devsshd/         run the test server for manual testing
 tools/devgithub/       run the fake GitHub for trying sync
 mobile/android/        Android companion app (Kotlin, Jetpack Compose, JSch)
 branding/              logo, app icons and naming research (BRANDING.md)
-  monitor/             agentless metrics collection (script, parser, per-host collectors)
-  alerts/              alert rule evaluation, firing and resolving
-  uptime/              HTTP/TCP uptime probes
 frontend/src/          React + TypeScript + Tailwind + Zustand UI (xterm.js terminals)
 ```
 
