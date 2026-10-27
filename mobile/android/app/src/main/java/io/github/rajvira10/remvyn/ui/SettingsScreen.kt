@@ -55,14 +55,14 @@ fun SettingsScreen(app: AppState) {
     val ctx = LocalContext.current
     val cfg = remember(app.lastSyncAt) { app.store.config() }
     var confirmSignOut by remember { mutableStateOf(false) }
-    BackHandler { app.screen = Screen.Hosts }
+    BackHandler { app.screen = app.lastTab }
 
     Scaffold(
         containerColor = Background,
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
-                navigationIcon = { IconButton(onClick = { app.screen = Screen.Hosts }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { IconButton(onClick = { app.screen = app.lastTab }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Background),
             )
         },
@@ -82,7 +82,7 @@ fun SettingsScreen(app: AppState) {
                 }
                 Spacer(Modifier.size(8.dp))
                 Text(
-                    "The vault is read-only on the phone: add and edit hosts, keys and snippets in Remvyn on your computer. " +
+                    "The vault is read-only on the phone: add and edit hosts, keys, snippets and passwords in Remvyn on your computer. " +
                         "Host keys you trust here are remembered on this phone only.",
                     color = Muted, fontSize = 12.sp,
                 )

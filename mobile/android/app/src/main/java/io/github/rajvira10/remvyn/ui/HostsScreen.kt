@@ -93,6 +93,7 @@ fun HostsScreen(app: AppState) {
                 },
             )
         },
+        bottomBar = { MainTabs(app) },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
             TextField(

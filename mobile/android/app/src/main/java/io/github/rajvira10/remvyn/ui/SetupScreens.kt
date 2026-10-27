@@ -181,7 +181,7 @@ fun SetupScreen(app: AppState) {
                 Text("Remvyn", fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Your hosts, keys and snippets from Remvyn on your computer, with an SSH terminal. " +
+                    "Your hosts, keys, snippets and passwords from Remvyn on your computer, with an SSH terminal. " +
                         "Turn on sync on your computer first (Settings → Sync), then sign in here with the same GitHub account.",
                     color = Muted, textAlign = TextAlign.Center, fontSize = 14.sp,
                 )

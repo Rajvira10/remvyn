@@ -62,13 +62,14 @@ Download from [Releases](https://github.com/Rajvira10/remvyn/releases):
 
 ## Android app
 
-A companion for when you're away from your computer. It signs in with GitHub, opens the same encrypted vault as the desktop (sync must be on there first), and gives you an SSH terminal to your hosts.
+A companion for when you're away from your computer. It signs in with GitHub, opens the same encrypted vault as the desktop (sync must be on there first), and gives you an SSH terminal to your hosts and your passwords.
 
 - Hosts with groups and colors, search, and saved passwords and keys (ed25519, ECDSA, RSA, passphrase-protected).
 - Terminal: xterm-256color emulator with colors, scrollback, alternate screen (vim, htop, less), pinch to zoom, and an extra-keys row (esc, tab, ctrl, alt, arrows, home/end, page up/down). Snippets from the vault run from the menu.
+- **Passwords**: the logins, API tokens and secure notes from the desktop's password vault, with search, favorites first and a filter by type. Reveal a secret (it hides again after 30 seconds), copy it (marked sensitive so Android 13+ hides the clipboard preview, and cleared after 30 seconds or when Remvyn locks), open the website, and see live two-factor (TOTP) codes with a countdown.
 - Host keys are checked against the vault's known hosts; new ones need confirmation, and a changed key is flagged.
 - The vault stays encrypted on the phone and opens only with the master password; Remvyn locks after 5 minutes in the background. The GitHub token is sealed with the Android Keystore. Screenshots of the app are blocked.
-- **Read-only vault for now**: add and edit hosts on the desktop. Host keys you trust on the phone are kept on the phone.
+- **Read-only vault for now**: add and edit hosts, snippets and passwords on the desktop. Host keys you trust on the phone are kept on the phone.
 - Sessions can drop when Android suspends the app in the background (no foreground service yet). Agent-auth hosts can't be used on the phone.
 
 Build it with Android Studio, or:
@@ -77,7 +78,7 @@ Build it with Android Studio, or:
 cd mobile/android
 ./gradlew assembleDebug                                   # app/build/outputs/apk/debug
 REMVYN_SIGNING=/path/to/signing.properties ./gradlew assembleRelease
-./gradlew testDebugUnitTest                               # opens a vault and keys made by the Go code
+./gradlew testDebugUnitTest                               # opens a vault, keys and a password item made by the Go code; TOTP vectors
 ```
 
 `signing.properties` holds `storeFile`, `storePassword`, `keyAlias` and `keyPassword`; keep it and the keystore out of the repo. `REMVYN_GITHUB_CLIENT_ID` / `REMVYN_GITHUB_APP_SLUG` build in a different GitHub App, like the desktop.

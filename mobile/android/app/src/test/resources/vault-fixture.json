@@ -1,6 +1,8 @@
 {
-  "content": "0zU2SAoa69azq61MPn/ho/mW9jwyVTH1CQxENwgjEbea+2fPJkqGc9JqYEFONeNptBwR7U1xQYu+b+C+8KpID0Iow/IYlBOiEv6pC3UJjrBTqbor6IuKKuBs/l2EsouXfkuDqSNCcZclFXdt2b1ZFHCTL3zOZ74ESIiqnpE4hE94TE6WSRuIuayx0IGpljpoJz7ooQhhkgToH7WsBinRQGH1XYSiq+9kE6LJv9iSDS2k4fNEwb6M7HXLPPf2xcbBy4fcxGkJAAM8N+HtTSBGK+THNy2rsZcIJg==",
-  "keyId": "4926b24db24b01fbfc0e1252",
-  "path": "records/bfb46ef7961196b2840b534aaeaa2cab",
-  "vault": "{\n  \"format\": \"flux-vault\",\n  \"version\": 1,\n  \"key\": {\n    \"kdf\": {\n      \"alg\": \"argon2id\",\n      \"time\": 3,\n      \"memoryKiB\": 65536,\n      \"threads\": 4,\n      \"salt\": \"RP5cWcm4PRfCDOep+++nqg==\"\n    },\n    \"wrapped\": \"MmSfT7C1Rxw5fspO34NkWos+KiFBfj36o+ah0xUvr8tjylQ1/spoYmW4QDSMg/7NcGtxYKHe2dxmxpjB\"\n  },\n  \"keyId\": \"4926b24db24b01fbfc0e1252\",\n  \"createdAt\": 1700000000000\n}"
+  "content": "M2ZelIT4TbF+HmWro6GxtefG4WrT66cKaxJ4M574WHP3fe4ONV6+e3EaXIHnpIyzhVgsbI/V/xSM4auW0cKn/MW8sbv2cnYavW+mMfh4wYTslrTngZPtWwpraZNawDCSSZgBA0PX7ibcZhKlM3vRcM1KbmfAvwGAqD8tnHM/rd9yC3dSQIQtSsyibiy+rN3UbfLwnifCo1Q6NZdccS7UuQ4kCgwVbNsqxfe0MgzZMsojH8EbaXX5FmjoTdbGKxCcKiFkoZhzKw+dWLPY1jL5NoAP7vk0SXUi0g==",
+  "itemContent": "EBXdvzkA3bKlRTM5RFSN/uQvsUAPgWnp80Vfv4oC16p6f3Li1ty1FTEANpSLSoqc1xzKR+UZydYW2LnzPbrZYzwR9z8U4/kPVqqbK/L/omDW9pnMhIgWB64MUpXpTuagNByuAGJJIb4G/WAILTQNTEokM92d4iiCk57G2pLH0KYOXKTyM9TdlTvGbr+yLK/F7o6enqx4+p/eqoPSwXbAjnXgW9J/2xuTj2KyAO3x+AGZeNMla/zmWJCY1KVc1B09hqjXvmVWc0AJqHrKjTa6yodUijjHH5sxMpw0hSX2ePGMEJyGFv1CmsYJhFMlfTzH14Ri4NttITkn20v1sGuE0Sb4VkdgrGToj+5fn7lAgq8G152s3/FPzp+81b4nxB3/Tyv+LSs/4Ww3emcOKS0UWPoYGAZik67pnmAv+6vNIC6DyNPOGxSSmWThixGVgUWnP+aCnpcsRa76vF4/vbjrJ8DggHEpWJtitKk4YK6aMvQXDKIDArH4gY10QyTCJCi9HYIZuSKlNn3fTZtUrA7rSsbu0p1P1y11GyjQvHE1aMlcaicU0AxRFpI5EPODQZ/tbNmCOPlgrPVbFWYn/jaebfoQGeLfbao345dt",
+  "itemPath": "records/600b5760b671f695dab705d6fbfe3541",
+  "keyId": "8137f133ec538d7850893bdc",
+  "path": "records/ff692d84eea87805578ea042d520013d",
+  "vault": "{\n  \"format\": \"flux-vault\",\n  \"version\": 1,\n  \"key\": {\n    \"kdf\": {\n      \"alg\": \"argon2id\",\n      \"time\": 3,\n      \"memoryKiB\": 65536,\n      \"threads\": 4,\n      \"salt\": \"AQmzCmEQYgUZ19q1TZE1LA==\"\n    },\n    \"wrapped\": \"kM+ZRL8A5mEDkz6L+fNTJVlUOs6YAEhQCbdm5dyJeTgtCqqFT4eg1ORQUGBpBcovNq7CIgZV3wGLiRUJ\"\n  },\n  \"keyId\": \"8137f133ec538d7850893bdc\",\n  \"createdAt\": 1700000000000\n}"
 }

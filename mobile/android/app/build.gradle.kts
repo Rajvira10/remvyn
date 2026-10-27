@@ -75,6 +75,7 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.compose.material:material-icons-extended")
     implementation("com.github.mwiede:jsch:2.28.8")
     implementation("org.bouncycastle:bcprov-jdk18on:1.79")
     testImplementation("junit:junit:4.13.2")

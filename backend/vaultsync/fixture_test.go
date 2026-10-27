@@ -30,7 +30,18 @@ func TestWriteMobileFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, _ := json.MarshalIndent(map[string]string{"vault": string(doc), "path": path, "content": string(content), "keyId": c.keyID}, "", "  ")
+	// A password vault item, shaped like backend/storage's syncItem.
+	item, _ := json.Marshal(map[string]any{"kind": "login", "name": "GitHub", "username": "octo", "url": "github.com",
+		"favorite": true, "hasPassword": true, "hasTotp": true, "fieldCount": 1, "createdAt": 1, "updatedAt": 1700000000000,
+		"secret": map[string]any{"password": "s3cr€t", "totp": "otpauth://totp/GitHub:octo?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=GitHub",
+			"notes": "", "fields": []map[string]any{{"name": "Recovery", "value": "abcd-efgh", "hidden": true}}}})
+	itemPath := c.Path("vaultitem", "v1")
+	itemContent, err := c.seal(itemPath, payload{Kind: "vaultitem", ID: "v1", ChangedAt: 43, Data: item})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.MarshalIndent(map[string]string{"vault": string(doc), "path": path, "content": string(content), "keyId": c.keyID,
+		"itemPath": itemPath, "itemContent": string(itemContent)}, "", "  ")
 	if err := os.WriteFile(out, raw, 0o644); err != nil {
 		t.Fatal(err)
 	}

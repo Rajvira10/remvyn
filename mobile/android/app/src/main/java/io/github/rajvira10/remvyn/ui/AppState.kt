@@ -1,6 +1,11 @@
 package io.github.rajvira10.remvyn.ui
 
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
 import android.content.Context
+import android.os.Build
+import android.os.PersistableBundle
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.runtime.getValue
@@ -23,6 +28,8 @@ sealed interface Screen {
     data object Setup : Screen
     data object Unlock : Screen
     data object Hosts : Screen
+    data object Passwords : Screen
+    data class PasswordItem(val itemId: String) : Screen
     data class Terminal(val hostId: String) : Screen
     data object Settings : Screen
 }
@@ -113,9 +120,19 @@ class TermSession(val host: Host, private val app: AppState) : SshCallbacks {
     }
 }
 
+/** How long a copied secret stays on the clipboard, like the desktop. */
+const val CLIPBOARD_CLEAR_MS = 30_000L
+private const val CLIP_TOKEN = "io.github.rajvira10.remvyn.clip"
+
 class AppState(ctx: Context) {
     val store = VaultStore(ctx.applicationContext)
+    private val clipboard = ctx.applicationContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    /** Tags the last secret we copied, so we only ever clear our own clip. */
+    private var clipToken = 0L
+    private val clearClip = Runnable { clearSecretClip() }
     var screen by mutableStateOf<Screen>(if (store.hasVault()) Screen.Unlock else Screen.Setup)
+    /** The bottom-bar tab to return to from Settings. */
+    var lastTab by mutableStateOf<Screen>(Screen.Hosts)
     var vault by mutableStateOf<Vault?>(null)
     var syncing by mutableStateOf(false)
     var syncError by mutableStateOf<String?>(null)
@@ -126,6 +143,36 @@ class AppState(ctx: Context) {
     var pendingPassword = ""
     var version by mutableIntStateOf(0)
     private val prefs = ctx.getSharedPreferences("ui", 0)
+
+    /**
+     * Copies a secret, marked sensitive so Android 13+ hides it from the
+     * clipboard preview, and clears it after [CLIPBOARD_CLEAR_MS] or on lock
+     * unless something else was copied since.
+     */
+    fun copySecret(label: String, text: String) {
+        val clip = ClipData.newPlainText(label, text)
+        clip.description.extras = PersistableBundle().apply {
+            putBoolean(if (Build.VERSION.SDK_INT >= 33) ClipDescription.EXTRA_IS_SENSITIVE else "android.content.extra.IS_SENSITIVE", true)
+            clipToken = System.nanoTime()
+            putLong(CLIP_TOKEN, clipToken)
+        }
+        clipboard.setPrimaryClip(clip)
+        main.removeCallbacks(clearClip)
+        main.postDelayed(clearClip, CLIPBOARD_CLEAR_MS)
+    }
+
+    private fun clearSecretClip() {
+        main.removeCallbacks(clearClip)
+        if (clipToken == 0L) return
+        val token = clipToken
+        clipToken = 0L
+        // Android only lets the focused app read the clipboard. If we can see
+        // it and it's no longer our clip, leave it; in the background (no
+        // access) clear anyway rather than leave a secret behind.
+        val desc = runCatching { clipboard.primaryClipDescription }.getOrNull()
+        if (desc != null && desc.extras?.getLong(CLIP_TOKEN) != token) return
+        if (Build.VERSION.SDK_INT >= 28) clipboard.clearPrimaryClip() else clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
+    }
 
     fun unlocked() {
         vault = store.vault
@@ -158,6 +205,7 @@ class AppState(ctx: Context) {
     }
 
     fun lock() {
+        clearSecretClip()
         sessions.values.forEach { it.close() }
         sessions.clear()
         store.lock()
@@ -166,6 +214,7 @@ class AppState(ctx: Context) {
     }
 
     fun signOut() {
+        clearSecretClip()
         sessions.values.forEach { it.close() }
         sessions.clear()
         store.erase()

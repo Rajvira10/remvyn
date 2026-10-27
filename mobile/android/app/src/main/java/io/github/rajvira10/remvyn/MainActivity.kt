@@ -14,6 +14,8 @@ import io.github.rajvira10.remvyn.ui.AppState
 import io.github.rajvira10.remvyn.ui.Background
 import io.github.rajvira10.remvyn.ui.RemvynTheme
 import io.github.rajvira10.remvyn.ui.HostsScreen
+import io.github.rajvira10.remvyn.ui.PasswordItemScreen
+import io.github.rajvira10.remvyn.ui.PasswordsScreen
 import io.github.rajvira10.remvyn.ui.Screen
 import io.github.rajvira10.remvyn.ui.SettingsScreen
 import io.github.rajvira10.remvyn.ui.SetupScreen
@@ -38,6 +40,8 @@ class MainActivity : ComponentActivity() {
                         Screen.Setup -> SetupScreen(app)
                         Screen.Unlock -> UnlockScreen(app)
                         Screen.Hosts -> HostsScreen(app)
+                        Screen.Passwords -> PasswordsScreen(app)
+                        is Screen.PasswordItem -> PasswordItemScreen(app, s.itemId)
                         is Screen.Terminal -> TerminalScreen(app, s.hostId)
                         Screen.Settings -> SettingsScreen(app)
                     }

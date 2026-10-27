@@ -28,6 +28,29 @@ data class Group(val id: String, val name: String)
 data class Snippet(val id: String, val name: String, val command: String, val description: String)
 data class HostKey(val type: String, val key: ByteArray)
 
+data class ItemField(val name: String, val value: String, val hidden: Boolean)
+
+/** A password vault entry: a login, an API token or a secure note. */
+data class VaultItem(
+    val id: String, val kind: String, val name: String, val username: String, val url: String, val favorite: Boolean,
+    val password: String, val totp: String, val notes: String, val fields: List<ItemField>, val updatedAt: Long,
+) {
+    companion object {
+        /** Reads a "vaultitem" record as written by the desktop (backend/storage/items.go syncItem). */
+        fun fromRecord(id: String, d: JSONObject): VaultItem {
+            val sec = d.optJSONObject("secret") ?: JSONObject()
+            val arr = sec.optJSONArray("fields") ?: JSONArray()
+            val fields = (0 until arr.length()).map {
+                val f = arr.getJSONObject(it)
+                ItemField(f.optString("name"), f.optString("value"), f.optBoolean("hidden"))
+            }
+            return VaultItem(id, d.optString("kind", "login"), d.optString("name"), d.optString("username"), d.optString("url"),
+                d.optBoolean("favorite"), sec.optString("password"), sec.optString("totp"), sec.optString("notes"), fields,
+                d.optLong("updatedAt"))
+        }
+    }
+}
+
 class Vault(
     val hosts: List<Host>,
     val keys: Map<String, SshKey>,
@@ -35,6 +58,8 @@ class Vault(
     val snippets: List<Snippet>,
     /** "host:port" -> trusted keys, from the desktop. */
     val knownHosts: Map<String, List<HostKey>>,
+    /** Password vault items, favorites first. */
+    val items: List<VaultItem> = emptyList(),
 )
 
 data class SyncConfig(
@@ -192,6 +217,7 @@ class VaultStore(private val ctx: Context) {
         val groups = mutableMapOf<String, Group>()
         val snippets = mutableListOf<Snippet>()
         val known = mutableMapOf<String, List<HostKey>>()
+        val items = mutableListOf<VaultItem>()
         for ((path, rec) in cache.records) {
             val p = runCatching { c.open(path, rec.second) }.getOrNull() ?: continue
             val d = p.data
@@ -202,6 +228,7 @@ class VaultStore(private val ctx: Context) {
                 "key" -> keys[p.id] = SshKey(p.id, d.optString("name"), d.optString("type"), d.optString("privateKey"), d.optString("passphrase"))
                 "group" -> groups[p.id] = Group(p.id, d.optString("name"))
                 "snippet" -> snippets += Snippet(p.id, d.optString("name"), d.optString("command"), d.optString("description"))
+                "vaultitem" -> items += VaultItem.fromRecord(p.id, d)
                 "knownhost" -> {
                     val arr: JSONArray = d.optJSONArray("keys") ?: JSONArray()
                     known[p.id] = (0 until arr.length()).map {
@@ -211,7 +238,8 @@ class VaultStore(private val ctx: Context) {
                 }
             }
         }
-        return Vault(hosts.sortedBy { it.label.lowercase() }, keys, groups, snippets.sortedBy { it.name.lowercase() }, known)
+        return Vault(hosts.sortedBy { it.label.lowercase() }, keys, groups, snippets.sortedBy { it.name.lowercase() }, known,
+            items.sortedWith(compareBy({ !it.favorite }, { it.name.lowercase() })))
     }
 
     // ------------------------------------------------------------ host keys trusted on this phone
