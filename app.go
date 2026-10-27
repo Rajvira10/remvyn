@@ -312,6 +312,15 @@ func (a *App) OpenTerminal(id, hostID string, opts models.ConnectOptions) (model
 	return a.core.OpenTerminal(id, hostID, opts)
 }
 
+// OpenLocalTerminal starts a shell on this computer. Subscribe to the same
+// events as OpenTerminal before calling.
+func (a *App) OpenLocalTerminal(id string, opts models.ConnectOptions) (models.SessionInfo, error) {
+	if err := a.ready(); err != nil {
+		return models.SessionInfo{}, err
+	}
+	return a.core.OpenLocalTerminal(id, opts)
+}
+
 // WriteTerminal sends keyboard input.
 func (a *App) WriteTerminal(id, data string) error {
 	if err := a.ready(); err != nil {

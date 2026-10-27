@@ -1,5 +1,5 @@
-// Package terminal runs interactive SSH shell sessions and streams their
-// output to the UI.
+// Package terminal runs interactive shell sessions, over SSH or on this
+// computer, and streams their output to the UI.
 package terminal
 
 import (
@@ -33,9 +33,10 @@ func ValidID(id string) bool { return validID.MatchString(id) }
 
 type session struct {
 	info   models.SessionInfo
-	client *sshconn.Client
-	sess   *ssh.Session
-	stdin  io.WriteCloser
+	client *sshconn.Client // nil for local shells
+	stdin  io.Writer
+	resize func(cols, rows int) error
+	end    func()
 
 	writeMu   sync.Mutex
 	closeOnce sync.Once
@@ -61,7 +62,7 @@ func (m *Manager) ClientForHost(hostID string) *sshconn.Client {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, s := range m.sessions {
-		if s.info.HostID != hostID {
+		if s.client == nil || s.info.HostID != hostID {
 			continue
 		}
 		select {
@@ -130,16 +131,18 @@ func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionIn
 		return fmt.Errorf("start shell: %w", err)
 	}
 
-	s := &session{info: info, client: client, sess: sess, stdin: stdin}
-	m.mu.Lock()
-	if _, dup := m.sessions[id]; dup {
-		m.mu.Unlock()
-		sess.Close()
-		client.Close()
-		return errors.New("session id already in use")
+	s := &session{
+		info: info, client: client, stdin: stdin,
+		resize: func(cols, rows int) error { return sess.WindowChange(rows, cols) },
+		end: func() {
+			_ = sess.Close()
+			_ = client.Close()
+		},
 	}
-	m.sessions[id] = s
-	m.mu.Unlock()
+	if err := m.add(id, s); err != nil {
+		s.close()
+		return err
+	}
 
 	var pumps sync.WaitGroup
 	pumps.Add(2)
@@ -171,6 +174,16 @@ func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionIn
 	if startup != "" {
 		_ = m.Write(id, startup+"\n")
 	}
+	return nil
+}
+
+func (m *Manager) add(id string, s *session) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, dup := m.sessions[id]; dup {
+		return errors.New("session id already in use")
+	}
+	m.sessions[id] = s
 	return nil
 }
 
@@ -220,10 +233,7 @@ func (m *Manager) remove(id string) {
 }
 
 func (s *session) close() {
-	s.closeOnce.Do(func() {
-		_ = s.sess.Close()
-		_ = s.client.Close()
-	})
+	s.closeOnce.Do(s.end)
 }
 
 // Write sends keyboard input.
@@ -238,7 +248,7 @@ func (m *Manager) Write(id, data string) error {
 	return err
 }
 
-// Resize updates the remote PTY size.
+// Resize updates the PTY size.
 func (m *Manager) Resize(id string, cols, rows int) error {
 	if cols <= 0 || rows <= 0 || cols > 2000 || rows > 1000 {
 		return nil
@@ -247,7 +257,7 @@ func (m *Manager) Resize(id string, cols, rows int) error {
 	if err != nil {
 		return err
 	}
-	return s.sess.WindowChange(rows, cols)
+	return s.resize(cols, rows)
 }
 
 // Close ends a session. The exit event still fires.

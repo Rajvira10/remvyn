@@ -68,6 +68,7 @@ export const api = {
   importSSHConfigFile: (): Promise<SSHConfigImport> => call.ImportSSHConfigFile(),
 
   openTerminal: (id: string, hostId: string, opts: ConnectOptions): Promise<SessionInfo> => call.OpenTerminal(id, hostId, opts),
+  openLocalTerminal: (id: string, opts: ConnectOptions): Promise<SessionInfo> => call.OpenLocalTerminal(id, opts),
   writeTerminal: (id: string, data: string): Promise<void> => call.WriteTerminal(id, data),
   resizeTerminal: (id: string, cols: number, rows: number): Promise<void> => call.ResizeTerminal(id, cols, rows),
   closeTerminal: (id: string): Promise<void> => call.CloseTerminal(id),

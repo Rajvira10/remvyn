@@ -20,14 +20,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { useShallow } from 'zustand/react/shallow'
 import { api, errorMessage } from '@/lib/api'
 import type { Snippet } from '@/lib/types'
-import { useSessions } from '@/stores/sessions'
+import { isTerminal, useSessions } from '@/stores/sessions'
 import { useVault } from '@/stores/vault'
 
 const blank = (): Snippet => ({ id: '', name: '', command: '', description: '', createdAt: 0, updatedAt: 0 })
 
 export function SnippetsPage() {
   const { snippets, loadSnippets } = useVault()
-  const tabs = useSessions(useShallow((s) => s.tabs.filter((t) => t.kind === 'terminal' && t.state === 'connected')))
+  const tabs = useSessions(useShallow((s) => s.tabs.filter((t) => isTerminal(t) && t.state === 'connected')))
   const [editing, setEditing] = useState<Snippet | null>(null)
   const [deleting, setDeleting] = useState<Snippet | null>(null)
   const [query, setQuery] = useState('')
@@ -40,7 +40,7 @@ export function SnippetsPage() {
     const cmd = sn.command.endsWith('\n') ? sn.command : sn.command + '\r'
     api
       .writeTerminal(t.sessionId, cmd)
-      .then(() => useSessions.getState().activate(t.key))
+      .then(() => useSessions.getState().show(t.key))
       .catch((e) => toast.error(errorMessage(e)))
   }
 

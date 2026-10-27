@@ -1,4 +1,4 @@
-import { BotIcon, CloudAlertIcon, CloudCheckIcon, CloudIcon, FolderIcon, LayoutGridIcon, LockIcon, PlusIcon, RefreshCwIcon, TerminalIcon, XIcon } from 'lucide-react'
+import { BotIcon, CloudAlertIcon, CloudCheckIcon, CloudIcon, FolderIcon, LaptopIcon, LayoutGridIcon, LockIcon, PlusIcon, RefreshCwIcon, TerminalIcon, XIcon } from 'lucide-react'
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { Logo } from '@/components/common/Logo'
@@ -8,35 +8,44 @@ import { appKey, cn, isMac, relativeTime } from '@/lib/utils'
 import { useAgent } from '@/stores/agent'
 import { useEditorState } from '@/stores/editor'
 import { useLock } from '@/stores/lock'
-import { useSessions, type Tab } from '@/stores/sessions'
+import { paneKeys, topTabs, useSessions, type Tab } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
 import { useUI } from '@/stores/ui'
 
+/** Asks before closing a connected tab (or, with pane set, one pane of a split tab). */
 export function useCloseTab() {
-  const [pending, setPending] = useState<Tab | null>(null)
-  const request = (t: Tab) => {
+  const [pending, setPending] = useState<{ tab: Tab; pane: boolean } | null>(null)
+  const closeNow = (t: Tab, pane: boolean) => (pane ? useSessions.getState().closePane(t.key) : useSessions.getState().close(t.key))
+  const request = (t: Tab, pane = false) => {
     const confirm = useSettings.getState().settings?.confirmOnClose ?? true
     const unsaved = useEditorState.getState().unsaved[t.key] ?? 0
-    if (unsaved || (confirm && t.state === 'connected')) setPending(t)
-    else useSessions.getState().close(t.key)
+    const keys = pane ? [t.key] : paneKeys(t)
+    const connected = useSessions.getState().tabs.some((x) => keys.includes(x.key) && x.state === 'connected')
+    if (unsaved || (confirm && connected)) setPending({ tab: t, pane })
+    else closeNow(t, pane)
   }
-  const unsaved = useEditorState((s) => (pending ? (s.unsaved[pending.key] ?? 0) : 0))
+  const panes = pending && !pending.pane ? paneKeys(pending.tab).length : 1
+  const unsaved = useEditorState((s) => (pending ? (s.unsaved[pending.tab.key] ?? 0) : 0))
   const dialog = (
     <ConfirmDialog
       open={!!pending}
       onOpenChange={(o) => !o && setPending(null)}
-      title={`Close ${pending?.title}?`}
+      title={`Close ${pending?.pane ? 'pane' : pending?.tab.title}?`}
       description={
         unsaved
           ? `${unsaved} open file${unsaved === 1 ? ' has' : 's have'} unsaved changes that will be lost.`
-          : pending?.kind === 'sftp'
+          : pending?.tab.kind === 'sftp'
             ? 'The SFTP session and any running transfers will be stopped.'
-            : 'The SSH session will be disconnected.'
+            : panes > 1
+              ? `All ${panes} panes in this tab will be closed.`
+              : pending?.tab.kind === 'local'
+                ? 'The shell and anything running in it will be stopped.'
+                : 'The SSH session will be disconnected.'
       }
       confirmLabel={unsaved ? 'Close without saving' : 'Close'}
       destructive={!!unsaved}
       onConfirm={() => {
-        if (pending) useSessions.getState().close(pending.key)
+        if (pending) closeNow(pending.tab, pending.pane)
       }}
     />
   )
@@ -44,7 +53,8 @@ export function useCloseTab() {
 }
 
 export function TabBar() {
-  const { tabs, active, activate } = useSessions()
+  const { tabs: all, active, activate } = useSessions()
+  const tabs = topTabs(all)
   const setPaletteOpen = useUI((s) => s.setPaletteOpen)
   const { request, dialog } = useCloseTab()
 
@@ -84,8 +94,15 @@ export function TabBar() {
             )}
             title={t.remote}
           >
-            {t.kind === 'terminal' ? <TerminalIcon className="size-3.5 shrink-0" /> : <FolderIcon className="size-3.5 shrink-0" />}
+            {t.kind === 'terminal' ? (
+              <TerminalIcon className="size-3.5 shrink-0" />
+            ) : t.kind === 'local' ? (
+              <LaptopIcon className="size-3.5 shrink-0" />
+            ) : (
+              <FolderIcon className="size-3.5 shrink-0" />
+            )}
             <span className="min-w-0 flex-1 truncate">{t.title}</span>
+            {t.layout && <span className="shrink-0 text-[10.5px] text-muted-foreground tabular-nums">{paneKeys(t).length}</span>}
             <span
               className={cn('size-1.5 shrink-0 rounded-full', {
                 'bg-success': t.state === 'connected',
@@ -111,6 +128,11 @@ export function TabBar() {
         <Tooltip content={`Quick connect (${appKey}T)`}>
           <button onClick={() => setPaletteOpen(true)} className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground" aria-label="Quick connect">
             <PlusIcon className="size-4" />
+          </button>
+        </Tooltip>
+        <Tooltip content={`Local terminal (${appKey}${isMac ? '⌥' : 'Alt+'}T)`}>
+          <button onClick={() => useSessions.getState().openLocal()} className="-ml-1 flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground" aria-label="Local terminal">
+            <LaptopIcon className="size-3.5" />
           </button>
         </Tooltip>
       </div>

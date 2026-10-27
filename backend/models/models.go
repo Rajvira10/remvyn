@@ -162,7 +162,7 @@ type ConnectOptions struct {
 type SessionInfo struct {
 	ID        string `json:"id"`
 	HostID    string `json:"hostId"`
-	Kind      string `json:"kind"` // terminal | sftp
+	Kind      string `json:"kind"` // terminal | local | sftp
 	Title     string `json:"title"`
 	Remote    string `json:"remote"` // user@host:port
 	StartedAt int64  `json:"startedAt"`

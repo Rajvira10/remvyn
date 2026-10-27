@@ -415,6 +415,21 @@ func (c *Core) OpenTerminal(id, hostID string, opts models.ConnectOptions) (mode
 	return info, nil
 }
 
+// OpenLocalTerminal starts a shell on this computer. Like OpenTerminal, the
+// frontend chooses id and subscribes to output events first.
+func (c *Core) OpenLocalTerminal(id string, opts models.ConnectOptions) (models.SessionInfo, error) {
+	if c.store.Locked() {
+		return models.SessionInfo{}, storageLocked()
+	}
+	shell, _ := terminal.LocalShell()
+	info := models.SessionInfo{ID: id, Kind: "local", Title: "Local", Remote: filepath.Base(shell),
+		StartedAt: time.Now().UnixMilli()}
+	if err := c.terms.StartLocal(id, info, opts.Cols, opts.Rows); err != nil {
+		return models.SessionInfo{}, err
+	}
+	return info, nil
+}
+
 // WriteTerminal sends input.
 func (c *Core) WriteTerminal(id, data string) error { return c.terms.Write(id, data) }
 

@@ -28,7 +28,8 @@ export function ConnectOverlay({
   onSubmitCredentials: (c: Credentials) => void
   onCancel: () => void
 }) {
-  const { reconnect, close, activate } = useSessions()
+  const { reconnect, closePane: close, activate } = useSessions()
+  const local = tab.kind === 'local'
   const editHost = useUI((s) => s.editHost)
   const target = host ? `${host.username ? host.username + '@' : ''}${host.hostname}${host.port !== 22 ? ':' + host.port : ''}` : ''
 
@@ -40,7 +41,7 @@ export function ConnectOverlay({
         {tab.state === 'connecting' && (
           <div className="flex flex-col items-center gap-3 text-center">
             <Spinner className="size-6" />
-            <div className="font-medium">Connecting to {tab.title}</div>
+            <div className="font-medium">{local ? 'Starting shell' : `Connecting to ${tab.title}`}</div>
             <div className="font-mono text-xs text-muted-foreground">{target}</div>
             <Button variant="outline" size="sm" onClick={onCancel}>
               Cancel
@@ -51,17 +52,17 @@ export function ConnectOverlay({
         {(tab.state === 'error' || tab.state === 'closed') && (
           <div className="flex flex-col items-center gap-3 text-center">
             {tab.state === 'error' ? <AlertTriangleIcon className="size-7 text-danger" /> : <PlugZapIcon className="size-7 text-muted-foreground" />}
-            <div className="font-medium">{tab.state === 'error' ? 'Connection failed' : 'Session ended'}</div>
+            <div className="font-medium">{tab.state === 'error' ? (local ? 'Could not start the shell' : 'Connection failed') : 'Session ended'}</div>
             <div className="max-w-xs text-xs break-words text-muted-foreground" data-selectable>
               {tab.state === 'error'
                 ? tab.error
                 : tab.error
                   ? tab.error
-                  : `The remote shell exited${tab.exitCode !== undefined && tab.exitCode >= 0 ? ` with status ${tab.exitCode}` : ''}.`}
+                  : `The ${local ? '' : 'remote '}shell exited${tab.exitCode !== undefined && tab.exitCode >= 0 ? ` with status ${tab.exitCode}` : ''}.`}
             </div>
             <div className="mt-1 flex gap-2">
               <Button size="sm" onClick={() => reconnect(tab.key)}>
-                <RotateCwIcon /> Reconnect
+                <RotateCwIcon /> {local ? 'Restart' : 'Reconnect'}
               </Button>
               {tab.state === 'error' && host && (
                 <Button

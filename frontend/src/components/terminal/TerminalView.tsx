@@ -5,7 +5,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal, type ITheme } from '@xterm/xterm'
-import { ActivityIcon, ChevronDownIcon, ChevronUpIcon, CodeIcon, FolderIcon, RotateCwIcon, SearchIcon, XIcon } from 'lucide-react'
+import { ActivityIcon, ChevronDownIcon, ChevronUpIcon, CodeIcon, Columns2Icon, FolderIcon, RotateCwIcon, Rows2Icon, SearchIcon, XIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
@@ -26,9 +26,9 @@ import { matchesCombo } from '@/hooks/useHotkeys'
 import { api, copyText, errorCode, errorMessage, events, onEvent, readClipboard } from '@/lib/api'
 import type { SessionExit } from '@/lib/types'
 import { terminalTheme } from '@/lib/terminalThemes'
-import { appKey, isMac, uid } from '@/lib/utils'
+import { appKey, cn, isMac, uid } from '@/lib/utils'
 import { isLocked } from '@/stores/lock'
-import { useSessions, type Tab } from '@/stores/sessions'
+import { useSessions, type Rect, type Tab } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
 import { useUI } from '@/stores/ui'
 import { useVault } from '@/stores/vault'
@@ -43,9 +43,16 @@ function decode(b64: string): Uint8Array {
 /** App-level shortcuts that must never be sent to the remote shell. */
 const RESERVED = ['app+t', 'app+w', 'app+k', 'app+f', 'app+,', 'app+[', 'app+]', 'app+shift+[', 'app+shift+]',
   'app+1', 'app+2', 'app+3', 'app+4', 'app+5', 'app+6', 'app+7', 'app+8', 'app+9', 'app+0', 'app+/', 'app+i',
-  'app+alt+[', 'app+alt+]', 'app+=', 'app+-', 'app+l']
+  'app+alt+[', 'app+alt+]', 'app+=', 'app+-', 'app+l', 'app+d', 'app+alt+d', 'app+alt+t',
+  'app+alt+arrowleft', 'app+alt+arrowright', 'app+alt+arrowup', 'app+alt+arrowdown']
 
-export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
+/**
+ * One terminal session (SSH or local). In a split tab, rect places it within
+ * the tab area and only the focused pane takes keyboard shortcuts.
+ */
+export function TerminalView({ tab, visible, rect, focused = true, split = false }: { tab: Tab; visible: boolean; rect?: Rect; focused?: boolean; split?: boolean }) {
+  const local = tab.kind === 'local'
+  const active = visible && focused
   const settings = useSettings((s) => s.settings)
   const host = useVault((s) => s.hosts.find((h) => h.id === tab.hostId))
   const snippets = useVault((s) => s.snippets)
@@ -178,7 +185,7 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
     if (term && settings) term.options.theme = preview ?? terminalTheme(settings.terminalTheme).theme
   }, [settings, preview])
 
-  // Refit and focus when the tab becomes visible.
+  // Refit when the tab becomes visible, and focus the active pane.
   useEffect(() => {
     if (!visible) return
     const id = requestAnimationFrame(() => {
@@ -187,10 +194,10 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
       } catch {
         /* ignore */
       }
-      if (!searchOpen) termRef.current?.focus()
+      if (active && !searchOpen) termRef.current?.focus()
     })
     return () => cancelAnimationFrame(id)
-  }, [visible, searchOpen])
+  }, [visible, active, searchOpen])
 
   // Connect whenever a new attempt (session id) starts.
   useEffect(() => {
@@ -215,14 +222,14 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
     }
     const creds = credsRef.current
     credsRef.current = null
-    api
-      .openTerminal(sid, tab.hostId, {
-        password: creds?.password ?? '',
-        savePassword: creds?.savePassword ?? false,
-        passphrase: creds?.passphrase ?? '',
-        cols: term.cols,
-        rows: term.rows,
-      })
+    const opts = {
+      password: creds?.password ?? '',
+      savePassword: creds?.savePassword ?? false,
+      passphrase: creds?.passphrase ?? '',
+      cols: term.cols,
+      rows: term.rows,
+    }
+    ;(local ? api.openLocalTerminal(sid, opts) : api.openTerminal(sid, tab.hostId, opts))
       .then((info) => {
         if (sidRef.current !== sid) return
         connectedRef.current = true
@@ -247,6 +254,12 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab.sessionId])
 
+  const splitFrom = (dir: 'row' | 'col') => {
+    const s = useSessions.getState()
+    s.focusPane(tab.key)
+    s.split(dir)
+  }
+
   const submitCredentials = (c: Credentials) => {
     credsRef.current = c
     update(tab.key, { state: 'connecting', sessionId: uid(), error: undefined })
@@ -268,9 +281,9 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
     if (!found) toast('No matches', { duration: 1200 })
   }
 
-  // Shortcuts local to the visible terminal.
+  // Shortcuts local to the visible, focused terminal.
   useEffect(() => {
-    if (!visible) return
+    if (!active) return
     const onKey = (e: KeyboardEvent) => {
       if (isLocked()) return
       if (matchesCombo(e, 'app+f')) {
@@ -293,13 +306,19 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [visible])
+  }, [active])
 
   const theme = terminalTheme(settings?.terminalTheme ?? 'flux')
 
+  const place = rect ? { left: `${rect.x * 100}%`, top: `${rect.y * 100}%`, width: `${rect.w * 100}%`, height: `${rect.h * 100}%` } : undefined
+
   return (
-    <div className={visible ? 'absolute inset-0 flex flex-col' : 'absolute inset-0 hidden'}>
-      <div className="flex h-9 shrink-0 items-center gap-2 border-b px-3 text-xs">
+    <div
+      className={cn('absolute', !rect && 'inset-0', visible ? 'flex flex-col' : 'hidden')}
+      style={place}
+      onMouseDownCapture={() => split && useSessions.getState().focusPane(tab.key)}
+    >
+      <div className={cn('flex h-9 shrink-0 items-center gap-2 border-b px-3 text-xs', split && focused && 'bg-accent/50 shadow-[inset_0_2px_0_var(--primary)]')}>
         <span className="size-2 rounded-full" style={{ background: tab.state === 'connected' ? 'var(--success)' : tab.state === 'error' ? 'var(--danger)' : 'var(--muted-foreground)' }} />
         <span className="font-medium">{tab.title}</span>
         <span className="truncate font-mono text-muted-foreground">{tab.remote}</span>
@@ -330,32 +349,53 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Tooltip content={`Server metrics (${appKey}I)`}>
-            <Button
-              variant={monitorOpen ? 'secondary' : 'ghost'}
-              size="xs"
-              aria-pressed={monitorOpen}
-              onClick={() => useUI.getState().setMonitorOpen(!monitorOpen)}
-            >
-              <ActivityIcon /> Metrics
-            </Button>
-          </Tooltip>
+          {!local && (
+            <Tooltip content={`Server metrics (${appKey}I)`}>
+              <Button
+                variant={monitorOpen ? 'secondary' : 'ghost'}
+                size="xs"
+                aria-pressed={monitorOpen}
+                onClick={() => useUI.getState().setMonitorOpen(!monitorOpen)}
+              >
+                <ActivityIcon /> Metrics
+              </Button>
+            </Tooltip>
+          )}
           <AppearancePicker onPreview={setPreview} />
           <Tooltip content={`Find (${appKey}F)`}>
             <Button variant="ghost" size="icon-xs" aria-label="Find" onClick={() => { setSearchOpen((o) => !o); setTimeout(() => searchInput.current?.focus(), 0) }}>
               <SearchIcon />
             </Button>
           </Tooltip>
-          <Tooltip content="Open SFTP for this host">
-            <Button variant="ghost" size="icon-xs" aria-label="Open SFTP" onClick={() => open(tab.hostId, 'sftp')}>
-              <FolderIcon />
+          {!local && (
+            <Tooltip content="Open SFTP for this host">
+              <Button variant="ghost" size="icon-xs" aria-label="Open SFTP" onClick={() => open(tab.hostId, 'sftp')}>
+                <FolderIcon />
+              </Button>
+            </Tooltip>
+          )}
+          <Tooltip content={`Split right (${appKey}D)`}>
+            <Button variant="ghost" size="icon-xs" aria-label="Split right" onClick={() => splitFrom('row')}>
+              <Columns2Icon />
             </Button>
           </Tooltip>
-          <Tooltip content="Reconnect">
-            <Button variant="ghost" size="icon-xs" aria-label="Reconnect" onClick={() => useSessions.getState().reconnect(tab.key)}>
+          <Tooltip content={`Split down (${appKey}${isMac ? '⌥' : 'Alt+'}D)`}>
+            <Button variant="ghost" size="icon-xs" aria-label="Split down" onClick={() => splitFrom('col')}>
+              <Rows2Icon />
+            </Button>
+          </Tooltip>
+          <Tooltip content={local ? 'Restart shell' : 'Reconnect'}>
+            <Button variant="ghost" size="icon-xs" aria-label={local ? 'Restart shell' : 'Reconnect'} onClick={() => useSessions.getState().reconnect(tab.key)}>
               <RotateCwIcon />
             </Button>
           </Tooltip>
+          {split && (
+            <Tooltip content={`Close pane (${appKey}W)`}>
+              <Button variant="ghost" size="icon-xs" aria-label="Close pane" onClick={() => useSessions.getState().closePane(tab.key)}>
+                <XIcon />
+              </Button>
+            </Tooltip>
+          )}
         </div>
       </div>
       {searchOpen && (
@@ -398,7 +438,7 @@ export function TerminalView({ tab, visible }: { tab: Tab; visible: boolean }) {
             onCancel={() => void api.cancelConnect(tab.sessionId)}
           />
         </div>
-        {monitorOpen && (
+        {monitorOpen && !local && (
           <aside className="w-[320px] shrink-0 overflow-y-auto border-l bg-sidebar" aria-label="Server metrics">
             {tab.state === 'connected' ? (
               <MonitorPanel hostId={tab.hostId} active={visible} />
