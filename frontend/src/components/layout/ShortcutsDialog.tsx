@@ -24,6 +24,7 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
       ['Split down', k(isMac ? '⌥D' : 'Alt+D')],
       ['Focus the pane left / right / above / below', k(isMac ? '⌥ + arrow' : 'Alt + arrow')],
       ['Resize panes', 'Drag the divider'],
+      ['Type into every pane (or every terminal) at once', k(isMac ? '⇧B' : 'Shift+B')],
     ],
   },
   {

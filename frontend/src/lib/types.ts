@@ -114,6 +114,10 @@ export interface ConnectOptions {
   passphrase: string
   cols: number
   rows: number
+  /** Server-side session to create or resume (persistent sessions). */
+  persistKey?: string
+  /** Replay a resumed session's scrollback into an empty terminal. */
+  restore?: boolean
 }
 
 export interface SessionInfo {
@@ -123,6 +127,23 @@ export interface SessionInfo {
   title: string
   remote: string
   startedAt: number
+  /** The shell runs in tmux on the server and survives disconnects. */
+  persistent: boolean
+  /** That tmux session already existed. */
+  resumed: boolean
+  persistNote?: 'tmux_missing' | 'tmux_old'
+  /** Other Remvyn sessions on the server nobody is attached to. */
+  detached: ServerSession[] | null
+}
+
+/** A persistent terminal session running on a server. */
+export interface ServerSession {
+  key: string
+  attached: boolean
+  lastActive: number
+  history: number
+  command: string
+  path: string
 }
 
 export interface SessionExit {
@@ -204,6 +225,7 @@ export interface Settings {
   cursorBlink: boolean
   scrollback: number
   copyOnSelect: boolean
+  persistentSessions: boolean
   keepaliveSeconds: number
   connectTimeout: number
   showHiddenFiles: boolean

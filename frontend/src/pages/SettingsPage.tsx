@@ -146,6 +146,12 @@ export function SettingsPage() {
             <Field label="Copy on select" hint="Selected text is copied to the clipboard automatically.">
               <Switch checked={form.copyOnSelect} onCheckedChange={(copyOnSelect) => void apply({ copyOnSelect })} />
             </Field>
+            <Field
+              label="Keep sessions alive on the server"
+              hint="Runs SSH shells inside tmux (if the server has it), so a dropped connection doesn't end them. Remvyn reconnects by itself, and can resume sessions after a restart. Closing a tab ends its session."
+            >
+              <Switch checked={form.persistentSessions} onCheckedChange={(persistentSessions) => void apply({ persistentSessions })} />
+            </Field>
             <Field label="Confirm before closing a connected tab">
               <Switch checked={form.confirmOnClose} onCheckedChange={(confirmOnClose) => void apply({ confirmOnClose })} />
             </Field>

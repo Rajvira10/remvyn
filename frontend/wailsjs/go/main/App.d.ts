@@ -55,6 +55,10 @@ export function DeleteVaultItem(arg1:string):Promise<void>;
 
 export function Download(arg1:string,arg2:Array<string>,arg3:string):Promise<string>;
 
+export function EndServerSession(arg1:string,arg2:string):Promise<void>;
+
+export function EndTerminal(arg1:string):Promise<void>;
+
 export function ExportPrivateKey(arg1:string):Promise<string>;
 
 export function ExtractLocal(arg1:string,arg2:boolean):Promise<string>;
@@ -108,6 +112,8 @@ export function ListKnownHosts():Promise<Array<models.KnownHost>>;
 export function ListLocal(arg1:string):Promise<models.DirListing>;
 
 export function ListRemote(arg1:string,arg2:string):Promise<models.DirListing>;
+
+export function ListServerSessions(arg1:string):Promise<Array<models.ServerSession>>;
 
 export function ListSnippets():Promise<Array<models.Snippet>>;
 

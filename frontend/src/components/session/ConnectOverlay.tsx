@@ -1,5 +1,5 @@
 import { AlertTriangleIcon, KeyRoundIcon, LockIcon, PlugZapIcon, RotateCwIcon, XIcon } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Spinner } from '@/components/common/Spinner'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -34,6 +34,8 @@ export function ConnectOverlay({
   const target = host ? `${host.username ? host.username + '@' : ''}${host.hostname}${host.port !== 22 ? ':' + host.port : ''}` : ''
 
   if (tab.state === 'connected') return null
+
+  if (tab.retries !== undefined && tab.state !== 'auth') return <Reconnecting tab={tab} onCancel={onCancel} />
 
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/85 backdrop-blur-sm">
@@ -82,6 +84,46 @@ export function ConnectOverlay({
             </div>
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+/** Shown while a persistent session reconnects by itself after a drop. */
+function Reconnecting({ tab, onCancel }: { tab: Tab; onCancel: () => void }) {
+  const { reconnect, update, closePane } = useSessions()
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 500)
+    return () => clearInterval(id)
+  }, [])
+  const waiting = tab.state !== 'connecting' && tab.retryAt
+  const secs = waiting ? Math.max(0, Math.ceil((tab.retryAt! - now) / 1000)) : 0
+  return (
+    <div className="absolute inset-x-0 top-0 z-10 flex justify-center p-3">
+      <div className="flex max-w-lg items-center gap-3 rounded-lg border bg-card/95 px-4 py-2.5 text-xs shadow-xl backdrop-blur">
+        {waiting ? <PlugZapIcon className="size-4 shrink-0 text-warning" /> : <Spinner className="size-4 shrink-0" />}
+        <div className="min-w-0">
+          <div className="font-medium">{waiting ? `Connection lost. Reconnecting in ${secs}s` : 'Reconnecting…'}</div>
+          <div className="truncate text-muted-foreground">
+            {tab.state === 'error' && tab.error ? tab.error : 'Your session is still running on the server.'}
+          </div>
+        </div>
+        {waiting ? (
+          <Button size="xs" onClick={() => {
+            reconnect(tab.key)
+            update(tab.key, { retries: (tab.retries ?? 0) + 1, retryAt: undefined })
+          }}>
+            <RotateCwIcon /> Now
+          </Button>
+        ) : (
+          <Button size="xs" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+        <Button size="xs" variant="ghost" onClick={() => closePane(tab.key)}>
+          <XIcon /> Close
+        </Button>
       </div>
     </div>
   )

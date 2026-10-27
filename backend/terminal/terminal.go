@@ -3,11 +3,13 @@
 package terminal
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,9 +36,11 @@ func ValidID(id string) bool { return validID.MatchString(id) }
 type session struct {
 	info   models.SessionInfo
 	client *sshconn.Client // nil for local shells
-	stdin  io.Writer
-	resize func(cols, rows int) error
-	end    func()
+	// persist is the server-side session key when the shell runs in tmux.
+	persist string
+	stdin   io.Writer
+	resize  func(cols, rows int) error
+	end     func()
 
 	writeMu   sync.Mutex
 	closeOnce sync.Once
@@ -77,10 +81,14 @@ func (m *Manager) ClientForHost(hostID string) *sshconn.Client {
 // Start opens a PTY shell on client. The caller must already be subscribed to
 // DataEvent(id) so the login banner is not missed. The manager takes
 // ownership of client and closes it when the session ends.
-func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionInfo, cols, rows int, startup string) error {
+//
+// With a persist key, the shell runs in a tmux session on the server that
+// survives disconnects, if the server has tmux; the returned info says
+// whether it does. The startup command only runs in a new session.
+func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionInfo, cols, rows int, startup string, p *Persist) (models.SessionInfo, error) {
 	if !ValidID(id) {
 		client.Close()
-		return errors.New("invalid session id")
+		return info, errors.New("invalid session id")
 	}
 	if cols <= 0 {
 		cols = 80
@@ -88,10 +96,31 @@ func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionIn
 	if rows <= 0 {
 		rows = 24
 	}
+	var history string
+	command := ""
+	if p != nil && ValidID(p.Key) {
+		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+		st := probeTmux(ctx, client)
+		if st.ok {
+			info.Detached = st.lookup(p.Key)
+			info.Persistent = true
+			info.Resumed = st.exists
+			command = attachCommand(p.Key, cols, rows)
+			if st.exists {
+				startup = ""
+				if p.Restore && st.history > 0 {
+					history = captureHistory(ctx, client, p.Key, 5000)
+				}
+			}
+		} else {
+			info.PersistNote = st.note
+		}
+		cancel()
+	}
 	sess, err := client.NewSession()
 	if err != nil {
 		client.Close()
-		return fmt.Errorf("open session: %w", err)
+		return info, fmt.Errorf("open session: %w", err)
 	}
 	modes := ssh.TerminalModes{
 		ssh.ECHO:          1,
@@ -101,7 +130,7 @@ func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionIn
 	if err := sess.RequestPty("xterm-256color", rows, cols, modes); err != nil {
 		sess.Close()
 		client.Close()
-		return fmt.Errorf("request terminal: %w", err)
+		return info, fmt.Errorf("request terminal: %w", err)
 	}
 	// Servers commonly reject environment variables; failure is harmless.
 	_ = sess.Setenv("COLORTERM", "truecolor")
@@ -111,24 +140,29 @@ func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionIn
 	if err != nil {
 		sess.Close()
 		client.Close()
-		return err
+		return info, err
 	}
 	stdout, err := sess.StdoutPipe()
 	if err != nil {
 		sess.Close()
 		client.Close()
-		return err
+		return info, err
 	}
 	stderr, err := sess.StderrPipe()
 	if err != nil {
 		sess.Close()
 		client.Close()
-		return err
+		return info, err
 	}
-	if err := sess.Shell(); err != nil {
+	if command != "" {
+		err = sess.Start(command)
+	} else {
+		err = sess.Shell()
+	}
+	if err != nil {
 		sess.Close()
 		client.Close()
-		return fmt.Errorf("start shell: %w", err)
+		return info, fmt.Errorf("start shell: %w", err)
 	}
 
 	s := &session{
@@ -139,9 +173,16 @@ func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionIn
 			_ = client.Close()
 		},
 	}
+	if info.Persistent {
+		s.persist = p.Key
+	}
 	if err := m.add(id, s); err != nil {
 		s.close()
-		return err
+		return info, err
+	}
+	if history != "" {
+		// Push the replayed lines into scrollback before tmux redraws the screen.
+		m.emit(DataEvent(id), base64.StdEncoding.EncodeToString([]byte(history+strings.Repeat("\r\n", rows))))
 	}
 
 	var pumps sync.WaitGroup
@@ -174,7 +215,7 @@ func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionIn
 	if startup != "" {
 		_ = m.Write(id, startup+"\n")
 	}
-	return nil
+	return info, nil
 }
 
 func (m *Manager) add(id string, s *session) error {
@@ -260,7 +301,23 @@ func (m *Manager) Resize(id string, cols, rows int) error {
 	return s.resize(cols, rows)
 }
 
-// Close ends a session. The exit event still fires.
+// End closes a session and, if it runs in tmux, ends the server-side session
+// too, so it doesn't linger. The exit event still fires.
+func (m *Manager) End(id string) {
+	m.mu.Lock()
+	s, ok := m.sessions[id]
+	m.mu.Unlock()
+	if !ok {
+		return
+	}
+	if s.persist != "" {
+		_ = KillServerSession(s.client, s.persist)
+	}
+	s.close()
+}
+
+// Close ends a session; a tmux session on the server keeps running, so the
+// next connection can resume it. The exit event still fires.
 func (m *Manager) Close(id string) {
 	m.mu.Lock()
 	s, ok := m.sessions[id]

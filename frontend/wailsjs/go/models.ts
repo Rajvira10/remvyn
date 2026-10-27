@@ -254,6 +254,8 @@ export namespace models {
 	    passphrase: string;
 	    cols: number;
 	    rows: number;
+	    persistKey: string;
+	    restore: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ConnectOptions(source);
@@ -266,6 +268,8 @@ export namespace models {
 	        this.passphrase = source["passphrase"];
 	        this.cols = source["cols"];
 	        this.rows = source["rows"];
+	        this.persistKey = source["persistKey"];
+	        this.restore = source["restore"];
 	    }
 	}
 	export class Container {
@@ -939,6 +943,28 @@ export namespace models {
 	        this.path = source["path"];
 	    }
 	}
+	export class ServerSession {
+	    key: string;
+	    attached: boolean;
+	    lastActive: number;
+	    history: number;
+	    command: string;
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ServerSession(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.attached = source["attached"];
+	        this.lastActive = source["lastActive"];
+	        this.history = source["history"];
+	        this.command = source["command"];
+	        this.path = source["path"];
+	    }
+	}
 	
 	
 	export class SessionInfo {
@@ -948,6 +974,10 @@ export namespace models {
 	    title: string;
 	    remote: string;
 	    startedAt: number;
+	    persistent: boolean;
+	    resumed: boolean;
+	    persistNote?: string;
+	    detached: ServerSession[];
 	
 	    static createFrom(source: any = {}) {
 	        return new SessionInfo(source);
@@ -961,7 +991,29 @@ export namespace models {
 	        this.title = source["title"];
 	        this.remote = source["remote"];
 	        this.startedAt = source["startedAt"];
+	        this.persistent = source["persistent"];
+	        this.resumed = source["resumed"];
+	        this.persistNote = source["persistNote"];
+	        this.detached = this.convertValues(source["detached"], ServerSession);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class Settings {
 	    theme: string;
@@ -977,6 +1029,7 @@ export namespace models {
 	    connectTimeout: number;
 	    showHiddenFiles: boolean;
 	    confirmOnClose: boolean;
+	    persistentSessions: boolean;
 	    monitorHostIds: string[];
 	    monitorIntervalSec: number;
 	    metricsRetentionDays: number;
@@ -1003,6 +1056,7 @@ export namespace models {
 	        this.connectTimeout = source["connectTimeout"];
 	        this.showHiddenFiles = source["showHiddenFiles"];
 	        this.confirmOnClose = source["confirmOnClose"];
+	        this.persistentSessions = source["persistentSessions"];
 	        this.monitorHostIds = source["monitorHostIds"];
 	        this.monitorIntervalSec = source["monitorIntervalSec"];
 	        this.metricsRetentionDays = source["metricsRetentionDays"];

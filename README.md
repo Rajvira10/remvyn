@@ -10,8 +10,10 @@ Remvyn is a desktop SSH client in the spirit of Termius. It saves your servers, 
   - Copy and paste, find in scrollback, clickable links, 39 color schemes, and configurable font, cursor and scrollback. The palette button in the terminal toolbar switches scheme (with live preview on hover), text size and cursor without opening Settings.
   - Local terminal tabs: a shell on this computer (your login shell on macOS and Linux; PowerShell, or cmd, on Windows) from the ⌘T palette, the title bar or ⌘⌥T.
   - Split panes: split any terminal tab right (⌘D) or down (⌘⌥D) as often as you like. Each pane is its own session to the same host (or another local shell), with a draggable divider; ⌘⌥ + arrow keys move between panes, and ⌘W closes the focused pane.
+  - Sessions that survive disconnects: SSH shells run inside tmux on the server (when it has tmux 3.0 or later), so a dropped connection, a sleeping laptop or a restart doesn't end them. Remvyn reconnects by itself, backing off and retrying as soon as the network returns, and puts you back where you were. After a restart, a new tab offers to resume sessions that are still running, scrollback included. Closing a tab ends its session. Remvyn uses its own tmux server with no status bar or prefix key, so it feels like a normal shell and never touches your own tmux sessions. Turn it off in Settings → Terminal.
+  - Broadcast input: type into every pane of a tab, or every open terminal, at once (⌘⇧B or the toolbar). Terminals receiving input are outlined.
   - Run a snippet from the terminal toolbar.
-  - Dropped connections show a Reconnect overlay; keepalives detect dead links.
+  - Dropped connections without tmux show a Reconnect overlay; keepalives detect dead links.
 - **SFTP**:
   - Dual-pane browser, local and remote, with breadcrumbs, a typed path bar and hidden-file toggle.
   - Multi-select, drag and drop between panes, mkdir, rename, and recursive delete with confirmation.
@@ -203,6 +205,7 @@ On macOS these use ⌘. On Linux and Windows they use Ctrl+Shift, so plain Ctrl+
 | Local terminal | ⌘⌥T |
 | Split right / down | ⌘D / ⌘⌥D |
 | Focus the pane left / right / above / below | ⌘⌥ + arrow keys |
+| Broadcast input to all panes (or all terminals) | ⌘⇧B |
 | Next / previous tab | ⌘] / ⌘[ |
 | Vault / tab 1–9 | ⌘0 / ⌘1–9 |
 | Copy / paste in terminal | ⌘C / ⌘V (Ctrl+Shift+C/V elsewhere) |
@@ -226,6 +229,7 @@ cd frontend && npx tsc -b && npx oxlint src
 `backend/testutil` runs a real SSH server in-process, so the end-to-end tests need no network or external `sshd`. They cover:
 
 - PTY sessions: banner, input, resize, exit codes.
+- Persistent sessions: parsing the tmux probe and version checks. Against a real server with tmux (`REMVYN_TMUX_TEST=user:password@host:port`), a session survives a dropped connection, keeps its working directory and variables, replays its scrollback, doesn't rerun the startup command, and is removed when the tab is closed.
 - Local shells: output, resize, exit status, closing, and refusing duplicate or invalid session IDs.
 - Host-key trust on first use, and changed-key detection and rejection.
 - Password flows: required, wrong, saved, and encrypted at rest.
@@ -261,7 +265,7 @@ main.go, app.go        Wails entry point and the bound App facade (dialogs, stru
 backend/
   core/                service layer wiring everything together (no Wails dependency)
   sshconn/             dialing, auth methods, keepalive, host-key verification and prompt broker
-  terminal/            PTY shell sessions (SSH or local) streaming base64 output events
+  terminal/            PTY shell sessions (SSH or local) streaming base64 output events; persistent SSH sessions via tmux
   files/               SFTP and local file operations, recursive transfers with progress, remote text
                        editing, copy/move/compress/extract, open with an installed editor
   forward/             -L / -R / SOCKS5 -D forwarding
@@ -307,7 +311,7 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 
 ## Known limitations
 
-- No jump hosts / ProxyJump, agent forwarding, X11 forwarding or Mosh yet. Hosts imported with `ProxyJump` are flagged during import.
+- No jump hosts / ProxyJump, agent forwarding, X11 forwarding or Mosh yet. Persistent sessions need tmux 3.0+ on the server; without it, a dropped connection still ends the shell. The Android app doesn't use persistent sessions yet. Hosts imported with `ProxyJump` are flagged during import.
 - No session logging/recording.
 - Sync needs a GitHub account and a private repository for the vault. Same-item conflicts keep the newer edit; there's no field-level merge. Hosts created separately on two devices with the same name are kept as two hosts. No Touch ID unlock yet.
 - No team sharing.

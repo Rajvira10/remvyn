@@ -102,6 +102,14 @@ export function Download(arg1, arg2, arg3) {
   return window['go']['main']['App']['Download'](arg1, arg2, arg3);
 }
 
+export function EndServerSession(arg1, arg2) {
+  return window['go']['main']['App']['EndServerSession'](arg1, arg2);
+}
+
+export function EndTerminal(arg1) {
+  return window['go']['main']['App']['EndTerminal'](arg1);
+}
+
 export function ExportPrivateKey(arg1) {
   return window['go']['main']['App']['ExportPrivateKey'](arg1);
 }
@@ -208,6 +216,10 @@ export function ListLocal(arg1) {
 
 export function ListRemote(arg1, arg2) {
   return window['go']['main']['App']['ListRemote'](arg1, arg2);
+}
+
+export function ListServerSessions(arg1) {
+  return window['go']['main']['App']['ListServerSessions'](arg1);
 }
 
 export function ListSnippets() {

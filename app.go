@@ -337,11 +337,35 @@ func (a *App) ResizeTerminal(id string, cols, rows int) error {
 	return a.core.ResizeTerminal(id, cols, rows)
 }
 
-// CloseTerminal ends a terminal session.
+// CloseTerminal disconnects a terminal session; a persistent session keeps
+// running on the server.
 func (a *App) CloseTerminal(id string) {
 	if a.core != nil {
 		a.core.CloseTerminal(id)
 	}
+}
+
+// EndTerminal closes a terminal session and ends it on the server too.
+func (a *App) EndTerminal(id string) {
+	if a.core != nil {
+		a.core.EndTerminal(id)
+	}
+}
+
+// ListServerSessions returns Remvyn's persistent sessions on a host.
+func (a *App) ListServerSessions(hostID string) ([]models.ServerSession, error) {
+	if err := a.ready(); err != nil {
+		return nil, err
+	}
+	return a.core.ListServerSessions(hostID), nil
+}
+
+// EndServerSession ends a persistent session on a host.
+func (a *App) EndServerSession(hostID, key string) error {
+	if err := a.ready(); err != nil {
+		return err
+	}
+	return a.core.EndServerSession(hostID, key)
 }
 
 // CancelConnect aborts an in-flight connection attempt.

@@ -5,7 +5,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal, type ITheme } from '@xterm/xterm'
-import { ActivityIcon, ChevronDownIcon, ChevronUpIcon, CodeIcon, Columns2Icon, FolderIcon, RotateCwIcon, Rows2Icon, SearchIcon, XIcon } from 'lucide-react'
+import { ActivityIcon, ChevronDownIcon, ChevronUpIcon, CodeIcon, Columns2Icon, FolderIcon, HistoryIcon, InfinityIcon, RadioTowerIcon, RotateCwIcon, Rows2Icon, SearchIcon, XIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
@@ -15,6 +15,7 @@ import { ConnectOverlay, type Credentials } from '@/components/session/ConnectOv
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -24,11 +25,11 @@ import {
 import { Tooltip } from '@/components/ui/tooltip'
 import { matchesCombo } from '@/hooks/useHotkeys'
 import { api, copyText, errorCode, errorMessage, events, onEvent, readClipboard } from '@/lib/api'
-import type { SessionExit } from '@/lib/types'
+import type { ServerSession, SessionExit } from '@/lib/types'
 import { terminalTheme } from '@/lib/terminalThemes'
-import { appKey, cn, isMac, uid } from '@/lib/utils'
+import { appKey, cn, isMac, relativeTime, uid } from '@/lib/utils'
 import { isLocked } from '@/stores/lock'
-import { useSessions, type Rect, type Tab } from '@/stores/sessions'
+import { broadcastTargets, isBroadcasting, useSessions, type Rect, type Tab } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
 import { useUI } from '@/stores/ui'
 import { useVault } from '@/stores/vault'
@@ -44,7 +45,13 @@ function decode(b64: string): Uint8Array {
 const RESERVED = ['app+t', 'app+w', 'app+k', 'app+f', 'app+,', 'app+[', 'app+]', 'app+shift+[', 'app+shift+]',
   'app+1', 'app+2', 'app+3', 'app+4', 'app+5', 'app+6', 'app+7', 'app+8', 'app+9', 'app+0', 'app+/', 'app+i',
   'app+alt+[', 'app+alt+]', 'app+=', 'app+-', 'app+l', 'app+d', 'app+alt+d', 'app+alt+t',
-  'app+alt+arrowleft', 'app+alt+arrowright', 'app+alt+arrowup', 'app+alt+arrowdown']
+  'app+alt+arrowleft', 'app+alt+arrowright', 'app+alt+arrowup', 'app+alt+arrowdown', 'app+shift+b']
+
+/** Seconds to wait before each automatic reconnect after a drop. */
+const RETRY_DELAYS = [1, 2, 4, 8, 15, 30]
+
+/** Hosts already told that tmux is missing, so the hint shows once per run. */
+const tmuxHinted = new Set<string>()
 
 /**
  * One terminal session (SSH or local). In a split tab, rect places it within
@@ -58,6 +65,9 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
   const snippets = useVault((s) => s.snippets)
   const monitorOpen = useUI((s) => s.monitorOpen)
   const { update, open } = useSessions()
+  const broadcasting = useSessions((s) => isBroadcasting(s.tabs, s.broadcastAll, tab.key))
+  const broadcastAll = useSessions((s) => s.broadcastAll)
+  const rootTab = useSessions((s) => s.tabs.find((t) => t.key === (tab.parent ?? tab.key)))
   const setPage = useUI((s) => s.setPage)
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -72,8 +82,22 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
   const [preview, setPreview] = useState<ITheme | null>(null)
   const searchInput = useRef<HTMLInputElement>(null)
 
+  const activeRef = useRef(active)
+  activeRef.current = active
+  // When the user last typed or pasted, to tell their input from the
+  // terminal's own replies (which must not be broadcast).
+  const typedAt = useRef(0)
+
   const send = (data: string) => {
     if (connectedRef.current) void api.writeTerminal(sidRef.current, data).catch(() => {})
+  }
+
+  /** Sends what the user typed, to every terminal in the broadcast too. */
+  const input = (data: string) => {
+    send(data)
+    if (!activeRef.current || Date.now() - typedAt.current > 250) return
+    const s = useSessions.getState()
+    for (const t of broadcastTargets(s.tabs, s.broadcastAll, tab.key)) void api.writeTerminal(t.sessionId, data).catch(() => {})
   }
 
   // Create the terminal once.
@@ -112,6 +136,7 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     term.attachCustomKeyEventHandler((e) => {
       // Nothing reaches the remote shell while Remvyn is locked.
       if (isLocked()) return false
+      typedAt.current = Date.now()
       if (e.type !== 'keydown') return true
       // Copy: ⌘C on macOS; Ctrl+Shift+C elsewhere (plain Ctrl+C is SIGINT).
       const copyCombo = isMac ? e.metaKey && !e.ctrlKey && e.key.toLowerCase() === 'c' : e.ctrlKey && e.shiftKey && e.code === 'KeyC'
@@ -125,14 +150,23 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
       const pasteCombo = isMac ? e.metaKey && e.key.toLowerCase() === 'v' : e.ctrlKey && e.shiftKey && e.code === 'KeyV'
       if (pasteCombo) {
         e.preventDefault()
-        void readClipboard().then((text) => text && term.paste(text))
+        void readClipboard().then((text) => {
+          if (!text) return
+          typedAt.current = Date.now()
+          term.paste(text)
+        })
         return false
       }
       if (RESERVED.some((c) => matchesCombo(e, c))) return false
       return true
     })
-    term.onData((d) => send(d))
-    term.onBinary((d) => send(d))
+    // Typed text can also arrive without key events (IME, dictation, drops).
+    // Capturing on the container runs before xterm's own listeners.
+    const markTyped = () => (typedAt.current = Date.now())
+    containerRef.current!.addEventListener('input', markTyped, true)
+    containerRef.current!.addEventListener('paste', markTyped, true)
+    term.onData((d) => input(d))
+    term.onBinary((d) => input(d))
     term.onResize(({ cols, rows }) => {
       if (connectedRef.current) void api.resizeTerminal(sidRef.current, cols, rows).catch(() => {})
     })
@@ -206,11 +240,20 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     const sid = tab.sessionId
     sidRef.current = sid
     connectedRef.current = false
-    if (tab.attempt > 0) term.write('\r\n\x1b[2m── reconnecting ──\x1b[0m\r\n')
+    const restore = !!tab.restore
+    if (restore) term.reset()
+    else if (tab.attempt > 0 && !tab.retries) term.write('\r\n\x1b[2m── reconnecting ──\x1b[0m\r\n')
 
     const offData = onEvent<string>(events.termData(sid), (b64) => term.write(decode(b64)))
     const offExit = onEvent<SessionExit>(events.termExit(sid), (x) => {
       connectedRef.current = false
+      const t = useSessions.getState().tabs.find((y) => y.key === tab.key)
+      // A dropped connection to a persistent session reconnects by itself.
+      if (t?.persistent && x.error) {
+        term.write('\r\n\x1b[2m── connection lost ──\x1b[0m\r\n')
+        update(tab.key, { state: 'closed', exitCode: x.exitCode, error: x.error, retries: 0 })
+        return
+      }
       term.write(`\r\n\x1b[2m── session ended${x.exitCode >= 0 ? ` (status ${x.exitCode})` : ''} ──\x1b[0m\r\n`)
       update(tab.key, { state: 'closed', exitCode: x.exitCode, error: x.error })
     })
@@ -228,12 +271,30 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
       passphrase: creds?.passphrase ?? '',
       cols: term.cols,
       rows: term.rows,
+      persistKey: local ? undefined : (tab.persist ?? tab.key),
+      restore,
     }
     ;(local ? api.openLocalTerminal(sid, opts) : api.openTerminal(sid, tab.hostId, opts))
       .then((info) => {
         if (sidRef.current !== sid) return
         connectedRef.current = true
-        update(tab.key, { state: 'connected', remote: info.remote })
+        // Offer earlier sessions in a brand-new tab, leaving out ones this app has open.
+        const open = new Set(useSessions.getState().tabs.map((t) => t.persist ?? t.key))
+        const detached = tab.attempt === 0 && !restore ? (info.detached ?? []).filter((d) => !open.has(d.key)) : []
+        update(tab.key, {
+          state: 'connected',
+          remote: info.remote,
+          persistent: info.persistent,
+          restore: undefined,
+          retries: undefined,
+          detached: detached.length ? detached : undefined,
+        })
+        if (info.persistNote && !tmuxHinted.has(tab.hostId)) {
+          tmuxHinted.add(tab.hostId)
+          toast(info.persistNote === 'tmux_old' ? `${tab.title} has an old tmux` : `${tab.title} doesn't have tmux`, {
+            description: `Install tmux 3.0 or later on the server so its sessions survive disconnects. Until then, a dropped connection ends the shell.`,
+          })
+        }
         // The PTY may have been sized before the fit settled.
         void api.resizeTerminal(sid, term.cols, term.rows).catch(() => {})
         if (creds?.savePassword) void useVault.getState().loadHosts()
@@ -243,8 +304,12 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
         if (sidRef.current !== sid) return
         const code = errorCode(err)
         const auth = code === 'password_required' || code === 'passphrase_required' || (code === 'auth_failed' && host?.authMethod === 'password')
-        if (code === 'cancelled') update(tab.key, { state: 'error', error: 'Connection cancelled.', errorCode: code })
-        else update(tab.key, { state: auth ? 'auth' : 'error', error: errorMessage(err), errorCode: code })
+        if (code === 'cancelled') update(tab.key, { state: 'error', error: 'Connection cancelled.', errorCode: code, retries: undefined })
+        else {
+          // Automatic reconnects only keep trying while the network is the problem.
+          const transient = !code || code === 'network' || code === 'timeout'
+          update(tab.key, { state: auth ? 'auth' : 'error', error: errorMessage(err), errorCode: code, ...(transient && !auth ? {} : { retries: undefined }) })
+        }
       })
 
     return () => {
@@ -253,6 +318,44 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab.sessionId])
+
+  // Reconnect automatically after a drop, backing off, and right away when
+  // the network comes back.
+  useEffect(() => {
+    if (tab.retries === undefined || (tab.state !== 'closed' && tab.state !== 'error')) return
+    const n = tab.retries
+    const retry = () => {
+      useSessions.getState().reconnect(tab.key)
+      update(tab.key, { retries: n + 1, retryAt: undefined })
+    }
+    const delay = RETRY_DELAYS[Math.min(n, RETRY_DELAYS.length - 1)] * 1000
+    update(tab.key, { retryAt: Date.now() + delay })
+    const timer = setTimeout(retry, delay)
+    window.addEventListener('online', retry)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('online', retry)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab.retries, tab.state])
+
+  const resume = (d: ServerSession) => useSessions.getState().resume(tab.key, d.key)
+
+  const endDetached = async () => {
+    const list = tab.detached ?? []
+    update(tab.key, { detached: undefined })
+    const results = await Promise.allSettled(list.map((d) => api.endServerSession(tab.hostId, d.key)))
+    const failed = results.filter((r) => r.status === 'rejected').length
+    if (failed) toast.error(`Couldn't end ${failed} session${failed > 1 ? 's' : ''}`)
+    else toast.success(`Ended ${list.length} session${list.length > 1 ? 's' : ''} on ${tab.title}`)
+  }
+
+  const toggleBroadcast = () => {
+    const s = useSessions.getState()
+    if (s.broadcastAll) s.setBroadcastAll(false)
+    else if (rootTab?.layout) s.setBroadcast(rootTab.key, !rootTab.broadcast)
+    else s.setBroadcastAll(true)
+  }
 
   const splitFrom = (dir: 'row' | 'col') => {
     const s = useSessions.getState()
@@ -302,11 +405,15 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
       } else if (matchesCombo(e, 'app+=') || matchesCombo(e, 'app+-')) {
         e.preventDefault()
         changeFontSize(e.code === 'Equal' || e.key === '=' ? 1 : -1)
+      } else if (matchesCombo(e, 'app+shift+b')) {
+        e.preventDefault()
+        toggleBroadcast()
       }
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [active])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, rootTab?.layout, rootTab?.broadcast])
 
   const theme = terminalTheme(settings?.terminalTheme ?? 'flux')
 
@@ -320,8 +427,18 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     >
       <div className={cn('flex h-9 shrink-0 items-center gap-2 border-b px-3 text-xs', split && focused && 'bg-accent/50 shadow-[inset_0_2px_0_var(--primary)]')}>
         <span className="size-2 rounded-full" style={{ background: tab.state === 'connected' ? 'var(--success)' : tab.state === 'error' ? 'var(--danger)' : 'var(--muted-foreground)' }} />
-        <span className="font-medium">{tab.title}</span>
-        <span className="truncate font-mono text-muted-foreground">{tab.remote}</span>
+        <span className="shrink-0 font-medium whitespace-nowrap">{tab.title}</span>
+        <span className="min-w-0 truncate font-mono text-muted-foreground">{tab.remote}</span>
+        {tab.persistent && (
+          <Tooltip content="Persistent: runs in tmux on the server, keeps running if the connection drops, and Remvyn reconnects to it">
+            <InfinityIcon className="size-3.5 shrink-0 text-muted-foreground" aria-label="Persistent session" />
+          </Tooltip>
+        )}
+        {broadcasting && (
+          <span className="flex shrink-0 items-center gap-1 rounded bg-warning/15 px-1.5 py-0.5 text-[10.5px] font-medium text-warning" title="Typing here goes to every broadcasting terminal">
+            <RadioTowerIcon className="size-3" /> {!split && 'Broadcasting'}
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-0.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -361,6 +478,28 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
               </Button>
             </Tooltip>
           )}
+          <DropdownMenu>
+            <Tooltip content={`Broadcast input (${appKey}${isMac ? '⇧B' : 'Shift+B'})`}>
+              <DropdownMenuTrigger asChild>
+                <Button variant={broadcasting ? 'secondary' : 'ghost'} size="icon-xs" aria-label="Broadcast input" aria-pressed={broadcasting}>
+                  <RadioTowerIcon className={cn(broadcasting && 'text-warning')} />
+                </Button>
+              </DropdownMenuTrigger>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Type into several terminals at once</DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={!!rootTab?.broadcast && !!rootTab.layout}
+                disabled={!rootTab?.layout}
+                onCheckedChange={(on) => rootTab && useSessions.getState().setBroadcast(rootTab.key, on)}
+              >
+                All panes in this tab
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem checked={broadcastAll} onCheckedChange={(on) => useSessions.getState().setBroadcastAll(on)}>
+                All open terminals
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <AppearancePicker onPreview={setPreview} />
           <Tooltip content={`Find (${appKey}F)`}>
             <Button variant="ghost" size="icon-xs" aria-label="Find" onClick={() => { setSearchOpen((o) => !o); setTimeout(() => searchInput.current?.focus(), 0) }}>
@@ -398,6 +537,40 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
           )}
         </div>
       </div>
+      {tab.detached && tab.detached.length > 0 && (
+        <div className="flex h-9 shrink-0 items-center gap-2 border-b bg-info/10 px-3 text-xs">
+          <HistoryIcon className="size-3.5 shrink-0 text-info" />
+          <span className="truncate">
+            {tab.detached.length === 1 ? 'An earlier session is' : `${tab.detached.length} earlier sessions are`} still running on this server.
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="xs">
+                Resume <ChevronDownIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-80">
+              <DropdownMenuLabel>Resume in this tab</DropdownMenuLabel>
+              {tab.detached.map((d) => (
+                <DropdownMenuItem key={d.key} onSelect={() => resume(d)} className="flex-col items-start gap-0">
+                  <span>
+                    <span className="font-mono">{d.command || 'shell'}</span>
+                    <span className="text-muted-foreground"> · active {relativeTime(d.lastActive)}</span>
+                  </span>
+                  <span className="w-full truncate font-mono text-[11px] text-muted-foreground">{d.path}</span>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onSelect={() => void endDetached()}>
+                End {tab.detached.length === 1 ? 'it' : `all ${tab.detached.length}`}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button variant="ghost" size="icon-xs" className="ml-auto" aria-label="Dismiss" onClick={() => update(tab.key, { detached: undefined })}>
+            <XIcon />
+          </Button>
+        </div>
+      )}
       {searchOpen && (
         <div className="flex h-9 shrink-0 items-center gap-1 border-b bg-muted/30 px-3">
           <SearchIcon className="size-3.5 text-muted-foreground" />
@@ -429,7 +602,7 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
         </div>
       )}
       <div className="flex min-h-0 flex-1">
-        <div className="relative min-w-0 flex-1" style={{ background: (preview ?? theme.theme).background }}>
+        <div className={cn('relative min-w-0 flex-1', broadcasting && 'ring-2 ring-warning/60 ring-inset')} style={{ background: (preview ?? theme.theme).background }}>
           <div ref={containerRef} className="absolute inset-0 m-2" />
           <ConnectOverlay
             tab={tab}

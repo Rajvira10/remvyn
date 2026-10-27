@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { api } from '@/lib/api'
+import type { ServerSession } from '@/lib/types'
 import { uid } from '@/lib/utils'
 import { hostById } from './vault'
 
@@ -36,6 +37,20 @@ export interface Tab {
   layout?: Layout
   /** Top-level tabs only: the focused pane when split. */
   focus?: string
+  /** Server-side session this terminal attaches to; defaults to key. */
+  persist?: string
+  /** The shell runs in tmux on the server and survives disconnects. */
+  persistent?: boolean
+  /** Replay the server session's scrollback on the next connect (resume). */
+  restore?: boolean
+  /** Earlier sessions still running on the server, offered for resuming. */
+  detached?: ServerSession[]
+  /** Set while reconnecting automatically after a drop: attempts so far. */
+  retries?: number
+  /** When the next automatic reconnect happens (ms). */
+  retryAt?: number
+  /** Top-level tabs only: typing in one pane goes to every pane. */
+  broadcast?: boolean
 }
 
 export interface Rect {
@@ -65,6 +80,36 @@ interface SessionsState {
   focusPane: (key: string) => void
   focusDirection: (dir: 'left' | 'right' | 'up' | 'down') => void
   setRatio: (rootKey: string, path: string, ratio: number) => void
+  /** Switches this terminal to an earlier server session, ending the current one. */
+  resume: (key: string, serverKey: string) => void
+  /** Typing in any terminal goes to every open terminal. */
+  broadcastAll: boolean
+  setBroadcast: (rootKey: string, on: boolean) => void
+  setBroadcastAll: (on: boolean) => void
+}
+
+/** Connected terminals that also receive what's typed into pane `from`. */
+export function broadcastTargets(tabs: Tab[], all: boolean, from: string): Tab[] {
+  const src = tabs.find((t) => t.key === from)
+  if (!src) return []
+  const rootKey = src.parent ?? src.key
+  const root = tabs.find((t) => t.key === rootKey)
+  let pool: Tab[]
+  if (all) pool = tabs
+  else if (root?.broadcast && root.layout) {
+    const keys = new Set(paneKeys(root))
+    pool = tabs.filter((t) => keys.has(t.key))
+  } else return []
+  return pool.filter((t) => t.key !== from && isTerminal(t) && t.state === 'connected')
+}
+
+/** Whether pane `key` is part of an active broadcast. */
+export function isBroadcasting(tabs: Tab[], all: boolean, key: string): boolean {
+  const t = tabs.find((x) => x.key === key)
+  if (!t || !isTerminal(t)) return false
+  if (all) return true
+  const root = tabs.find((x) => x.key === (t.parent ?? t.key))
+  return !!(root?.broadcast && root.layout)
 }
 
 export const isTerminal = (t: Tab) => t.kind === 'terminal' || t.kind === 'local'
@@ -137,10 +182,24 @@ export function splitRects(n: Layout, r: Rect, path: string, fn: (n: Layout, r: 
   }
 }
 
-function release(t: Tab) {
+/**
+ * Disconnects a tab's session. With end, a persistent terminal is also ended
+ * on the server; otherwise it keeps running there for the next connection.
+ */
+function release(t: Tab, end: boolean) {
   if (t.state === 'connecting' || t.state === 'auth') void api.cancelConnect(t.sessionId)
-  if (isTerminal(t)) void api.closeTerminal(t.sessionId)
-  else void api.closeSFTP(t.sessionId)
+  if (!isTerminal(t)) {
+    void api.closeSFTP(t.sessionId)
+    return
+  }
+  if (!end) {
+    void api.closeTerminal(t.sessionId)
+  } else if (t.persistent && t.state !== 'connected') {
+    // Not connected: end it through another terminal to the host, if one is open.
+    void api.endServerSession(t.hostId, t.persist ?? t.key).catch(() => {})
+  } else {
+    void api.endTerminal(t.sessionId)
+  }
 }
 
 function newTab(hostId: string, kind: TabKind): Tab {
@@ -177,7 +236,7 @@ export const useSessions = create<SessionsState>((set, get) => ({
     if (!t) return
     const root = t.parent ? s.tabs.find((x) => x.key === t.parent)! : t
     const gone = new Set(paneKeys(root))
-    s.tabs.filter((x) => gone.has(x.key)).forEach(release)
+    s.tabs.filter((x) => gone.has(x.key)).forEach((x) => release(x, true))
     const top = topTabs(s.tabs)
     const idx = top.findIndex((x) => x.key === root.key)
     const tabs = s.tabs.filter((x) => !gone.has(x.key))
@@ -194,7 +253,7 @@ export const useSessions = create<SessionsState>((set, get) => ({
     const root = p.parent ? s.tabs.find((x) => x.key === p.parent)! : p
     const layout = root.layout && removePane(root.layout, key)
     if (!layout) return get().close(root.key)
-    release(p)
+    release(p, true)
     const single = 'pane' in layout
     const first = paneKeys({ ...root, layout })[0]
     if (p.key !== root.key) {
@@ -221,9 +280,30 @@ export const useSessions = create<SessionsState>((set, get) => ({
   reconnect: (key) => {
     const t = get().tabs.find((x) => x.key === key)
     if (!t) return
-    release(t)
+    release(t, false)
     get().update(key, { sessionId: uid(), attempt: t.attempt + 1, state: 'connecting', error: undefined, errorCode: undefined, exitCode: undefined })
   },
+
+  resume: (key, serverKey) => {
+    const t = get().tabs.find((x) => x.key === key)
+    if (!t) return
+    release(t, true)
+    get().update(key, {
+      persist: serverKey,
+      restore: true,
+      detached: undefined,
+      sessionId: uid(),
+      attempt: t.attempt + 1,
+      state: 'connecting',
+      error: undefined,
+      errorCode: undefined,
+      exitCode: undefined,
+    })
+  },
+
+  broadcastAll: false,
+  setBroadcast: (rootKey, on) => get().update(rootKey, { broadcast: on }),
+  setBroadcastAll: (broadcastAll) => set({ broadcastAll }),
 
   activate: (active) => set({ active }),
 

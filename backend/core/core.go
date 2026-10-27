@@ -409,10 +409,11 @@ func (c *Core) OpenTerminal(id, hostID string, opts models.ConnectOptions) (mode
 	}
 	info := models.SessionInfo{ID: id, HostID: h.ID, Kind: "terminal", Title: h.Label, Remote: remote(h),
 		StartedAt: time.Now().UnixMilli()}
-	if err := c.terms.Start(id, client, info, opts.Cols, opts.Rows, h.StartupCommand); err != nil {
-		return models.SessionInfo{}, err
+	var persist *terminal.Persist
+	if c.Settings().PersistentSessions && opts.PersistKey != "" {
+		persist = &terminal.Persist{Key: opts.PersistKey, Restore: opts.Restore}
 	}
-	return info, nil
+	return c.terms.Start(id, client, info, opts.Cols, opts.Rows, h.StartupCommand, persist)
 }
 
 // OpenLocalTerminal starts a shell on this computer. Like OpenTerminal, the
@@ -436,8 +437,34 @@ func (c *Core) WriteTerminal(id, data string) error { return c.terms.Write(id, d
 // ResizeTerminal updates the PTY size.
 func (c *Core) ResizeTerminal(id string, cols, rows int) error { return c.terms.Resize(id, cols, rows) }
 
-// CloseTerminal ends a session.
+// CloseTerminal disconnects a session. A persistent session keeps running on
+// the server so it can be resumed.
 func (c *Core) CloseTerminal(id string) { c.terms.Close(id) }
+
+// EndTerminal closes a session for good, ending a persistent session on the
+// server too.
+func (c *Core) EndTerminal(id string) { c.terms.End(id) }
+
+// ListServerSessions returns Remvyn's persistent sessions on a host, using an
+// open terminal's connection. It returns nil when no terminal to the host is
+// open or the server has no tmux.
+func (c *Core) ListServerSessions(hostID string) []models.ServerSession {
+	client := c.terms.ClientForHost(hostID)
+	if client == nil {
+		return nil
+	}
+	return terminal.ListServerSessions(client)
+}
+
+// EndServerSession ends a persistent session on a host, using an open
+// terminal's connection.
+func (c *Core) EndServerSession(hostID, key string) error {
+	client := c.terms.ClientForHost(hostID)
+	if client == nil {
+		return errors.New("Open a terminal to this host first")
+	}
+	return terminal.KillServerSession(client, key)
+}
 
 // OpenSFTP connects and starts an SFTP session.
 func (c *Core) OpenSFTP(id, hostID string, opts models.ConnectOptions) (models.SessionInfo, error) {

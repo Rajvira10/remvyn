@@ -1,4 +1,4 @@
-import { BotIcon, CloudAlertIcon, CloudCheckIcon, CloudIcon, FolderIcon, LaptopIcon, LayoutGridIcon, LockIcon, PlusIcon, RefreshCwIcon, TerminalIcon, XIcon } from 'lucide-react'
+import { BotIcon, CloudAlertIcon, CloudCheckIcon, CloudIcon, FolderIcon, LaptopIcon, LayoutGridIcon, LockIcon, PlusIcon, RadioTowerIcon, RefreshCwIcon, TerminalIcon, XIcon } from 'lucide-react'
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { Logo } from '@/components/common/Logo'
@@ -8,7 +8,7 @@ import { appKey, cn, isMac, relativeTime } from '@/lib/utils'
 import { useAgent } from '@/stores/agent'
 import { useEditorState } from '@/stores/editor'
 import { useLock } from '@/stores/lock'
-import { paneKeys, topTabs, useSessions, type Tab } from '@/stores/sessions'
+import { isBroadcasting, paneKeys, topTabs, useSessions, type Tab } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
 import { useUI } from '@/stores/ui'
 
@@ -53,7 +53,7 @@ export function useCloseTab() {
 }
 
 export function TabBar() {
-  const { tabs: all, active, activate } = useSessions()
+  const { tabs: all, active, activate, broadcastAll } = useSessions()
   const tabs = topTabs(all)
   const setPaletteOpen = useUI((s) => s.setPaletteOpen)
   const { request, dialog } = useCloseTab()
@@ -103,13 +103,14 @@ export function TabBar() {
             )}
             <span className="min-w-0 flex-1 truncate">{t.title}</span>
             {t.layout && <span className="shrink-0 text-[10.5px] text-muted-foreground tabular-nums">{paneKeys(t).length}</span>}
+            {isBroadcasting(all, broadcastAll, t.key) && <RadioTowerIcon className="size-3 shrink-0 text-warning" aria-label="Broadcasting input" />}
             <span
               className={cn('size-1.5 shrink-0 rounded-full', {
                 'bg-success': t.state === 'connected',
-                'animate-pulse bg-warning': t.state === 'connecting',
+                'animate-pulse bg-warning': t.state === 'connecting' || t.retries !== undefined,
                 'bg-info': t.state === 'auth',
-                'bg-danger': t.state === 'error',
-                'bg-muted-foreground/50': t.state === 'closed',
+                'bg-danger': t.state === 'error' && t.retries === undefined,
+                'bg-muted-foreground/50': t.state === 'closed' && t.retries === undefined,
               })}
             />
             {t.color && <span className="h-3 w-0.5 shrink-0 rounded-full" style={{ background: t.color }} />}

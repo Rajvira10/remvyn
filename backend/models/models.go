@@ -156,6 +156,11 @@ type ConnectOptions struct {
 	Passphrase   string `json:"passphrase"`
 	Cols         int    `json:"cols"`
 	Rows         int    `json:"rows"`
+	// PersistKey names the server-side session to create or resume when
+	// persistent sessions are on (terminals only).
+	PersistKey string `json:"persistKey"`
+	// Restore replays a resumed session's scrollback into an empty terminal.
+	Restore bool `json:"restore"`
 }
 
 // SessionInfo describes an open terminal or SFTP session.
@@ -166,6 +171,26 @@ type SessionInfo struct {
 	Title     string `json:"title"`
 	Remote    string `json:"remote"` // user@host:port
 	StartedAt int64  `json:"startedAt"`
+	// Persistent is true when the shell runs in a tmux session on the server
+	// that survives disconnects; Resumed when that session already existed.
+	Persistent bool `json:"persistent"`
+	Resumed    bool `json:"resumed"`
+	// PersistNote says why a requested persistent session fell back to a
+	// plain shell: "tmux_missing" or "tmux_old".
+	PersistNote string `json:"persistNote,omitempty"`
+	// Detached lists other Remvyn sessions on the server that no client is
+	// attached to, e.g. from before Remvyn was restarted.
+	Detached []ServerSession `json:"detached"`
+}
+
+// ServerSession is a persistent terminal session running on a server.
+type ServerSession struct {
+	Key        string `json:"key"`
+	Attached   bool   `json:"attached"`
+	LastActive int64  `json:"lastActive"` // unix ms
+	History    int    `json:"history"`    // scrollback lines
+	Command    string `json:"command"`    // what's running in it
+	Path       string `json:"path"`       // its working directory
 }
 
 // SessionExit is emitted when a terminal session ends.
@@ -256,6 +281,9 @@ type Settings struct {
 	ConnectTimeout   int    `json:"connectTimeout"`
 	ShowHiddenFiles  bool   `json:"showHiddenFiles"`
 	ConfirmOnClose   bool   `json:"confirmOnClose"`
+	// PersistentSessions runs SSH shells inside tmux on the server (when
+	// it's installed) so they survive disconnects.
+	PersistentSessions bool `json:"persistentSessions"`
 
 	// MonitorHostIDs are monitored in the background while Remvyn runs.
 	MonitorHostIDs []string `json:"monitorHostIds"`
@@ -295,6 +323,7 @@ func DefaultSettings() Settings {
 		ConnectTimeout:     15,
 		ShowHiddenFiles:    false,
 		ConfirmOnClose:     true,
+		PersistentSessions: true,
 
 		MonitorHostIDs:       []string{},
 		MonitorIntervalSec:   30,

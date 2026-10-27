@@ -19,6 +19,7 @@ import type {
   KeyImportInput,
   KnownHost,
   SSHConfigImport,
+  ServerSession,
   SessionInfo,
   Settings,
   Snippet,
@@ -72,6 +73,9 @@ export const api = {
   writeTerminal: (id: string, data: string): Promise<void> => call.WriteTerminal(id, data),
   resizeTerminal: (id: string, cols: number, rows: number): Promise<void> => call.ResizeTerminal(id, cols, rows),
   closeTerminal: (id: string): Promise<void> => call.CloseTerminal(id),
+  endTerminal: (id: string): Promise<void> => call.EndTerminal(id),
+  listServerSessions: async (hostId: string): Promise<ServerSession[]> => (await call.ListServerSessions(hostId)) ?? [],
+  endServerSession: (hostId: string, key: string): Promise<void> => call.EndServerSession(hostId, key),
   cancelConnect: (id: string): Promise<void> => call.CancelConnect(id),
   resolveHostKey: (promptId: string, accept: boolean): Promise<boolean> => call.ResolveHostKey(promptId, accept),
 
