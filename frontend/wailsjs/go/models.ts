@@ -1062,6 +1062,7 @@ export namespace models {
 	    showHiddenFiles: boolean;
 	    confirmOnClose: boolean;
 	    persistentSessions: boolean;
+	    commandSuggestions: boolean;
 	    monitorHostIds: string[];
 	    monitorIntervalSec: number;
 	    metricsRetentionDays: number;
@@ -1091,6 +1092,7 @@ export namespace models {
 	        this.showHiddenFiles = source["showHiddenFiles"];
 	        this.confirmOnClose = source["confirmOnClose"];
 	        this.persistentSessions = source["persistentSessions"];
+	        this.commandSuggestions = source["commandSuggestions"];
 	        this.monitorHostIds = source["monitorHostIds"];
 	        this.monitorIntervalSec = source["monitorIntervalSec"];
 	        this.metricsRetentionDays = source["metricsRetentionDays"];

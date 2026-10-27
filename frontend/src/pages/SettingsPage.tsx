@@ -14,6 +14,7 @@ import { api, errorMessage } from '@/lib/api'
 import type { Settings, Theme } from '@/lib/types'
 import { TERMINAL_THEMES } from '@/lib/terminalThemes'
 import { cn } from '@/lib/utils'
+import { useCommandHistory } from '@/stores/history'
 import { useSessions } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
 import { useVault } from '@/stores/vault'
@@ -49,6 +50,7 @@ export function SettingsPage() {
   const { settings, info, save } = useSettings()
   const [form, setForm] = useState<Settings | null>(settings)
   const [confirmWipe, setConfirmWipe] = useState(false)
+  const [confirmClearHistory, setConfirmClearHistory] = useState(false)
 
   useEffect(() => setForm(settings), [settings])
   if (!form || !settings) return <LoadingBlock />
@@ -152,6 +154,17 @@ export function SettingsPage() {
             >
               <Switch checked={form.persistentSessions} onCheckedChange={(persistentSessions) => void apply({ persistentSessions })} />
             </Field>
+            <Field
+              label="Command suggestions"
+              hint="Shows a past command in faint text as you type; → or End accepts it, Ctrl+Space lists more matches, Shift+Delete forgets one. History is kept per host, encrypted, and also read from the server's shell history."
+            >
+              <div className="flex items-center gap-3">
+                <Button variant="outline" size="sm" onClick={() => setConfirmClearHistory(true)}>
+                  Clear history
+                </Button>
+                <Switch checked={form.commandSuggestions} onCheckedChange={(commandSuggestions) => void apply({ commandSuggestions })} />
+              </div>
+            </Field>
             <Field label="Confirm before closing a connected tab">
               <Switch checked={form.confirmOnClose} onCheckedChange={(confirmOnClose) => void apply({ confirmOnClose })} />
             </Field>
@@ -220,6 +233,23 @@ export function SettingsPage() {
         </div>
       </div>
       <ConfirmDialog
+        open={confirmClearHistory}
+        onOpenChange={setConfirmClearHistory}
+        title="Clear command history?"
+        description="Commands typed in Remvyn are forgotten for every host. Each server's own shell history is not touched and still feeds suggestions."
+        confirmLabel="Clear history"
+        destructive
+        onConfirm={async () => {
+          try {
+            await useCommandHistory.getState().clear()
+            setConfirmClearHistory(false)
+            toast.success('Command history cleared')
+          } catch (e) {
+            toast.error('Could not clear history', { description: errorMessage(e) })
+          }
+        }}
+      />
+      <ConfirmDialog
         open={confirmWipe}
         onOpenChange={setConfirmWipe}
         title="Delete all Remvyn data?"
@@ -231,6 +261,7 @@ export function SettingsPage() {
             const s = await api.clearAppData()
             useSettings.getState().setLocal(s)
             for (const t of useSessions.getState().tabs) useSessions.getState().close(t.key)
+            useCommandHistory.setState({ local: {}, remote: {} })
             await useVault.getState().loadAll()
             toast.success('All data cleared')
           } catch (e) {

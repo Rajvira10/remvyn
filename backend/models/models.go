@@ -286,6 +286,8 @@ type Settings struct {
 	// PersistentSessions runs SSH shells inside tmux on the server (when
 	// it's installed) so they survive disconnects.
 	PersistentSessions bool `json:"persistentSessions"`
+	// CommandSuggestions shows past commands as ghost text in terminals.
+	CommandSuggestions bool `json:"commandSuggestions"`
 
 	// MonitorHostIDs are monitored in the background while Remvyn runs.
 	MonitorHostIDs []string `json:"monitorHostIds"`
@@ -334,6 +336,7 @@ func DefaultSettings() Settings {
 		ShowHiddenFiles:    false,
 		ConfirmOnClose:     true,
 		PersistentSessions: true,
+		CommandSuggestions: true,
 
 		MonitorHostIDs:       []string{},
 		MonitorIntervalSec:   30,
