@@ -6,6 +6,7 @@ import { LoadingBlock } from '@/components/common/Spinner'
 import { SecuritySection } from '@/components/settings/SecuritySection'
 import { Field, Section } from '@/components/settings/Section'
 import { SyncSection } from '@/components/settings/SyncSection'
+import { UpdatesSection } from '@/components/settings/UpdatesSection'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -202,6 +203,8 @@ export function SettingsPage() {
 
           <SyncSection />
 
+          <UpdatesSection form={form} apply={apply} />
+
           <Section title="Data">
             <Field label="Data folder" hint={<span className="font-mono">{info?.dataDir}</span>}>
               <Button variant="outline" size="sm" onClick={() => void api.revealDataDir()}>
@@ -212,9 +215,6 @@ export function SettingsPage() {
               <Button variant="destructive" size="sm" onClick={() => setConfirmWipe(true)}>
                 Clear data…
               </Button>
-            </Field>
-            <Field label="Version" hint={info?.platform}>
-              <span className="font-mono text-xs text-muted-foreground">Remvyn {info?.version}</span>
             </Field>
           </Section>
         </div>

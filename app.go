@@ -17,6 +17,7 @@ import (
 	"remvyn/backend/files"
 	"remvyn/backend/models"
 	"remvyn/backend/sshconn"
+	"remvyn/backend/updater"
 	"remvyn/backend/vaultsync"
 )
 
@@ -51,6 +52,7 @@ type App struct {
 
 	notifyReady atomic.Bool
 	clip        clipState
+	upd         *updater.Updater
 }
 
 // AppInfo describes the running application.
@@ -86,6 +88,11 @@ func NewApp() *App { return &App{} }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.upd = updater.New(updater.Options{
+		Current: Version,
+		Repo:    envOr("REMVYN_UPDATE_REPO", updater.DefaultRepo),
+		Emit:    func(s updater.Status) { wruntime.EventsEmit(ctx, "update:status", s) },
+	})
 	c, err := core.Open(ctx, core.Options{
 		Emit:   func(event string, data any) { wruntime.EventsEmit(ctx, event, data) },
 		Notify: a.notify,
@@ -112,6 +119,7 @@ func (a *App) domReady(context.Context) {
 	if a.core != nil {
 		a.core.Start()
 	}
+	go a.autoCheckUpdates()
 	// Ask for notification permission once, in the background: on macOS
 	// this can wait on the user (or never answer for unsigned builds).
 	go func() {

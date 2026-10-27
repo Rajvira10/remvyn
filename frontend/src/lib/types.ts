@@ -258,6 +258,32 @@ export interface Settings {
   forwardKeyHosts: string[]
   /** Also forward keys on AI agents' connections to those hosts. */
   forwardKeysToAI: boolean
+  /** Look for a new release at startup and every few hours. */
+  autoUpdateCheck: boolean
+}
+
+export type UpdateState = 'idle' | 'checking' | 'uptodate' | 'available' | 'downloading' | 'installing' | 'restarting' | 'error'
+
+export interface Release {
+  version: string
+  name: string
+  notes: string
+  url: string
+  publishedAt: string
+}
+
+export interface UpdateStatus {
+  current: string
+  state: UpdateState
+  latest?: Release
+  /** latest is newer than current */
+  available: boolean
+  checkedAt: string
+  downloaded: number
+  total: number
+  error?: string
+  /** Why this copy can't update itself; the UI links to the release instead. */
+  manual?: string
 }
 
 export type AgentMode = 'ask' | 'auto'

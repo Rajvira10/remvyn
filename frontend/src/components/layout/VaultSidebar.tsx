@@ -1,10 +1,11 @@
-import { ActivityIcon, BotIcon, CableIcon, CodeIcon, KeyboardIcon, KeyRoundIcon, LockKeyholeIcon, ServerIcon, SettingsIcon, ShieldCheckIcon } from 'lucide-react'
+import { ActivityIcon, ArrowUpCircleIcon, BotIcon, CableIcon, CodeIcon, KeyboardIcon, KeyRoundIcon, LockKeyholeIcon, ServerIcon, SettingsIcon, ShieldCheckIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { cn } from '@/lib/utils'
 import { useUI, type VaultPage } from '@/stores/ui'
 import { useAgent } from '@/stores/agent'
 import { useMonitor } from '@/stores/monitor'
 import { usePasswords } from '@/stores/passwords'
+import { useUpdate } from '@/stores/update'
 import { useVault } from '@/stores/vault'
 
 export function VaultSidebar() {
@@ -19,6 +20,7 @@ export function VaultSidebar() {
   const passwords = usePasswords((s) => s.items.length)
   const openAlerts = useMonitor((s) => Object.keys(s.openAlerts).length)
   const agentRunning = useAgent((s) => s.status?.running ?? 0)
+  const update = useUpdate((s) => s.status)
   const items: { id: VaultPage; label: string; icon: typeof ServerIcon; count?: number; live?: boolean }[] = [
     { id: 'hosts', label: 'Hosts', icon: ServerIcon, count: counts.hosts },
     { id: 'monitoring', label: 'Monitoring', icon: ActivityIcon },
@@ -54,6 +56,18 @@ export function VaultSidebar() {
         ))}
       </div>
       <div className="mt-auto flex flex-col gap-0.5 p-2">
+        {update?.available && (
+          <button
+            onClick={() => useUpdate.getState().setDialogOpen(true)}
+            className="flex h-8 items-center gap-2.5 rounded-md bg-primary/10 px-2.5 text-[13px] font-medium text-primary hover:bg-primary/15"
+          >
+            <ArrowUpCircleIcon className="size-4" />
+            <span className="flex-1 text-left">
+              {update.state === 'downloading' ? `Updating… ${update.total > 0 ? Math.round((update.downloaded / update.total) * 100) : 0}%` : 'Update available'}
+            </span>
+            <span className="text-[11px] tabular-nums">{update.latest?.version}</span>
+          </button>
+        )}
         <button
           onClick={() => setShortcutsOpen(true)}
           className="flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] text-muted-foreground hover:bg-accent/50 hover:text-foreground"

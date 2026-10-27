@@ -44,6 +44,7 @@ import type {
   AgentMode,
   AgentStatus,
   TOTPCode,
+  UpdateStatus,
   VaultItem,
   VaultItemInput,
   VaultSecret,
@@ -58,6 +59,11 @@ export const api = {
   updateSettings: (s: Settings): Promise<Settings> => call.UpdateSettings(s),
   clearAppData: (): Promise<Settings> => call.ClearAppData(),
   revealDataDir: (): Promise<void> => call.RevealDataDir(),
+
+  updateStatus: (): Promise<UpdateStatus> => call.GetUpdateStatus(),
+  checkForUpdate: (): Promise<UpdateStatus> => call.CheckForUpdate(),
+  installUpdate: (): Promise<void> => call.InstallUpdate(),
+  openReleasePage: (): Promise<void> => call.OpenReleasePage(),
 
   hosts: (): Promise<Host[]> => call.ListHosts(),
   saveHost: (h: HostInput): Promise<Host> => call.SaveHost(h),
@@ -228,6 +234,7 @@ export const events = {
   AGENT_APPROVAL_DONE: 'agent:approval-done',
   AGENT_ACTIVITY: 'agent:activity',
   AGENT_STATUS: 'agent:status',
+  UPDATE_STATUS: 'update:status',
 } as const
 
 export function onEvent<T>(name: string, cb: (data: T) => void): () => void {
