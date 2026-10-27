@@ -137,6 +137,8 @@ export function MoveLocal(arg1:Array<string>,arg2:string):Promise<void>;
 
 export function MoveRemote(arg1:string,arg2:Array<string>,arg3:string):Promise<void>;
 
+export function OpenLocalTerminal(arg1:string,arg2:models.ConnectOptions):Promise<models.SessionInfo>;
+
 export function OpenLocalWith(arg1:string,arg2:string):Promise<void>;
 
 export function OpenRemoteWith(arg1:string,arg2:string,arg3:string):Promise<void>;

@@ -266,6 +266,10 @@ export function MoveRemote(arg1, arg2, arg3) {
   return window['go']['main']['App']['MoveRemote'](arg1, arg2, arg3);
 }
 
+export function OpenLocalTerminal(arg1, arg2) {
+  return window['go']['main']['App']['OpenLocalTerminal'](arg1, arg2);
+}
+
 export function OpenLocalWith(arg1, arg2) {
   return window['go']['main']['App']['OpenLocalWith'](arg1, arg2);
 }

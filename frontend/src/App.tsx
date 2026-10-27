@@ -11,6 +11,7 @@ import { TabBar, useCloseTab } from '@/components/layout/TabBar'
 import { VaultSidebar } from '@/components/layout/VaultSidebar'
 import { HostKeyDialog } from '@/components/session/HostKeyDialog'
 import { SftpView } from '@/components/sftp/SftpView'
+import { SplitDividers } from '@/components/terminal/SplitDividers'
 import { TerminalView } from '@/components/terminal/TerminalView'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useAutoLock } from '@/hooks/useAutoLock'
@@ -31,7 +32,7 @@ import { useAgent } from '@/stores/agent'
 import { useLock } from '@/stores/lock'
 import { useMonitor } from '@/stores/monitor'
 import { usePasswords } from '@/stores/passwords'
-import { useSessions } from '@/stores/sessions'
+import { focusedPane, paneRects, topTabs, useSessions } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
 import { useTransfers } from '@/stores/transfers'
 import { useUI } from '@/stores/ui'
@@ -41,6 +42,7 @@ export default function App() {
   const theme = useResolvedTheme()
   const page = useUI((s) => s.page)
   const { tabs, active } = useSessions()
+  const byKey = new Map(tabs.map((t) => [t.key, t]))
   const [ready, setReady] = useState(false)
   const { request: requestClose, dialog: closeDialog } = useCloseTab()
 
@@ -101,12 +103,24 @@ export default function App() {
     {
       combo: 'app+w',
       handler: () => {
+        // Closes the focused pane of a split tab, otherwise the tab.
         const s = useSessions.getState()
         const t = s.tabs.find((x) => x.key === s.active)
-        if (t) requestClose(t)
+        if (!t) return
+        if (t.layout) {
+          const p = s.tabs.find((x) => x.key === focusedPane(t))
+          if (p) requestClose(p, true)
+        } else requestClose(t)
       },
       allowInInputs: true,
     },
+    { combo: 'app+alt+t', handler: () => useSessions.getState().openLocal(), allowInInputs: true },
+    { combo: 'app+d', handler: () => useSessions.getState().split('row'), allowInInputs: true },
+    { combo: 'app+alt+d', handler: () => useSessions.getState().split('col'), allowInInputs: true },
+    { combo: 'app+alt+arrowleft', handler: () => useSessions.getState().focusDirection('left'), allowInInputs: true },
+    { combo: 'app+alt+arrowright', handler: () => useSessions.getState().focusDirection('right'), allowInInputs: true },
+    { combo: 'app+alt+arrowup', handler: () => useSessions.getState().focusDirection('up'), allowInInputs: true },
+    { combo: 'app+alt+arrowdown', handler: () => useSessions.getState().focusDirection('down'), allowInInputs: true },
     { combo: 'app+]', handler: () => useSessions.getState().move(1), allowInInputs: true },
     { combo: 'app+[', handler: () => useSessions.getState().move(-1), allowInInputs: true },
     { combo: 'app+shift+]', handler: () => useSessions.getState().move(1), allowInInputs: true },
@@ -115,7 +129,7 @@ export default function App() {
     ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({
       combo: `app+${n}`,
       handler: () => {
-        const t = useSessions.getState().tabs[n - 1]
+        const t = topTabs(useSessions.getState().tabs)[n - 1]
         if (t) useSessions.getState().activate(t.key)
       },
       allowInInputs: true,
@@ -165,12 +179,32 @@ export default function App() {
                   </ErrorBoundary>
                 </main>
               </div>
-              {/* Sessions stay mounted while hidden so terminals keep their state. */}
-              {tabs.map((t) => (
-                <ErrorBoundary key={t.key}>
-                  {t.kind === 'terminal' ? <TerminalView tab={t} visible={active === t.key} /> : <SftpView tab={t} visible={active === t.key} />}
-                </ErrorBoundary>
-              ))}
+              {/* Sessions stay mounted while hidden so terminals keep their state.
+                  Panes of split tabs render flat too, so changing a layout never remounts one. */}
+              {tabs.map((t) => {
+                const root = (t.parent && byKey.get(t.parent)) || t
+                const visible = active === root.key
+                if (t.kind === 'sftp') {
+                  return (
+                    <ErrorBoundary key={t.key}>
+                      <SftpView tab={t} visible={visible} />
+                    </ErrorBoundary>
+                  )
+                }
+                const split = !!root.layout
+                return (
+                  <ErrorBoundary key={t.key}>
+                    <TerminalView
+                      tab={t}
+                      visible={visible}
+                      split={split}
+                      focused={!split || focusedPane(root) === t.key}
+                      rect={split ? paneRects(root.layout, root.key)[t.key] : undefined}
+                    />
+                  </ErrorBoundary>
+                )
+              })}
+              {tabs.map((t) => t.layout && <SplitDividers key={`split-${t.key}`} rootKey={t.key} layout={t.layout} visible={active === t.key} />)}
             </>
           )}
         </div>

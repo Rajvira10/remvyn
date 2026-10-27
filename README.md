@@ -8,6 +8,8 @@ Remvyn is a desktop SSH client in the spirit of Termius. It saves your servers, 
 - **Terminal**:
   - Tabbed xterm.js sessions (WebGL renderer) with a real PTY (`xterm-256color`, truecolor, Unicode 11) and live resize.
   - Copy and paste, find in scrollback, clickable links, 39 color schemes, and configurable font, cursor and scrollback. The palette button in the terminal toolbar switches scheme (with live preview on hover), text size and cursor without opening Settings.
+  - Local terminal tabs: a shell on this computer (your login shell on macOS and Linux; PowerShell, or cmd, on Windows) from the ⌘T palette, the title bar or ⌘⌥T.
+  - Split panes: split any terminal tab right (⌘D) or down (⌘⌥D) as often as you like. Each pane is its own session to the same host (or another local shell), with a draggable divider; ⌘⌥ + arrow keys move between panes, and ⌘W closes the focused pane.
   - Run a snippet from the terminal toolbar.
   - Dropped connections show a Reconnect overlay; keepalives detect dead links.
 - **SFTP**:
@@ -197,7 +199,10 @@ On macOS these use ⌘. On Linux and Windows they use Ctrl+Shift, so plain Ctrl+
 | Action | Shortcut |
 | --- | --- |
 | Quick connect / new tab | ⌘T |
-| Close tab | ⌘W |
+| Close tab (or the focused pane) | ⌘W |
+| Local terminal | ⌘⌥T |
+| Split right / down | ⌘D / ⌘⌥D |
+| Focus the pane left / right / above / below | ⌘⌥ + arrow keys |
 | Next / previous tab | ⌘] / ⌘[ |
 | Vault / tab 1–9 | ⌘0 / ⌘1–9 |
 | Copy / paste in terminal | ⌘C / ⌘V (Ctrl+Shift+C/V elsewhere) |
@@ -221,6 +226,7 @@ cd frontend && npx tsc -b && npx oxlint src
 `backend/testutil` runs a real SSH server in-process, so the end-to-end tests need no network or external `sshd`. They cover:
 
 - PTY sessions: banner, input, resize, exit codes.
+- Local shells: output, resize, exit status, closing, and refusing duplicate or invalid session IDs.
 - Host-key trust on first use, and changed-key detection and rejection.
 - Password flows: required, wrong, saved, and encrypted at rest.
 - Key auth with an encrypted key, plus an unauthorized key being refused.
@@ -255,7 +261,7 @@ main.go, app.go        Wails entry point and the bound App facade (dialogs, stru
 backend/
   core/                service layer wiring everything together (no Wails dependency)
   sshconn/             dialing, auth methods, keepalive, host-key verification and prompt broker
-  terminal/            PTY shell sessions streaming base64 output events
+  terminal/            PTY shell sessions (SSH or local) streaming base64 output events
   files/               SFTP and local file operations, recursive transfers with progress, remote text
                        editing, copy/move/compress/extract, open with an installed editor
   forward/             -L / -R / SOCKS5 -D forwarding
@@ -297,12 +303,12 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 | --- | --- |
 | macOS (Apple Silicon) | Built and tested: macOS 26, Go 1.26, Wails 2.17. |
 | Linux, including Arch/Omarchy | x86_64 release build (WebKitGTK 4.1, built on Ubuntu 22.04 so it runs on newer distros). Launch-tested in an Arch container; not yet tried on real hardware. |
-| Windows | x64 release build (cross-compiled from macOS with an NSIS installer). Not yet tested on real hardware. SSH agent auth is not implemented on Windows. Closing the window quits Remvyn, which stops AI agent access. |
+| Windows | x64 release build (cross-compiled from macOS with an NSIS installer). Not yet tested on real hardware. SSH agent auth is not implemented on Windows. Local terminals use ConPTY, which needs Windows 10 1809 or later. Closing the window quits Remvyn, which stops AI agent access. |
 
 ## Known limitations
 
 - No jump hosts / ProxyJump, agent forwarding, X11 forwarding or Mosh yet. Hosts imported with `ProxyJump` are flagged during import.
-- No local (non-SSH) terminal tabs, split panes, or session logging/recording.
+- No session logging/recording.
 - Sync needs a GitHub account and a private repository for the vault. Same-item conflicts keep the newer edit; there's no field-level merge. Hosts created separately on two devices with the same name are kept as two hosts. No Touch ID unlock yet.
 - No team sharing.
 - Monitoring only runs while Remvyn is open (no agent or tray mode yet) and supports Linux servers only.

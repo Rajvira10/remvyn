@@ -119,7 +119,7 @@ export interface ConnectOptions {
 export interface SessionInfo {
   id: string
   hostId: string
-  kind: 'terminal' | 'sftp'
+  kind: 'terminal' | 'local' | 'sftp'
   title: string
   remote: string
   startedAt: number

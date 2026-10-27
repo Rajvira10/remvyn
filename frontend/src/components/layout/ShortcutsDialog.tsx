@@ -10,10 +10,20 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
     title: 'Tabs',
     items: [
       ['Quick connect / new tab', k('T')],
-      ['Close tab', k('W')],
+      ['Local terminal', k(isMac ? '⌥T' : 'Alt+T')],
+      ['Close tab (or the focused pane)', k('W')],
       ['Next / previous tab', `${k(']')}  ${k('[')}`],
       ['Go to Vault', k('0')],
       ['Go to tab 1–9', k('1–9')],
+    ],
+  },
+  {
+    title: 'Split panes',
+    items: [
+      ['Split right', k('D')],
+      ['Split down', k(isMac ? '⌥D' : 'Alt+D')],
+      ['Focus the pane left / right / above / below', k(isMac ? '⌥ + arrow' : 'Alt + arrow')],
+      ['Resize panes', 'Drag the divider'],
     ],
   },
   {
