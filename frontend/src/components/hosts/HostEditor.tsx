@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { api, errorMessage } from '@/lib/api'
 import type { AuthMethod, Host } from '@/lib/types'
@@ -51,6 +52,8 @@ export function HostEditor() {
   const [newGroup, setNewGroup] = useState('')
   const [groupChoice, setGroupChoice] = useState(NO_GROUP)
   const [busy, setBusy] = useState(false)
+  const forwarding = useSettings((s) => (existing ? (s.settings?.forwardKeyHosts ?? []).includes(existing.id) : false))
+  const [forward, setForward] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -62,7 +65,8 @@ export function HostEditor() {
     setRevealed(false)
     setNewGroup('')
     setGroupChoice(h.groupId || NO_GROUP)
-  }, [open, existing])
+    setForward(forwarding)
+  }, [open, existing, forwarding])
 
   const set = (patch: Partial<Host>) => setHost((h) => ({ ...h, ...patch }))
 
@@ -91,7 +95,8 @@ export function HostEditor() {
         groupId = (await api.saveGroup({ id: '', name: newGroup, createdAt: 0 })).id
       }
       const setPw = host.authMethod === 'password' && passwordTouched
-      await api.saveHost({ host: { ...host, groupId }, password: setPw ? password : '', setPassword: setPw })
+      const saved = await api.saveHost({ host: { ...host, groupId }, password: setPw ? password : '', setPassword: setPw })
+      if (forward !== forwarding) useSettings.getState().setLocal(await api.setForwardKeys(saved.id, forward))
       await loadHosts()
       toast.success(existing ? 'Host updated' : 'Host added')
       editHost(null)
@@ -259,11 +264,21 @@ export function HostEditor() {
             <Textarea
               rows={2}
               className="font-mono text-[12px]"
-              placeholder="cd /var/www && tmux attach"
+              placeholder="cd /var/www"
               value={host.startupCommand}
               onChange={(e) => set({ startupCommand: e.target.value })}
             />
           </Field>
+          <div className="col-span-6 flex items-start justify-between gap-4 rounded-md border px-3 py-2.5">
+            <div className="flex flex-col gap-0.5">
+              <Label htmlFor="forward-keys">Forward my SSH keys</Label>
+              <span className="text-xs text-muted-foreground">
+                Lets git and ssh on this server log in with your keychain's keys, e.g. to pull a private repo. Keys never leave Remvyn, and you approve each use.
+                Applies to new connections, on this device only.
+              </span>
+            </div>
+            <Switch id="forward-keys" checked={forward} onCheckedChange={setForward} />
+          </div>
           <Field label="Color" className="col-span-6">
             <div className="flex gap-2">
               {HOST_COLORS.map((c) => (

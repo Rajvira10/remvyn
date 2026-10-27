@@ -360,6 +360,38 @@ func (a *App) ListServerSessions(hostID string) ([]models.ServerSession, error) 
 	return a.core.ListServerSessions(hostID), nil
 }
 
+// SetForwardKeys turns SSH key forwarding on or off for a host.
+func (a *App) SetForwardKeys(hostID string, on bool) (models.Settings, error) {
+	if err := a.ready(); err != nil {
+		return models.Settings{}, err
+	}
+	return a.core.SetForwardKeys(hostID, on)
+}
+
+// SetForwardKeysToAI lets AI agents' connections forward keys too.
+func (a *App) SetForwardKeysToAI(on bool) (models.Settings, error) {
+	if err := a.ready(); err != nil {
+		return models.Settings{}, err
+	}
+	return a.core.SetForwardKeysToAI(on)
+}
+
+// PendingKeyUses lists key-use requests waiting for an answer.
+func (a *App) PendingKeyUses() []models.KeyUseRequest {
+	if a.core == nil {
+		return nil
+	}
+	return a.core.PendingKeyUses()
+}
+
+// ResolveKeyUse answers a key-use request: deny, once or session.
+func (a *App) ResolveKeyUse(id, decision string) bool {
+	if a.core == nil {
+		return false
+	}
+	return a.core.ResolveKeyUse(id, decision)
+}
+
 // EndServerSession ends a persistent session on a host.
 func (a *App) EndServerSession(hostID, key string) error {
 	if err := a.ready(); err != nil {

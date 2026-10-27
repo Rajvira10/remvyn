@@ -155,6 +155,8 @@ export function OpenTerminal(arg1:string,arg2:string,arg3:models.ConnectOptions)
 
 export function PendingAgentApprovals():Promise<Array<models.AgentApproval>>;
 
+export function PendingKeyUses():Promise<Array<models.KeyUseRequest>>;
+
 export function ReadKeyFile():Promise<string>;
 
 export function ReadLocalText(arg1:string):Promise<models.FileContent>;
@@ -182,6 +184,8 @@ export function ResizeTerminal(arg1:string,arg2:number,arg3:number):Promise<void
 export function ResolveAgentApproval(arg1:string,arg2:string):Promise<boolean>;
 
 export function ResolveHostKey(arg1:string,arg2:boolean):Promise<boolean>;
+
+export function ResolveKeyUse(arg1:string,arg2:string):Promise<boolean>;
 
 export function RevealDataDir():Promise<void>;
 
@@ -212,6 +216,10 @@ export function SendTestNotification():Promise<void>;
 export function SetAgentEnabled(arg1:boolean):Promise<models.Settings>;
 
 export function SetAgentHostMode(arg1:string,arg2:string):Promise<models.Settings>;
+
+export function SetForwardKeys(arg1:string,arg2:boolean):Promise<models.Settings>;
+
+export function SetForwardKeysToAI(arg1:boolean):Promise<models.Settings>;
 
 export function SetMasterPassword(arg1:string,arg2:string):Promise<models.LockStatus>;
 

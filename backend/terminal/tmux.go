@@ -135,10 +135,24 @@ func (st *tmuxState) lookup(key string) []models.ServerSession {
 	return others
 }
 
-// attachCommand creates the session if needed and attaches to it.
-func attachCommand(key string, cols, rows int) string {
-	return tmuxBin + " " + tmuxSetup + ` \; new-session -A -s ` + sessionName(key) +
+// agentLink is a stable path to the forwarded agent socket for a session.
+// Shells in tmux outlive the connection that started them, and each new
+// connection gets a new socket, so they use this link, which every attach
+// points at the current socket.
+func agentLink(key string) string { return "$HOME/.ssh/remvyn-agent-" + key + ".sock" }
+
+// attachCommand creates the session if needed and attaches to it. With
+// forward, a new session's shell uses the agent link.
+func attachCommand(key string, cols, rows int, forward bool) string {
+	cmd := tmuxBin + " " + tmuxSetup + ` \; new-session -A -s ` + sessionName(key) +
 		" -x " + strconv.Itoa(cols) + " -y " + strconv.Itoa(rows)
+	if !forward {
+		return cmd
+	}
+	link := agentLink(key)
+	// Expanded by the login shell (POSIX or fish) before tmux runs it.
+	return `mkdir -p "$HOME/.ssh" 2>/dev/null; ln -sfn "$SSH_AUTH_SOCK" "` + link + `" 2>/dev/null; ` +
+		cmd + ` "exec env SSH_AUTH_SOCK=` + link + ` $SHELL -l"`
 }
 
 // captureHistory returns the session's scrollback (without the visible
@@ -159,7 +173,7 @@ func KillServerSession(client *sshconn.Client, key string) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_, err := runOutput(ctx, client, tmuxBin+" kill-session -t ="+sessionName(key)+" 2>/dev/null; true")
+	_, err := runOutput(ctx, client, tmuxBin+" kill-session -t ="+sessionName(key)+` 2>/dev/null; rm -f "`+agentLink(key)+`"; true`)
 	return err
 }
 

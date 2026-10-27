@@ -653,6 +653,36 @@ export namespace models {
 	        this.passphrase = source["passphrase"];
 	    }
 	}
+	export class KeyUseRequest {
+	    id: string;
+	    hostId: string;
+	    hostLabel: string;
+	    remote: string;
+	    keyName: string;
+	    fingerprint: string;
+	    source: string;
+	    ai: boolean;
+	    createdAt: number;
+	    expiresAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new KeyUseRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.hostId = source["hostId"];
+	        this.hostLabel = source["hostLabel"];
+	        this.remote = source["remote"];
+	        this.keyName = source["keyName"];
+	        this.fingerprint = source["fingerprint"];
+	        this.source = source["source"];
+	        this.ai = source["ai"];
+	        this.createdAt = source["createdAt"];
+	        this.expiresAt = source["expiresAt"];
+	    }
+	}
 	export class KnownHost {
 	    host: string;
 	    keyType: string;
@@ -977,6 +1007,7 @@ export namespace models {
 	    persistent: boolean;
 	    resumed: boolean;
 	    persistNote?: string;
+	    agentForwarding: boolean;
 	    detached: ServerSession[];
 	
 	    static createFrom(source: any = {}) {
@@ -994,6 +1025,7 @@ export namespace models {
 	        this.persistent = source["persistent"];
 	        this.resumed = source["resumed"];
 	        this.persistNote = source["persistNote"];
+	        this.agentForwarding = source["agentForwarding"];
 	        this.detached = this.convertValues(source["detached"], ServerSession);
 	    }
 	
@@ -1036,6 +1068,8 @@ export namespace models {
 	    alertNotifications: boolean;
 	    agentEnabled: boolean;
 	    agentHosts: Record<string, string>;
+	    forwardKeyHosts: string[];
+	    forwardKeysToAI: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -1063,6 +1097,8 @@ export namespace models {
 	        this.alertNotifications = source["alertNotifications"];
 	        this.agentEnabled = source["agentEnabled"];
 	        this.agentHosts = source["agentHosts"];
+	        this.forwardKeyHosts = source["forwardKeyHosts"];
+	        this.forwardKeysToAI = source["forwardKeysToAI"];
 	    }
 	}
 	export class Snippet {

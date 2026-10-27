@@ -19,8 +19,10 @@ import (
 
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 
 	"remvyn/backend/ids"
+	"remvyn/backend/keyagent"
 	"remvyn/backend/mcp"
 	"remvyn/backend/models"
 	"remvyn/backend/sshconn"
@@ -42,6 +44,8 @@ const (
 // agentConn is a pooled connection for agent actions on one host.
 type agentConn struct {
 	client *sshconn.Client
+	// keys is set when this connection forwards the keychain's keys.
+	keys *keyagent.Agent
 
 	mu   sync.Mutex
 	sftp *sftp.Client
@@ -80,6 +84,9 @@ func (ac *agentConn) close() {
 	}
 	ac.mu.Unlock()
 	ac.client.Close()
+	if ac.keys != nil {
+		ac.keys.Close()
+	}
 }
 
 func (ac *agentConn) alive() bool {
@@ -113,6 +120,12 @@ func (c *Core) agentConn(ctx context.Context, h models.Host, userApproved bool) 
 		return nil, err
 	}
 	ac := &agentConn{client: client, used: time.Now()}
+	if c.Settings().ForwardKeysToAI && c.forwardsKeys(h.ID) {
+		ag := c.keyAgent(h, "AI agent")
+		if ag.Forward(client.Client) == nil {
+			ac.keys = ag
+		}
+	}
 	a.mu.Lock()
 	if prev := a.conns[h.ID]; prev != nil && prev.alive() {
 		a.mu.Unlock()
@@ -310,6 +323,9 @@ func runAgentCommand(ctx context.Context, ac *agentConn, cmd string, timeout tim
 		return agentOutcome{text: "could not start a session: " + err.Error(), isErr: true}
 	}
 	defer sess.Close()
+	if ac.keys != nil {
+		_ = agent.RequestAgentForwarding(sess)
+	}
 	stdout := &capture{max: agentStdoutMax}
 	stderr := &capture{max: agentStderrMax}
 	sess.Stdout, sess.Stderr = stdout, stderr

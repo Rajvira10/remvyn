@@ -90,6 +90,29 @@ export function AgentsPage() {
 
           <SetupSection command={status?.command ?? []} />
           <HostsSection hosts={hosts} modes={settings?.agentHosts ?? {}} enabled={enabled} />
+          <Section
+            title="Forwarded SSH keys"
+            description="For servers with “Forward my SSH keys” on (in the host's settings), commands the agent runs can log in elsewhere with your keys, e.g. git pull from a private repo."
+          >
+            <div className="flex items-center justify-between gap-4 px-4 py-3">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[13px] font-medium">Let agents use forwarded keys</span>
+                <span className="text-xs text-muted-foreground">
+                  Remvyn still asks you every time a key is used, even on hosts set to run without asking. Off: agents' connections never forward keys.
+                </span>
+              </div>
+              <Switch
+                checked={!!settings?.forwardKeysToAI}
+                aria-label="Let agents use forwarded keys"
+                onCheckedChange={(on) =>
+                  void api
+                    .setForwardKeysToAI(on)
+                    .then((s) => useSettings.getState().setLocal(s))
+                    .catch((e) => toast.error('Could not change the setting', { description: errorMessage(e) }))
+                }
+              />
+            </div>
+          </Section>
           <ActivitySection />
         </div>
       </div>

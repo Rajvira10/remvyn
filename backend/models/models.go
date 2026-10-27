@@ -178,6 +178,8 @@ type SessionInfo struct {
 	// PersistNote says why a requested persistent session fell back to a
 	// plain shell: "tmux_missing" or "tmux_old".
 	PersistNote string `json:"persistNote,omitempty"`
+	// AgentForwarding is true when the server accepted agent forwarding.
+	AgentForwarding bool `json:"agentForwarding"`
 	// Detached lists other Remvyn sessions on the server that no client is
 	// attached to, e.g. from before Remvyn was restarted.
 	Detached []ServerSession `json:"detached"`
@@ -299,6 +301,14 @@ type Settings struct {
 	AgentEnabled bool `json:"agentEnabled"`
 	// AgentHosts maps host ID → AgentAsk or AgentAuto. Missing = no access.
 	AgentHosts map[string]string `json:"agentHosts"`
+
+	// ForwardKeyHosts are hosts whose SSH sessions may use the keychain's
+	// keys through agent forwarding, with approval for each use. Per
+	// device: never synced.
+	ForwardKeyHosts []string `json:"forwardKeyHosts"`
+	// ForwardKeysToAI also forwards keys on AI agents' connections to those
+	// hosts (still asking each time).
+	ForwardKeysToAI bool `json:"forwardKeysToAI"`
 }
 
 // Agent access modes for a host.
@@ -330,6 +340,7 @@ func DefaultSettings() Settings {
 		MetricsRetentionDays: 30,
 		AlertNotifications:   true,
 		AgentHosts:           map[string]string{},
+		ForwardKeyHosts:      []string{},
 	}
 }
 
@@ -349,6 +360,22 @@ type LockStatus struct {
 	Locked        bool `json:"locked"`
 	MinLength     int  `json:"minLength"`
 	SyncConnected bool `json:"syncConnected"`
+}
+
+// KeyUseRequest asks the user to let a server sign with a keychain key over
+// agent forwarding.
+type KeyUseRequest struct {
+	ID          string `json:"id"`
+	HostID      string `json:"hostId"`
+	HostLabel   string `json:"hostLabel"`
+	Remote      string `json:"remote"`
+	KeyName     string `json:"keyName"`
+	Fingerprint string `json:"fingerprint"`
+	// Source is "terminal", or the AI agent's name for its connections.
+	Source    string `json:"source"`
+	AI        bool   `json:"ai"`
+	CreatedAt int64  `json:"createdAt"`
+	ExpiresAt int64  `json:"expiresAt"`
 }
 
 // AgentApproval asks the user to allow an AI agent's action.

@@ -132,8 +132,25 @@ export interface SessionInfo {
   /** That tmux session already existed. */
   resumed: boolean
   persistNote?: 'tmux_missing' | 'tmux_old'
+  /** The server accepted forwarding of the keychain's keys. */
+  agentForwarding: boolean
   /** Other Remvyn sessions on the server nobody is attached to. */
   detached: ServerSession[] | null
+}
+
+/** A server asking to sign with a keychain key over agent forwarding. */
+export interface KeyUseRequest {
+  id: string
+  hostId: string
+  hostLabel: string
+  remote: string
+  keyName: string
+  fingerprint: string
+  /** "terminal", or the AI agent using the connection. */
+  source: string
+  ai: boolean
+  createdAt: number
+  expiresAt: number
 }
 
 /** A persistent terminal session running on a server. */
@@ -237,6 +254,10 @@ export interface Settings {
   agentEnabled: boolean
   /** host ID → 'ask' | 'auto'; missing = no agent access */
   agentHosts: Record<string, AgentMode>
+  /** Hosts whose sessions may use the keychain's keys (agent forwarding). */
+  forwardKeyHosts: string[]
+  /** Also forward keys on AI agents' connections to those hosts. */
+  forwardKeysToAI: boolean
 }
 
 export type AgentMode = 'ask' | 'auto'

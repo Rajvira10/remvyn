@@ -302,6 +302,10 @@ export function PendingAgentApprovals() {
   return window['go']['main']['App']['PendingAgentApprovals']();
 }
 
+export function PendingKeyUses() {
+  return window['go']['main']['App']['PendingKeyUses']();
+}
+
 export function ReadKeyFile() {
   return window['go']['main']['App']['ReadKeyFile']();
 }
@@ -356,6 +360,10 @@ export function ResolveAgentApproval(arg1, arg2) {
 
 export function ResolveHostKey(arg1, arg2) {
   return window['go']['main']['App']['ResolveHostKey'](arg1, arg2);
+}
+
+export function ResolveKeyUse(arg1, arg2) {
+  return window['go']['main']['App']['ResolveKeyUse'](arg1, arg2);
 }
 
 export function RevealDataDir() {
@@ -416,6 +424,14 @@ export function SetAgentEnabled(arg1) {
 
 export function SetAgentHostMode(arg1, arg2) {
   return window['go']['main']['App']['SetAgentHostMode'](arg1, arg2);
+}
+
+export function SetForwardKeys(arg1, arg2) {
+  return window['go']['main']['App']['SetForwardKeys'](arg1, arg2);
+}
+
+export function SetForwardKeysToAI(arg1) {
+  return window['go']['main']['App']['SetForwardKeysToAI'](arg1);
 }
 
 export function SetMasterPassword(arg1, arg2) {

@@ -91,6 +91,9 @@ type Core struct {
 
 	connMu  sync.Mutex
 	pending map[string]context.CancelFunc
+
+	keyUseMu sync.Mutex
+	keyUses  map[string]*pendingKeyUse
 }
 
 // DefaultDataDir returns the per-user data directory, honouring REMVYN_DATA_DIR.
@@ -167,6 +170,7 @@ func Open(ctx context.Context, opts Options) (*Core, error) {
 		DBPath:    filepath.Join(opts.DataDir, "remvyn.db"),
 		emit:      emit,
 		pending:   map[string]context.CancelFunc{},
+		keyUses:   map[string]*pendingKeyUse{},
 		notify:    opts.Notify,
 		stop:      make(chan struct{}),
 		dek:       ks.Key,
@@ -306,6 +310,7 @@ func (c *Core) UpdateSettings(s models.Settings) (models.Settings, error) {
 	// a stale settings form can't undo the kill switch.
 	cur := c.Settings()
 	s.AgentEnabled, s.AgentHosts = cur.AgentEnabled, cur.AgentHosts
+	s.ForwardKeyHosts, s.ForwardKeysToAI = cur.ForwardKeyHosts, cur.ForwardKeysToAI
 	err := c.saveSettingsLocked(s)
 	c.saveMu.Unlock()
 	if err != nil {
@@ -409,11 +414,17 @@ func (c *Core) OpenTerminal(id, hostID string, opts models.ConnectOptions) (mode
 	}
 	info := models.SessionInfo{ID: id, HostID: h.ID, Kind: "terminal", Title: h.Label, Remote: remote(h),
 		StartedAt: time.Now().UnixMilli()}
-	var persist *terminal.Persist
+	so := terminal.StartOptions{Startup: h.StartupCommand}
 	if c.Settings().PersistentSessions && opts.PersistKey != "" {
-		persist = &terminal.Persist{Key: opts.PersistKey, Restore: opts.Restore}
+		so.Persist = &terminal.Persist{Key: opts.PersistKey, Restore: opts.Restore}
 	}
-	return c.terms.Start(id, client, info, opts.Cols, opts.Rows, h.StartupCommand, persist)
+	if c.forwardsKeys(h.ID) {
+		ag := c.keyAgent(h, "terminal")
+		if err := ag.Forward(client.Client); err == nil {
+			so.ForwardAgent, so.OnEnd = true, ag.Close
+		}
+	}
+	return c.terms.Start(id, client, info, opts.Cols, opts.Rows, so)
 }
 
 // OpenLocalTerminal starts a shell on this computer. Like OpenTerminal, the

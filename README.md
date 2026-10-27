@@ -24,6 +24,7 @@ Remvyn is a desktop SSH client in the spirit of Termius. It saves your servers, 
 - **Keychain**:
   - Generate Ed25519, ECDSA or RSA keys, optionally passphrase-protected, or import OpenSSH/PEM keys from a paste or a file.
   - Copy the public key, install it on a host (like `ssh-copy-id`), or export the private key with `0600` permissions.
+  - Agent forwarding: turn on **Forward my SSH keys** for a host, and git or ssh on that server can log in with your keychain's keys, for example to `git pull` a private repo or hop to another server, without copying keys there. Remvyn acts as the SSH agent itself, so the keys never leave it, and each use pops up **Deny**, **Allow once** or **Allow for this connection**. It keeps working inside persistent sessions after a reconnect. Per device, and off by default.
 - **Port forwarding**: local (`-L`), remote (`-R`) and dynamic SOCKS5 (`-D`) rules, with start/stop, auto-start at launch, live connection and byte counters, and automatic stop with an error if the SSH link drops.
 - **Passwords**: a password vault for email and website logins, API tokens and secure notes, with a password generator, two-factor (TOTP) codes and extra fields. Encrypted like everything else and synced with the vault. See [Passwords](#passwords).
 - **Snippets**: saved commands you can send to any open terminal.
@@ -165,6 +166,7 @@ Safeguards:
 - An agent alone can never make Remvyn trust a new host key. When you approve an action on a server whose key isn't trusted yet, Remvyn shows you the usual fingerprint check; on "Always allow" servers an unknown key is refused.
 - Turning access off, locking Remvyn or auto-lock stops running commands, refuses pending requests and closes agent connections immediately.
 - Every action is recorded in the activity log, with its command and output encrypted like your passwords.
+- Agents' connections never forward your SSH keys unless you turn on **Let agents use forwarded keys** on the AI agents page, and only to hosts with forwarding on. Even then, every use of a key asks you first, including on "Always allow" servers, so an agent can't use a forwarded key to reach servers you haven't opened to it.
 - The socket lives in the data folder and only your user account can open it. Access settings are per device and are never synced.
 
 Remvyn has to be running for agents to reach it; otherwise the agent is told to ask you to open it.
@@ -229,6 +231,7 @@ cd frontend && npx tsc -b && npx oxlint src
 `backend/testutil` runs a real SSH server in-process, so the end-to-end tests need no network or external `sshd`. They cover:
 
 - PTY sessions: banner, input, resize, exit codes.
+- Agent forwarding: listing keys, signatures (including RSA SHA-2) only after approval, "once" versus "for this connection", denials, a read-only agent, and settings that a stale form can't change. Against a real server, a shell hops to another SSH login with a key that only exists in Remvyn, and again after reconnecting to its tmux session.
 - Persistent sessions: parsing the tmux probe and version checks. Against a real server with tmux (`REMVYN_TMUX_TEST=user:password@host:port`), a session survives a dropped connection, keeps its working directory and variables, replays its scrollback, doesn't rerun the startup command, and is removed when the tab is closed.
 - Local shells: output, resize, exit status, closing, and refusing duplicate or invalid session IDs.
 - Host-key trust on first use, and changed-key detection and rejection.
@@ -270,6 +273,7 @@ backend/
                        editing, copy/move/compress/extract, open with an installed editor
   forward/             -L / -R / SOCKS5 -D forwarding
   keys/                key generation, parsing and passphrases
+  keyagent/            read-only SSH agent for agent forwarding, asking before each signature
   sshconfig/           ~/.ssh/config parser
   storage/             SQLite (modernc.org/sqlite, pure Go)
   models/              shared data types
@@ -299,6 +303,7 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 - Host keys are always verified. New hosts need explicit confirmation, and a changed key is flagged and rejected by default.
 - Private keys never leave the Go backend; the UI only ever receives public metadata.
 - AI agents get no access unless you turn it on and open individual servers. They never receive credentials, can't get a new host key trusted without you, and in "Ask first" mode every action waits for your approval. Output from a server can contain text written to mislead an agent (prompt injection), so prefer "Ask first" for servers that matter.
+- With agent forwarding on, anything on that server (including root, or an attacker who controls it) can ask to use your keys while you're connected. Remvyn asks before every use and the private keys never leave it, but only turn forwarding on for servers you trust, and deny requests you didn't expect.
 - Forwarding rules bind to `127.0.0.1` by default, and the UI warns before you bind to other interfaces.
 
 ## Platform support
@@ -311,7 +316,7 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 
 ## Known limitations
 
-- No jump hosts / ProxyJump, agent forwarding, X11 forwarding or Mosh yet. Persistent sessions need tmux 3.0+ on the server; without it, a dropped connection still ends the shell. The Android app doesn't use persistent sessions yet. Hosts imported with `ProxyJump` are flagged during import.
+- No jump hosts / ProxyJump, X11 forwarding or Mosh yet. Agent forwarding only offers keys from Remvyn's keychain (not your system SSH agent), and skips keys whose passphrase isn't saved. Persistent sessions need tmux 3.0+ on the server; without it, a dropped connection still ends the shell. The Android app doesn't use persistent sessions yet. Hosts imported with `ProxyJump` are flagged during import.
 - No session logging/recording.
 - Sync needs a GitHub account and a private repository for the vault. Same-item conflicts keep the newer edit; there's no field-level merge. Hosts created separately on two devices with the same name are kept as two hosts. No Touch ID unlock yet.
 - No team sharing.

@@ -10,6 +10,7 @@ import { ShortcutsDialog } from '@/components/layout/ShortcutsDialog'
 import { TabBar, useCloseTab } from '@/components/layout/TabBar'
 import { VaultSidebar } from '@/components/layout/VaultSidebar'
 import { HostKeyDialog } from '@/components/session/HostKeyDialog'
+import { KeyUseDialog } from '@/components/session/KeyUseDialog'
 import { SftpView } from '@/components/sftp/SftpView'
 import { SplitDividers } from '@/components/terminal/SplitDividers'
 import { TerminalView } from '@/components/terminal/TerminalView'
@@ -211,6 +212,7 @@ export default function App() {
       </div>
       <HostEditor />
       <HostKeyDialog />
+      <KeyUseDialog />
       <AgentApprovalDialog />
       <QuickConnect />
       <ShortcutsDialog />

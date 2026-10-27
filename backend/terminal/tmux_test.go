@@ -41,7 +41,7 @@ func TestParseProbe(t *testing.T) {
 }
 
 func TestAttachCommandQuoting(t *testing.T) {
-	cmd := attachCommand("abcdefgh12", 120, 40)
+	cmd := attachCommand("abcdefgh12", 120, 40, false)
 	for _, want := range []string{"tmux -L remvyn -f /dev/null start-server", `\; new-session -A -s remvyn-abcdefgh12 -x 120 -y 40`, "set -g prefix None"} {
 		if !strings.Contains(cmd, want) {
 			t.Fatalf("attach command missing %q:\n%s", want, cmd)

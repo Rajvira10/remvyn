@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 
 	"remvyn/backend/models"
 	"remvyn/backend/sshconn"
@@ -78,6 +79,19 @@ func (m *Manager) ClientForHost(hostID string) *sshconn.Client {
 	return nil
 }
 
+// StartOptions tune an SSH shell.
+type StartOptions struct {
+	// Startup is typed into a new shell.
+	Startup string
+	// Persist runs the shell in a tmux session that survives disconnects.
+	Persist *Persist
+	// ForwardAgent asks the server for agent forwarding; the caller must
+	// already serve an agent on the client.
+	ForwardAgent bool
+	// OnEnd runs once when the session ends.
+	OnEnd func()
+}
+
 // Start opens a PTY shell on client. The caller must already be subscribed to
 // DataEvent(id) so the login banner is not missed. The manager takes
 // ownership of client and closes it when the session ends.
@@ -85,7 +99,16 @@ func (m *Manager) ClientForHost(hostID string) *sshconn.Client {
 // With a persist key, the shell runs in a tmux session on the server that
 // survives disconnects, if the server has tmux; the returned info says
 // whether it does. The startup command only runs in a new session.
-func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionInfo, cols, rows int, startup string, p *Persist) (models.SessionInfo, error) {
+func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionInfo, cols, rows int, o StartOptions) (models.SessionInfo, error) {
+	p, startup := o.Persist, o.Startup
+	if o.OnEnd != nil {
+		o.OnEnd = sync.OnceFunc(o.OnEnd)
+		defer func() {
+			if _, err := m.get(id); err != nil {
+				o.OnEnd() // never started
+			}
+		}()
+	}
 	if !ValidID(id) {
 		client.Close()
 		return info, errors.New("invalid session id")
@@ -105,7 +128,7 @@ func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionIn
 			info.Detached = st.lookup(p.Key)
 			info.Persistent = true
 			info.Resumed = st.exists
-			command = attachCommand(p.Key, cols, rows)
+			command = attachCommand(p.Key, cols, rows, o.ForwardAgent)
 			if st.exists {
 				startup = ""
 				if p.Restore && st.history > 0 {
@@ -131,6 +154,10 @@ func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionIn
 		sess.Close()
 		client.Close()
 		return info, fmt.Errorf("request terminal: %w", err)
+	}
+	if o.ForwardAgent {
+		// Servers may refuse (AllowAgentForwarding no); the shell still works.
+		info.AgentForwarding = agent.RequestAgentForwarding(sess) == nil
 	}
 	// Servers commonly reject environment variables; failure is harmless.
 	_ = sess.Setenv("COLORTERM", "truecolor")
@@ -171,6 +198,9 @@ func (m *Manager) Start(id string, client *sshconn.Client, info models.SessionIn
 		end: func() {
 			_ = sess.Close()
 			_ = client.Close()
+			if o.OnEnd != nil {
+				o.OnEnd()
+			}
 		},
 	}
 	if info.Persistent {
