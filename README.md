@@ -53,7 +53,6 @@ Background monitoring connects without prompting: it uses an open terminal's con
 
 Remvyn was called Flux during development. On first launch it moves the old `Flux` data folder (hosts, keys, settings) to `Remvyn`, and vaults already synced to GitHub keep working.
 
-
 Download from [Releases](https://github.com/Rajvira10/remvyn/releases):
 
 - **macOS**: `Remvyn-<version>-macOS-universal.dmg` (Apple Silicon and Intel). Drag Remvyn to Applications. The app isn't notarized yet, so the first time, right-click it and choose **Open** (or run `xattr -dr com.apple.quarantine /Applications/Remvyn.app`).
@@ -106,7 +105,7 @@ REMVYN_SIGNING=/path/to/signing.properties ./gradlew assembleRelease
 
 On another computer, sign in, choose the same repository and enter the same master password; its local data is merged in, and it adopts that master password.
 
-What's synced: hosts (with saved passwords), keys (with passphrases), groups, snippets, forwarding rules and known hosts. Settings and monitoring history stay per device.
+What's synced: hosts (with saved passwords), keys (with passphrases), groups, snippets, forwarding rules, known hosts and password vault items. Settings and monitoring history stay per device.
 
 How it works:
 - The repository holds `vault.json` (a random sync key wrapped with your master password) and one file per item under `records/`. Each file is AES-256-GCM encrypted and bound to its path; file names are keyed hashes, so GitHub sees only how many items you have and when they change.
@@ -168,7 +167,7 @@ Remvyn has to be running for agents to reach it; otherwise the agent is told to 
 ## Run and build
 
 ```bash
-# prerequisites: Go ≥ 1.25, Node ≥ 20
+# prerequisites: Go ≥ 1.26, Node ≥ 20
 go install github.com/wailsapp/wails/v2/cmd/wails@latest
 wails doctor
 
@@ -207,6 +206,9 @@ On macOS these use ⌘. On Linux and Windows they use Ctrl+Shift, so plain Ctrl+
 | Next / previous color scheme | ⌘⌥] / ⌘⌥[ |
 | Larger / smaller terminal text | ⌘= / ⌘- |
 | Settings / shortcuts | ⌘, / ⌘/ |
+| Save in the file editor | ⌘S |
+| SFTP: select all / copy / cut / paste | ⌘A / ⌘C / ⌘X / ⌘V |
+| SFTP: rename / delete | F2 / Delete or ⌘⌫ |
 
 ## Tests
 
@@ -223,6 +225,7 @@ cd frontend && npx tsc -b && npx oxlint src
 - Key auth with an encrypted key, plus an unauthorized key being refused.
 - Encrypted-key import and its passphrase handling.
 - Recursive SFTP upload and download, byte-for-byte, plus rename, delete and transfer cancellation.
+- File operations: local and remote text editing, copy and move, compress and extract round trips, zip-slip rejection, and shell quoting for remote commands.
 - Local, remote and SOCKS forwarding.
 - Forward teardown when the connection drops.
 - Public-key install.
@@ -236,6 +239,8 @@ cd frontend && npx tsc -b && npx oxlint src
   - Background monitoring, history, alerts firing and resolving with notifications, and uptime checks.
   - A blocked notifier never stalls alert evaluation.
 - Master password: set, lock, wrong/right unlock, restart locked, change, remove, and reset after a forgotten password.
+- Password vault: items encrypted at rest, create/edit/delete, locked while Remvyn is locked, syncing between devices, and TOTP codes against the RFC 6238 vectors.
+- AI agents: off by default, "Ask first" approvals and their timeout, never trusting a new host key, the kill switch, blocking while locked, and a full run over MCP.
 - Sync, against an in-process fake GitHub (device flow and Git Data API) with two and three devices:
   - Sign-in, denied sign-in, app not installed, inaccessible and public repositories.
   - Creating and joining a vault, wrong vault password, and that nothing readable reaches the repository.
@@ -256,6 +261,8 @@ backend/
   keys/                key generation, parsing and passphrases
   sshconfig/           ~/.ssh/config parser
   storage/             SQLite (modernc.org/sqlite, pure Go)
+  models/              shared data types
+  ids/                 ID generation
   security/            AES-256-GCM vault for secrets; master-password key wrapping (Argon2id)
   totp/                two-factor codes (RFC 6238) for password vault items
   vaultsync/           GitHub sync: device-flow sign-in, Git Data API remote, encrypted records, merge engine
@@ -266,6 +273,7 @@ backend/
   testutil/            in-process SSH server and fake GitHub for tests
 tools/devsshd/         run the test server for manual testing
 tools/devgithub/       run the fake GitHub for trying sync
+packaging/             Linux tarball build (Docker) and Arch PKGBUILD
 mobile/android/        Android companion app (Kotlin, Jetpack Compose, JSch)
 branding/              logo, app icons and naming research (BRANDING.md)
 frontend/src/          React + TypeScript + Tailwind + Zustand UI (xterm.js terminals)
