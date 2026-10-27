@@ -765,6 +765,50 @@ func (a *App) DeleteSnippet(id string) error {
 	return a.core.DeleteSnippet(id)
 }
 
+// ---------------------------------------------------------------- command history
+
+// CommandHistory lists the commands typed in a host's terminals, most recent
+// first.
+func (a *App) CommandHistory(hostID string) ([]string, error) {
+	if err := a.ready(); err != nil {
+		return []string{}, err
+	}
+	return a.core.CommandHistory(hostID)
+}
+
+// AddCommand records a command typed in a host's terminal.
+func (a *App) AddCommand(hostID, cmd string) error {
+	if err := a.ready(); err != nil {
+		return err
+	}
+	return a.core.AddCommand(hostID, cmd)
+}
+
+// ForgetCommand removes a command from a host's history.
+func (a *App) ForgetCommand(hostID, cmd string) error {
+	if err := a.ready(); err != nil {
+		return err
+	}
+	return a.core.ForgetCommand(hostID, cmd)
+}
+
+// ClearCommandHistory deletes the command history of every host.
+func (a *App) ClearCommandHistory() error {
+	if err := a.ready(); err != nil {
+		return err
+	}
+	return a.core.ClearCommandHistory()
+}
+
+// RemoteShellHistory reads the server's own shell history through a
+// terminal session's connection.
+func (a *App) RemoteShellHistory(sessionID string) ([]string, error) {
+	if err := a.ready(); err != nil {
+		return []string{}, err
+	}
+	return a.core.RemoteShellHistory(sessionID)
+}
+
 // ---------------------------------------------------------------- forwarding
 
 // ListForwards returns forwarding rules.

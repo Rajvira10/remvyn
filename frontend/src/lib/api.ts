@@ -145,6 +145,13 @@ export const api = {
   saveSnippet: (s: Snippet): Promise<Snippet> => call.SaveSnippet(s),
   deleteSnippet: (id: string): Promise<void> => call.DeleteSnippet(id),
 
+  commandHistory: (hostId: string): Promise<string[]> => call.CommandHistory(hostId),
+  addCommand: (hostId: string, cmd: string): Promise<void> => call.AddCommand(hostId, cmd),
+  forgetCommand: (hostId: string, cmd: string): Promise<void> => call.ForgetCommand(hostId, cmd),
+  clearCommandHistory: (): Promise<void> => call.ClearCommandHistory(),
+  /** The server's own shell history (bash, zsh, fish), most recent first. */
+  remoteShellHistory: (sessionId: string): Promise<string[]> => call.RemoteShellHistory(sessionId),
+
   forwards: (): Promise<ForwardRule[]> => call.ListForwards(),
   forwardStatuses: (): Promise<ForwardStatus[]> => call.ForwardStatuses(),
   saveForward: (f: ForwardRule): Promise<ForwardRule> => call.SaveForward(f),

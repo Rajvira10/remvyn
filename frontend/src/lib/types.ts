@@ -247,6 +247,7 @@ export interface Settings {
   connectTimeout: number
   showHiddenFiles: boolean
   confirmOnClose: boolean
+  commandSuggestions: boolean
   monitorHostIds: string[]
   monitorIntervalSec: number
   metricsRetentionDays: number

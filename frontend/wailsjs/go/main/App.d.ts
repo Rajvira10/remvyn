@@ -5,6 +5,8 @@ import {main} from '../models';
 import {vaultsync} from '../models';
 import {core} from '../models';
 
+export function AddCommand(arg1:string,arg2:string):Promise<void>;
+
 export function CancelConnect(arg1:string):Promise<void>;
 
 export function CancelTransfer(arg1:string):Promise<boolean>;
@@ -15,11 +17,15 @@ export function ClearAgentLog():Promise<void>;
 
 export function ClearAppData():Promise<models.Settings>;
 
+export function ClearCommandHistory():Promise<void>;
+
 export function ClearTransfers():Promise<void>;
 
 export function CloseSFTP(arg1:string):Promise<void>;
 
 export function CloseTerminal(arg1:string):Promise<void>;
+
+export function CommandHistory(arg1:string):Promise<Array<string>>;
 
 export function CompressLocal(arg1:string,arg2:Array<string>,arg3:string,arg4:string):Promise<string>;
 
@@ -66,6 +72,8 @@ export function ExtractLocal(arg1:string,arg2:boolean):Promise<string>;
 export function ExtractRemote(arg1:string,arg2:string,arg3:boolean):Promise<string>;
 
 export function ForceEditUpload(arg1:string,arg2:string):Promise<void>;
+
+export function ForgetCommand(arg1:string,arg2:string):Promise<void>;
 
 export function ForgetKnownHost(arg1:string):Promise<void>;
 
@@ -164,6 +172,8 @@ export function ReadLocalText(arg1:string):Promise<models.FileContent>;
 export function ReadRemoteText(arg1:string,arg2:string):Promise<models.FileContent>;
 
 export function RemoteHome(arg1:string):Promise<string>;
+
+export function RemoteShellHistory(arg1:string):Promise<Array<string>>;
 
 export function RemoveLocal(arg1:Array<string>):Promise<void>;
 

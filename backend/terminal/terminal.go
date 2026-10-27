@@ -307,6 +307,16 @@ func (s *session) close() {
 	s.closeOnce.Do(s.end)
 }
 
+// Client returns the connection behind a running session, for side commands
+// such as reading shell history. The caller must not close it.
+func (m *Manager) Client(id string) (*sshconn.Client, error) {
+	s, err := m.get(id)
+	if err != nil {
+		return nil, err
+	}
+	return s.client, nil
+}
+
 // Write sends keyboard input.
 func (m *Manager) Write(id, data string) error {
 	s, err := m.get(id)

@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
 import { AppearancePicker, changeFontSize, cycleTerminalTheme } from '@/components/terminal/AppearancePicker'
+import { GhostSuggest } from '@/components/terminal/ghostSuggest'
 import { MonitorPanel } from '@/components/monitor/MonitorPanel'
 import { ConnectOverlay, type Credentials } from '@/components/session/ConnectOverlay'
 import { Button } from '@/components/ui/button'
@@ -28,6 +29,7 @@ import { api, copyText, errorCode, errorMessage, events, onEvent, readClipboard 
 import type { ServerSession, SessionExit } from '@/lib/types'
 import { terminalTheme } from '@/lib/terminalThemes'
 import { appKey, cn, isMac, relativeTime, uid } from '@/lib/utils'
+import { listCommands, suggestCommand, useCommandHistory } from '@/stores/history'
 import { isLocked } from '@/stores/lock'
 import { broadcastTargets, isBroadcasting, useSessions, type Rect, type Tab } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
@@ -74,6 +76,7 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
   const searchRef = useRef<SearchAddon | null>(null)
+  const ghostRef = useRef<GhostSuggest | null>(null)
   const sidRef = useRef(tab.sessionId)
   const connectedRef = useRef(false)
   const credsRef = useRef<Credentials | null>(null)
@@ -132,6 +135,17 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     } catch {
       // DOM renderer fallback.
     }
+    // Local shells share one history.
+    const historyKey = local ? 'local' : tab.hostId
+    const ghost = new GhostSuggest(term, {
+      suggest: (typed) => suggestCommand(historyKey, typed),
+      list: (typed, limit) => listCommands(historyKey, typed, limit),
+      // Accepted suggestions go to broadcast terminals too, like typing.
+      send: input,
+      record: (cmd) => useCommandHistory.getState().add(historyKey, cmd),
+      forget: (cmd) => useCommandHistory.getState().forget(historyKey, cmd),
+    })
+    ghost.enabled = s?.commandSuggestions ?? true
 
     term.attachCustomKeyEventHandler((e) => {
       // Nothing reaches the remote shell while Remvyn is locked.
@@ -158,6 +172,7 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
         return false
       }
       if (RESERVED.some((c) => matchesCombo(e, c))) return false
+      if (connectedRef.current && ghost.handleKey(e)) return false
       return true
     })
     // Typed text can also arrive without key events (IME, dictation, drops).
@@ -165,7 +180,10 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     const markTyped = () => (typedAt.current = Date.now())
     containerRef.current!.addEventListener('input', markTyped, true)
     containerRef.current!.addEventListener('paste', markTyped, true)
-    term.onData((d) => input(d))
+    term.onData((d) => {
+      ghost.input(d)
+      input(d)
+    })
     term.onBinary((d) => input(d))
     term.onResize(({ cols, rows }) => {
       if (connectedRef.current) void api.resizeTerminal(sidRef.current, cols, rows).catch(() => {})
@@ -175,6 +193,7 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     })
 
     termRef.current = term
+    ghostRef.current = ghost
     fitRef.current = fit
     searchRef.current = search
 
@@ -191,6 +210,7 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     ro.observe(containerRef.current!)
     return () => {
       ro.disconnect()
+      ghost.dispose()
       term.dispose()
       termRef.current = null
     }
@@ -206,6 +226,10 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     term.options.cursorStyle = settings.cursorStyle
     term.options.cursorBlink = settings.cursorBlink
     term.options.scrollback = settings.scrollback
+    if (ghostRef.current) {
+      ghostRef.current.enabled = settings.commandSuggestions
+      if (!settings.commandSuggestions) ghostRef.current.reset(false)
+    }
     try {
       fitRef.current?.fit()
     } catch {
@@ -294,6 +318,11 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
           toast(info.persistNote === 'tmux_old' ? `${tab.title} has an old tmux` : `${tab.title} doesn't have tmux`, {
             description: `Install tmux 3.0 or later on the server so its sessions survive disconnects. Until then, a dropped connection ends the shell.`,
           })
+        }
+        ghostRef.current?.reset(true)
+        if (useSettings.getState().settings?.commandSuggestions ?? true) {
+          void useCommandHistory.getState().load(local ? 'local' : tab.hostId)
+          if (!local) void useCommandHistory.getState().loadRemote(tab.hostId, sid)
         }
         // The PTY may have been sized before the fit settled.
         void api.resizeTerminal(sid, term.cols, term.rows).catch(() => {})

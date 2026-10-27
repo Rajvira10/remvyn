@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -39,6 +40,8 @@ type Store struct {
 	vault atomic.Pointer[security.Vault]
 	// onChange runs after any change to synced data (hosts, keys, ...).
 	onChange atomic.Pointer[func()]
+	// historyMu serialises read-modify-write of command history.
+	historyMu sync.Mutex
 }
 
 // SetVault installs the key used for secrets; nil locks them.
@@ -143,7 +146,7 @@ func Open(path string, vault *security.Vault) (*Store, error) {
 	} else {
 		db.SetMaxOpenConns(4)
 	}
-	if _, err := db.Exec(schema + monitorSchema + syncSchema + agentSchema + itemSchema); err != nil {
+	if _, err := db.Exec(schema + monitorSchema + syncSchema + agentSchema + itemSchema + historySchema); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("initialise schema: %w", err)
 	}
@@ -396,6 +399,9 @@ func (s *Store) DeleteHost(ctx context.Context, id string) error {
 	}
 	defer tx.Rollback()
 	if _, err := tx.ExecContext(ctx, `DELETE FROM forwards WHERE host_id = ?`, id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM command_history WHERE host_id = ?`, id); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM hosts WHERE id = ?`, id); err != nil {
@@ -772,7 +778,8 @@ func (s *Store) SaveSettings(ctx context.Context, st models.Settings) error {
 func (s *Store) ClearAll(ctx context.Context) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM forwards; DELETE FROM hosts; DELETE FROM groups; DELETE FROM keys;
 		DELETE FROM snippets; DELETE FROM known_hosts; DELETE FROM settings; DELETE FROM metrics_minute; DELETE FROM alert_rules;
-		DELETE FROM alert_events; DELETE FROM uptime_checks; DELETE FROM uptime_results; DELETE FROM sync_state; DELETE FROM agent_log; DELETE FROM vault_items;`)
+		DELETE FROM alert_events; DELETE FROM uptime_checks; DELETE FROM uptime_results; DELETE FROM sync_state; DELETE FROM agent_log; DELETE FROM vault_items;
+		DELETE FROM command_history;`)
 	if err == nil {
 		_, _ = s.db.ExecContext(ctx, `PRAGMA wal_checkpoint(TRUNCATE); VACUUM;`)
 	}
