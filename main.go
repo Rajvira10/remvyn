@@ -16,6 +16,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
+
+	"remvyn/backend/updater"
 )
 
 //go:embed all:frontend/dist
@@ -30,6 +32,8 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "mcp" {
 		os.Exit(runMCP())
 	}
+	// Remove what the last update left behind (old binary, download).
+	go updater.Cleanup()
 	app := NewApp()
 
 	// macOS routes ⌘C/⌘V/⌘A in text fields through the Edit menu.

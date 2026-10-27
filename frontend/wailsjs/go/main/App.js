@@ -14,6 +14,10 @@ export function CancelTransfer(arg1) {
   return window['go']['main']['App']['CancelTransfer'](arg1);
 }
 
+export function CheckForUpdate() {
+  return window['go']['main']['App']['CheckForUpdate']();
+}
+
 export function ChmodRemote(arg1, arg2, arg3) {
   return window['go']['main']['App']['ChmodRemote'](arg1, arg2, arg3);
 }
@@ -174,6 +178,10 @@ export function GetSyncStatus() {
   return window['go']['main']['App']['GetSyncStatus']();
 }
 
+export function GetUpdateStatus() {
+  return window['go']['main']['App']['GetUpdateStatus']();
+}
+
 export function ImportKey(arg1) {
   return window['go']['main']['App']['ImportKey'](arg1);
 }
@@ -188,6 +196,10 @@ export function ImportSSHConfigFile() {
 
 export function InstallPublicKey(arg1, arg2, arg3) {
   return window['go']['main']['App']['InstallPublicKey'](arg1, arg2, arg3);
+}
+
+export function InstallUpdate() {
+  return window['go']['main']['App']['InstallUpdate']();
 }
 
 export function ListAgentLog(arg1) {
@@ -300,6 +312,10 @@ export function OpenLocalTerminal(arg1, arg2) {
 
 export function OpenLocalWith(arg1, arg2) {
   return window['go']['main']['App']['OpenLocalWith'](arg1, arg2);
+}
+
+export function OpenReleasePage() {
+  return window['go']['main']['App']['OpenReleasePage']();
 }
 
 export function OpenRemoteWith(arg1, arg2, arg3) {

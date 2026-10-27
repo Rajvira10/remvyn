@@ -311,6 +311,9 @@ type Settings struct {
 	// ForwardKeysToAI also forwards keys on AI agents' connections to those
 	// hosts (still asking each time).
 	ForwardKeysToAI bool `json:"forwardKeysToAI"`
+	// AutoUpdateCheck looks for a new release at startup and every few
+	// hours. Updates are only installed when the user asks.
+	AutoUpdateCheck bool `json:"autoUpdateCheck"`
 }
 
 // Agent access modes for a host.
@@ -344,6 +347,7 @@ func DefaultSettings() Settings {
 		AlertNotifications:   true,
 		AgentHosts:           map[string]string{},
 		ForwardKeyHosts:      []string{},
+		AutoUpdateCheck:      true,
 	}
 }
 

@@ -8,6 +8,7 @@ import { LockScreen } from '@/components/lock/LockScreen'
 import { QuickConnect } from '@/components/layout/QuickConnect'
 import { ShortcutsDialog } from '@/components/layout/ShortcutsDialog'
 import { TabBar, useCloseTab } from '@/components/layout/TabBar'
+import { UpdateDialog } from '@/components/layout/UpdateDialog'
 import { VaultSidebar } from '@/components/layout/VaultSidebar'
 import { HostKeyDialog } from '@/components/session/HostKeyDialog'
 import { KeyUseDialog } from '@/components/session/KeyUseDialog'
@@ -19,7 +20,7 @@ import { useAutoLock } from '@/hooks/useAutoLock'
 import { useHotkeys } from '@/hooks/useHotkeys'
 import { useResolvedTheme } from '@/hooks/useTheme'
 import { api, errorMessage, events, onEvent } from '@/lib/api'
-import type { AgentApproval, AgentLogEntry, AgentStatus, AlertEvent, ForwardStatus, LockStatus, Metrics, MonitorStatus, SyncStatus, Transfer } from '@/lib/types'
+import type { AgentApproval, AgentLogEntry, AgentStatus, AlertEvent, ForwardStatus, LockStatus, Metrics, MonitorStatus, SyncStatus, Transfer, UpdateStatus } from '@/lib/types'
 import { AgentsPage } from '@/pages/AgentsPage'
 import { ForwardingPage } from '@/pages/ForwardingPage'
 import { HostsPage } from '@/pages/HostsPage'
@@ -37,6 +38,7 @@ import { focusedPane, paneRects, topTabs, useSessions } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
 import { useTransfers } from '@/stores/transfers'
 import { useUI } from '@/stores/ui'
+import { useUpdate } from '@/stores/update'
 import { useVault } from '@/stores/vault'
 
 export default function App() {
@@ -56,6 +58,7 @@ export default function App() {
       useTransfers.getState().load(),
       useMonitor.getState().loadAlerts(),
       useAgent.getState().load(),
+      useUpdate.getState().load(),
     ])
       .catch((e) => toast.error('Could not reach the Remvyn backend', { description: errorMessage(e) }))
       .finally(() => setReady(true))
@@ -82,6 +85,7 @@ export default function App() {
       onEvent<AgentApproval>(events.AGENT_APPROVAL, (a) => useAgent.getState().addApproval(a)),
       onEvent<string>(events.AGENT_APPROVAL_DONE, (id) => useAgent.getState().removeApproval(id)),
       onEvent<AgentLogEntry>(events.AGENT_ACTIVITY, (e) => useAgent.getState().addLog(e)),
+      onEvent<UpdateStatus>(events.UPDATE_STATUS, (s) => useUpdate.getState().apply(s)),
       onEvent<Transfer>(events.TRANSFER, (t) => {
         const prev = useTransfers.getState().byId[t.id]
         useTransfers.getState().apply(t)
@@ -216,6 +220,7 @@ export default function App() {
       <AgentApprovalDialog />
       <QuickConnect />
       <ShortcutsDialog />
+      <UpdateDialog />
       {closeDialog}
       <LockScreen />
       <Toaster theme={theme} position="bottom-right" richColors closeButton toastOptions={{ className: 'text-[13px]' }} />

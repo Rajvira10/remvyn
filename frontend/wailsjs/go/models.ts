@@ -1071,6 +1071,7 @@ export namespace models {
 	    agentHosts: Record<string, string>;
 	    forwardKeyHosts: string[];
 	    forwardKeysToAI: boolean;
+	    autoUpdateCheck: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -1101,6 +1102,7 @@ export namespace models {
 	        this.agentHosts = source["agentHosts"];
 	        this.forwardKeyHosts = source["forwardKeyHosts"];
 	        this.forwardKeysToAI = source["forwardKeysToAI"];
+	        this.autoUpdateCheck = source["autoUpdateCheck"];
 	    }
 	}
 	export class Snippet {
@@ -1373,6 +1375,97 @@ export namespace models {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.item = this.convertValues(source["item"], VaultItem);
 	        this.secret = this.convertValues(source["secret"], VaultSecret);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
+export namespace updater {
+	
+	export class Release {
+	    version: string;
+	    name: string;
+	    notes: string;
+	    url: string;
+	    // Go type: time
+	    publishedAt: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new Release(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.name = source["name"];
+	        this.notes = source["notes"];
+	        this.url = source["url"];
+	        this.publishedAt = this.convertValues(source["publishedAt"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Status {
+	    current: string;
+	    state: string;
+	    latest?: Release;
+	    available: boolean;
+	    // Go type: time
+	    checkedAt: any;
+	    downloaded: number;
+	    total: number;
+	    error?: string;
+	    manual?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Status(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.current = source["current"];
+	        this.state = source["state"];
+	        this.latest = this.convertValues(source["latest"], Release);
+	        this.available = source["available"];
+	        this.checkedAt = this.convertValues(source["checkedAt"], null);
+	        this.downloaded = source["downloaded"];
+	        this.total = source["total"];
+	        this.error = source["error"];
+	        this.manual = source["manual"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
