@@ -489,7 +489,9 @@ func (a *App) WriteRemoteText(id, path, content string, expectModTime int64) (mo
 }
 
 // ReadLocalText opens a local text file in the built-in editor.
-func (a *App) ReadLocalText(path string) (models.FileContent, error) { return files.ReadTextLocal(path) }
+func (a *App) ReadLocalText(path string) (models.FileContent, error) {
+	return files.ReadTextLocal(path)
+}
 
 // WriteLocalText saves a local text file.
 func (a *App) WriteLocalText(path, content string, expectModTime int64) (models.FileContent, error) {
@@ -505,7 +507,9 @@ func (a *App) CreateRemoteFile(id, dir, name string) (string, error) {
 }
 
 // CreateLocalFile makes an empty local file and returns its path.
-func (a *App) CreateLocalFile(dir, name string) (string, error) { return files.CreateFileLocal(dir, name) }
+func (a *App) CreateLocalFile(dir, name string) (string, error) {
+	return files.CreateFileLocal(dir, name)
+}
 
 // CopyRemote copies remote entries into a remote directory.
 func (a *App) CopyRemote(id string, paths []string, dir string) error {
