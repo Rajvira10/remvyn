@@ -32,7 +32,7 @@ export function UpdateDialog() {
         </DialogHeader>
 
         {status.available && latest?.notes && (
-          <div className="max-h-64 overflow-auto rounded-lg border bg-muted/40 p-3 text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground">{latest.notes}</div>
+          <div className="max-h-64 overflow-auto rounded-lg border bg-muted/40 p-3 text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground">{plainNotes(latest.notes)}</div>
         )}
 
         {working && (
@@ -86,4 +86,16 @@ export function UpdateDialog() {
       </DialogContent>
     </Dialog>
   )
+}
+
+/** Release notes are Markdown; show them as plain text without the markup. */
+function plainNotes(md: string): string {
+  return md
+    .replace(/\r\n/g, '\n')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^(\s*)[-*]\s+/gm, '$1• ')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/`([^`\n]+)`/g, '$1')
+    .replace(/\[([^\]\n]+)\]\([^)\s]+\)/g, '$1')
+    .trim()
 }

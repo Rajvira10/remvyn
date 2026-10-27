@@ -140,8 +140,12 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     const ghost = new GhostSuggest(term, {
       suggest: (typed) => suggestCommand(historyKey, typed),
       list: (typed, limit) => listCommands(historyKey, typed, limit),
-      // Accepted suggestions go to broadcast terminals too, like typing.
-      send: input,
+      // Accepted suggestions go to broadcast terminals too, like typing,
+      // including ones picked from the list with the mouse.
+      send: (text) => {
+        typedAt.current = Date.now()
+        input(text)
+      },
       record: (cmd) => useCommandHistory.getState().add(historyKey, cmd),
       forget: (cmd) => useCommandHistory.getState().forget(historyKey, cmd),
     })

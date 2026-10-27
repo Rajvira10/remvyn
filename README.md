@@ -12,6 +12,7 @@ Remvyn is a desktop SSH client in the spirit of Termius. It saves your servers, 
   - Split panes: split any terminal tab right (⌘D) or down (⌘⌥D) as often as you like. Each pane is its own session to the same host (or another local shell), with a draggable divider; ⌘⌥ + arrow keys move between panes, and ⌘W closes the focused pane.
   - Sessions that survive disconnects: SSH shells run inside tmux on the server (when it has tmux 3.0 or later), so a dropped connection, a sleeping laptop or a restart doesn't end them. Remvyn reconnects by itself, backing off and retrying as soon as the network returns, and puts you back where you were. After a restart, a new tab offers to resume sessions that are still running, scrollback included. Closing a tab ends its session. Remvyn uses its own tmux server with no status bar or prefix key, so it feels like a normal shell and never touches your own tmux sessions. Turn it off in Settings → Terminal.
   - Broadcast input: type into every pane of a tab, or every open terminal, at once (⌘⇧B or the toolbar). Terminals receiving input are outlined.
+  - Command suggestions: as you type, the rest of a matching past command shows in faint text, as in fish. → or End accepts it, Ctrl+→ accepts one word, Shift+Delete forgets it, and Ctrl+Space lists more matches. Suggestions come from commands typed in Remvyn (saved per host, encrypted, never synced) and from the server's own bash, zsh or fish history (read once per connection, never stored). Passwords aren't recorded, because the command line is read back from the screen and they aren't echoed; a command starting with a space is skipped, as in bash. Turn it off, or clear the history, in Settings → Terminal.
   - Run a snippet from the terminal toolbar.
   - Dropped connections without tmux show a Reconnect overlay; keepalives detect dead links.
 - **SFTP**:
@@ -64,6 +65,8 @@ Download from [Releases](https://github.com/Rajvira10/remvyn/releases):
 - **Linux** (x86_64; Arch/Omarchy, Ubuntu 22.04+, Debian 12+, Fedora): `Remvyn-<version>-linux-x86_64.tar.gz`. Install GTK 3 and WebKitGTK 4.1 (Arch/Omarchy: `sudo pacman -S --needed gtk3 webkit2gtk-4.1`), unpack, and run `./install.sh` (per-user, no root). On Arch you can instead build a package with [`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD) and `makepkg -si`.
 - **Windows** (10/11, x64): `Remvyn-<version>-windows-x64-setup.exe` installs Remvyn with a Start menu entry and installs the WebView2 runtime if it's missing. `Remvyn-<version>-windows-x64.zip` is the same app without an installer. Neither is code-signed yet, so SmartScreen may warn; choose **More info → Run anyway**.
 - **Android**: `Remvyn-<version>-android.apk` (Android 8+). Open it on your phone and allow installing from your browser or file manager.
+
+From 2.6.0 the desktop app updates itself. It checks GitHub Releases at launch and every 6 hours (Settings → Updates), shows **Update available** in the sidebar, and **Update and restart** downloads the new version, checks it against the SHA-256 checksum GitHub publishes, installs it and reopens Remvyn. Copies installed by a package manager (the Arch PKGBUILD) or in a folder Remvyn can't write to link to the release page instead. Sessions kept alive on the server reconnect after the restart.
 
 ## Android app
 
@@ -208,6 +211,8 @@ On macOS these use ⌘. On Linux and Windows they use Ctrl+Shift, so plain Ctrl+
 | Split right / down | ⌘D / ⌘⌥D |
 | Focus the pane left / right / above / below | ⌘⌥ + arrow keys |
 | Broadcast input to all panes (or all terminals) | ⌘⇧B |
+| Accept a command suggestion / one word | → or End / Ctrl+→ |
+| List matching past commands | Ctrl+Space |
 | Next / previous tab | ⌘] / ⌘[ |
 | Vault / tab 1–9 | ⌘0 / ⌘1–9 |
 | Copy / paste in terminal | ⌘C / ⌘V (Ctrl+Shift+C/V elsewhere) |
@@ -234,6 +239,8 @@ cd frontend && npx tsc -b && npx oxlint src
 - Agent forwarding: listing keys, signatures (including RSA SHA-2) only after approval, "once" versus "for this connection", denials, a read-only agent, and settings that a stale form can't change. Against a real server, a shell hops to another SSH login with a key that only exists in Remvyn, and again after reconnecting to its tmux session.
 - Persistent sessions: parsing the tmux probe and version checks. Against a real server with tmux (`REMVYN_TMUX_TEST=user:password@host:port`), a session survives a dropped connection, keeps its working directory and variables, replays its scrollback, doesn't rerun the startup command, and is removed when the tab is closed.
 - Local shells: output, resize, exit status, closing, and refusing duplicate or invalid session IDs.
+- Command history: encrypted storage, ordering and limits, forgetting, locked and foreign-key vaults, and parsing bash, zsh and fish history files.
+- Updates: version comparison, choosing the asset for each platform, checking against a fake GitHub, rejecting a bad or missing checksum, and zip/tar extraction.
 - Host-key trust on first use, and changed-key detection and rejection.
 - Password flows: required, wrong, saved, and encrypted at rest.
 - Key auth with an encrypted key, plus an unauthorized key being refused.
@@ -285,6 +292,7 @@ backend/
   monitor/             agentless metrics collection (script, parser, per-host collectors)
   alerts/              alert rule evaluation, firing and resolving
   uptime/              HTTP/TCP uptime probes
+  updater/             self-update from GitHub Releases: check, checksum-verified download, per-platform install and relaunch
   testutil/            in-process SSH server and fake GitHub for tests
 tools/devsshd/         run the test server for manual testing
 tools/devgithub/       run the fake GitHub for trying sync
@@ -304,6 +312,7 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 - Private keys never leave the Go backend; the UI only ever receives public metadata.
 - AI agents get no access unless you turn it on and open individual servers. They never receive credentials, can't get a new host key trusted without you, and in "Ask first" mode every action waits for your approval. Output from a server can contain text written to mislead an agent (prompt injection), so prefer "Ask first" for servers that matter.
 - With agent forwarding on, anything on that server (including root, or an attacker who controls it) can ask to use your keys while you're connected. Remvyn asks before every use and the private keys never leave it, but only turn forwarding on for servers you trust, and deny requests you didn't expect.
+- Updates are only installed if they match the SHA-256 checksum GitHub publishes for the release file, which catches corrupt or swapped downloads. Builds aren't code-signed yet, so this trusts the GitHub repository's releases, the same as downloading by hand.
 - Forwarding rules bind to `127.0.0.1` by default, and the UI warns before you bind to other interfaces.
 
 ## Platform support
