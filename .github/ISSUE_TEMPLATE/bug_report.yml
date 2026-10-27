@@ -1,0 +1,54 @@
+name: Bug report
+description: Something in Remvyn doesn't work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Never paste private keys, passwords, tokens or your data folder here**, and redact host names or IPs if they're sensitive.
+        Security problems go through [private reporting](https://github.com/Rajvira10/remvyn/security/advisories/new) instead.
+  - type: input
+    id: version
+    attributes:
+      label: Remvyn version
+      description: Shown at the bottom of Settings.
+      placeholder: "2.3.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [macOS (Apple Silicon), macOS (Intel), Linux, Windows, Android]
+      multiple: true
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS version
+      placeholder: "macOS 26.4, Ubuntu 24.04, Windows 11 24H2, Android 15…"
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Connecting / auth, Terminal, SFTP / editor, Port forwarding, Keychain, Passwords, Monitoring, Sync, AI agents (MCP), Master password / lock, Install / update, Other]
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead. Include the exact error text.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. …
+        2. …
+  - type: textarea
+    id: server
+    attributes:
+      label: Server details (for connection problems)
+      description: Server OS, SSH server and version (`ssh -V` on the server), auth method (password, key type, agent).

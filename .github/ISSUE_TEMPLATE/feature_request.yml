@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest something Remvyn should do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The problem or workflow, not just the solution. "I manage 40 servers and…" helps more than "add X".
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like Remvyn to do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: How you work around it today, or how other tools handle it.
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contributing
+      options:
+        - label: I'd like to build this myself (see CONTRIBUTING.md; let's agree the approach here first).

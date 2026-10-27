@@ -307,3 +307,11 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 - No team sharing.
 - Monitoring only runs while Remvyn is open (no agent or tray mode yet) and supports Linux servers only.
 - The "install public key" command assumes a POSIX shell on the server.
+
+## Contributing
+
+Bug reports, fixes and features are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests and what a pull request needs, and report security problems privately as described in [SECURITY.md](SECURITY.md). Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+[MIT](LICENSE)
