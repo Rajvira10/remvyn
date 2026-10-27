@@ -298,4 +298,3 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 - No team sharing.
 - Monitoring only runs while Remvyn is open (no agent or tray mode yet) and supports Linux servers only.
 - The "install public key" command assumes a POSIX shell on the server.
-- The app icon is still the Wails default.
