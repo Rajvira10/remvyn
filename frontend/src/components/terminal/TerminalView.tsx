@@ -98,6 +98,8 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
   // directory, asked for again after each command.
   const dirCache = useRef(new Map<string, { names?: string[]; at: number; loading: boolean }>())
   const shellDir = useRef<{ cwd: string; home: string } | 'loading' | null>(null)
+  // Bumped by every command, so an answer asked for before it is dropped.
+  const shellDirGen = useRef(0)
 
   const activeRef = useRef(active)
   activeRef.current = active
@@ -177,15 +179,19 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
         })
     }
     const loadShellDir = () => {
+      const gen = shellDirGen.current
       shellDir.current = 'loading'
       api
         .terminalDir(sidRef.current)
         .then((d) => {
+          if (gen !== shellDirGen.current) return
           const cwd = d.exact ? d.path : dirHint.current.replace(/^~(?=\/|$)/, d.home)
           shellDir.current = { cwd: cwd || d.path, home: d.home }
           ghostRef.current?.refresh()
         })
-        .catch(() => (shellDir.current = null))
+        .catch(() => {
+          if (gen === shellDirGen.current) shellDir.current = null
+        })
     }
     /** A folder's entries for path completion; listings are reused for a few seconds. */
     const listDir = (dir: string): string[] | undefined => {
@@ -267,8 +273,11 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     })
     term.onData((d) => {
       ghost.input(d)
-      // A command may change directory.
-      if (d.includes('\r') && shellDir.current !== 'loading') shellDir.current = null
+      // A command may change directory; ask again when next needed.
+      if (d.includes('\r')) {
+        shellDirGen.current++
+        shellDir.current = null
+      }
       input(d)
     })
     term.onBinary((d) => input(d))
@@ -422,6 +431,7 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
         ghostRef.current?.reset(true)
         dirHint.current = ''
         dirCache.current.clear()
+        shellDirGen.current++
         shellDir.current = null
         if (useSettings.getState().settings?.commandSuggestions ?? true) {
           void useCommandHistory.getState().load(local ? 'local' : tab.hostId)
