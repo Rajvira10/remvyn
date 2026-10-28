@@ -7,13 +7,17 @@ import type { IDecoration, IDisposable, IMarker, Terminal } from '@xterm/xterm'
  *
  * Typing a path (/var/www/, ~/, src/co) lists what's in that folder under the
  * cursor, narrowing as you type: ↑↓ choose, Tab inserts, Esc hides it. Tab
+ * on any argument (cd , cd mon) lists the shell's folder the same way. Tab
  * pressed while the listing is still on its way waits for it, then inserts
  * the only match, shows the list, or (no match) goes to the shell.
  *
  * The remote shell owns the command line, so it is read back from the screen:
  * the text between where the first key of a line was typed (the end of the
  * prompt) and the cursor. That follows the shell's own editing, Tab completion
- * and ↑ history, and never sees passwords, which are not echoed. Whenever the
+ * and ↑ history, and never sees passwords, which are not echoed. Paths are
+ * also completed on a line that has no such anchor (after the shell printed
+ * its own completions and redrew the prompt) by finding the prompt's end
+ * ($ # % > ❯) on the cursor's line. Whenever the
  * line can't be read reliably, nothing is suggested or recorded:
  * - full-screen programs (vim, less, tmux) on the alternate screen
  * - text after the cursor (editing mid-line, or the shell's own suggestion)
@@ -70,6 +74,9 @@ export class GhostSuggest {
   private anchor: { marker: IMarker; x: number } | null = null
   private fresh = true
   private lastOutput = 0
+  // Printable text typed since the last other key; the screen catches up
+  // once the shell has echoed it.
+  private typed = ''
   private ghost = ''
   private full = ''
   private shownAt = ''
@@ -78,8 +85,11 @@ export class GhostSuggest {
   private paths: { items: string[]; sel: number; word: PathWord; el: HTMLDivElement } | null = null
   // The path whose list Esc hid; it stays hidden until the path changes.
   private dismissed = ''
-  // A Tab waiting for the listing of the path it was pressed on.
-  private pendingTab: { raw: string; timer: number } | null = null
+  // A Tab waiting for the listing of the path it was pressed on, or (null)
+  // for the keys typed before it to be echoed.
+  private pendingTab: { raw: string | null; timer: number } | null = null
+  // Where the word Tab was pressed on starts: it is completed even without a /.
+  private tabStart = -1
   private raf = 0
   private subs: IDisposable[]
 
@@ -115,6 +125,8 @@ export class GhostSuggest {
     this.closeMenu()
     this.closePaths()
     this.cancelTab()
+    this.tabStart = -1
+    this.typed = ''
     this.show('', '')
   }
 
@@ -138,6 +150,8 @@ export class GhostSuggest {
     if (data === '\x0c') return this.reset(false)
     // At column 0 there is no prompt yet: typing ahead while a command runs.
     if (this.fresh) this.startLine(performance.now() - this.lastOutput >= QUIET_MS && this.term.buffer.active.cursorX > 0)
+    // eslint-disable-next-line no-control-regex
+    this.typed = /[\x00-\x1f\x7f]/.test(data) ? '' : this.typed + data
     this.schedule()
   }
 
@@ -249,19 +263,67 @@ export class GhostSuggest {
     return true
   }
 
-  /** Holds a Tab pressed on a path whose listing hasn't arrived; true if held. */
+  /**
+   * Tab on an argument: inserts the only match or shows the list, waiting for
+   * the listing if needed. False (no match) lets the shell have the Tab.
+   */
   private holdTab(): boolean {
     if (this.pendingTab) return true
-    const line = this.read()
-    const word = line && !line.tail && this.opts.listDir ? pathWord(line.text) : null
-    if (!word || this.opts.listDir!(word.dir) !== undefined) return false
+    // The line on screen is behind what was typed: decide once it's echoed.
+    if (!this.echoed()) {
+      this.waitTab(null)
+      return true
+    }
+    return this.completeTab()
+  }
+
+  private completeTab(): boolean {
+    const line = this.pathLine()
+    const word = line ? pathWord(line, true) : null
+    if (!word) return false
+    this.tabStart = line!.length - word.raw.length
+    this.dismissed = ''
+    if (this.opts.listDir!(word.dir) === undefined) {
+      this.waitTab(word.raw)
+      return true
+    }
+    const found = this.pathItems(word)
+    if (found.length === 1) this.insertPath(word, found[0])
+    else if (found.length) this.schedule()
+    return found.length > 0
+  }
+
+  /** The command line for path completion, also when the prompt had to be guessed. */
+  private pathLine(): string | null {
+    if (!this.opts.listDir) return null
+    const line = this.read() ?? this.guess()
+    return line && !line.tail ? line.text : null
+  }
+
+  /** The word being completed: a path, or any argument Tab was pressed on. */
+  private pathWordAt(line: string | null): PathWord | null {
+    if (line === null) return null
+    if (this.tabStart >= 0) {
+      const w = pathWord(line, true)
+      if (w && line.length - w.raw.length === this.tabStart) return w
+    }
+    return pathWord(line)
+  }
+
+  /** Whether the line on screen shows everything typed so far (yes if it can't be read). */
+  private echoed(): boolean {
+    const line = this.read() ?? this.guess()
+    return !this.typed || !line || line.text.endsWith(this.typed)
+  }
+
+  private waitTab(raw: string | null) {
     // Give up waiting after a while and let the shell complete instead.
     const timer = window.setTimeout(() => {
       this.pendingTab = null
+      this.typed = ''
       this.opts.send('\t')
     }, 2000)
-    this.pendingTab = { raw: word.raw, timer }
-    return true
+    this.pendingTab = { raw, timer }
   }
 
   private cancelTab() {
@@ -370,6 +432,7 @@ export class GhostSuggest {
     this.accept(cmd.startsWith(typed) ? cmd.slice(typed.length) : '\x7f'.repeat([...typed].length) + cmd)
   }
   private accept(text: string) {
+    this.typed = ''
     this.opts.send(text)
     this.show('', '')
   }
@@ -409,6 +472,24 @@ export class GhostSuggest {
     return { text, tail: after.trim() !== '' }
   }
 
+  /**
+   * The command line on the cursor's row when there is no anchor: the text
+   * after the first prompt end ($ # % > ❯ and a space).
+   */
+  private guess(): { text: string; tail: boolean } | null {
+    const buf = this.term.buffer.active
+    if (buf.type !== 'normal') return null
+    const row = buf.baseY + buf.cursorY
+    let first = row
+    while (first > 0 && buf.getLine(first)?.isWrapped) first--
+    let text = ''
+    for (let r = first; r <= row; r++) text += buf.getLine(r)?.translateToString(false, 0, r === row ? buf.cursorX : this.term.cols) ?? ''
+    const m = /[$#%>❯] /.exec(text)
+    if (!m) return null
+    const after = buf.getLine(row)?.translateToString(true, buf.cursorX) ?? ''
+    return { text: text.slice(m.index + 2), tail: after.trim() !== '' }
+  }
+
   private update() {
     cancelAnimationFrame(this.raf)
     this.raf = 0
@@ -422,9 +503,16 @@ export class GhostSuggest {
       }
       this.closeMenu()
     }
-    const word = line && !line.tail && this.opts.listDir ? pathWord(line.text) : null
+    if (this.pendingTab?.raw === null && this.echoed()) {
+      this.cancelTab()
+      if (!this.completeTab()) {
+        this.typed = ''
+        this.opts.send('\t')
+      }
+    }
+    const word = this.enabled ? this.pathWordAt(this.pathLine()) : null
     if (word?.raw !== this.dismissed) this.dismissed = ''
-    if (this.pendingTab) {
+    if (this.pendingTab && this.pendingTab.raw !== null) {
       // Typing on drops the held Tab.
       if (word?.raw !== this.pendingTab.raw) this.cancelTab()
       else if (this.opts.listDir!(word.dir) !== undefined) {
@@ -432,7 +520,10 @@ export class GhostSuggest {
         this.dismissed = ''
         const found = this.pathItems(word)
         if (found.length === 1) return this.insertPath(word, found[0])
-        if (!found.length) this.opts.send('\t')
+        if (!found.length) {
+          this.typed = ''
+          this.opts.send('\t')
+        }
       }
     }
     const items = word && !this.dismissed ? this.pathItems(word) : []
@@ -568,9 +659,13 @@ function popup(label: string): HTMLDivElement {
   return el
 }
 
-/** The path being typed at the end of line, or null when the last word isn't one. */
-export function pathWord(line: string): PathWord | null {
+/**
+ * The path being typed at the end of line, or null when the last word isn't
+ * one. With any, every argument counts (cd mon, or nothing yet after cd ).
+ */
+export function pathWord(line: string, any = false): PathWord | null {
   let start = 0
+  let cmd = 0
   let quote = ''
   for (let i = 0; i < line.length; i++) {
     const c = line[i]
@@ -579,13 +674,17 @@ export function pathWord(line: string): PathWord | null {
       else if (c === '\\' && quote === '"') i++
     } else if (c === '\\') i++
     else if (c === "'" || c === '"') quote = c
-    else if (/\s/.test(c) || ';|&<>()'.includes(c)) start = i + 1
+    else if (/\s/.test(c) || ';|&<>()'.includes(c)) {
+      start = i + 1
+      if (';|&()'.includes(c)) cmd = start
+    }
   }
   let raw = line.slice(start)
   // --option=/path and NAME=/path
   const eq = /^[^/'"]*=/.exec(raw)
   if (eq) raw = raw.slice(eq[0].length)
-  if (!raw.includes('/') || raw.includes('://')) return null
+  if (raw.includes('://')) return null
+  if (!raw.includes('/') && !(any && line.slice(cmd, start).trim())) return null
   const value = unquote(raw)
   const cut = value.lastIndexOf('/') + 1
   return { raw, dir: value.slice(0, cut), prefix: value.slice(cut), rawPrefix: raw.slice(raw.lastIndexOf('/') + 1), quoted: /['"]/.test(raw) }

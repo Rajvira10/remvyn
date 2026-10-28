@@ -168,7 +168,7 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
       const cache = dirCache.current
       cache.set(dir, { names: cache.get(dir)?.names, at: Date.now(), loading: true })
       api
-        .listNames(sidRef.current, dir, dirHint.current)
+        .listNames(sidRef.current, dir || './', dirHint.current)
         .catch(() => [] as string[])
         .then((names) => {
           // A command ran meanwhile: a relative answer may be for the old directory.
@@ -411,6 +411,8 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
           void useCommandHistory.getState().load(local ? 'local' : tab.hostId)
           if (!local) void useCommandHistory.getState().loadRemote(tab.hostId, sid)
         }
+        // Starts the server-side helper now, so the first Tab doesn't wait for it.
+        if (!local && (useSettings.getState().settings?.commandSuggestions ?? true)) void api.listNames(sid, '/', '').catch(() => {})
         // The PTY may have been sized before the fit settled.
         void api.resizeTerminal(sid, term.cols, term.rows).catch(() => {})
         if (creds?.savePassword) void useVault.getState().loadHosts()

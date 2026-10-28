@@ -34,6 +34,7 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
       ['Paste', isMac ? '⌘V' : 'Ctrl+Shift+V'],
       ['Accept a command suggestion / one word', '→  Ctrl+→'],
       ['List matching past commands', 'Ctrl+Space'],
+      ['List the folder, or complete the path, you are typing', 'Tab'],
       ['Find', k('F')],
       ['Clear scrollback', k('K')],
       ['Show or hide server metrics', k('I')],
