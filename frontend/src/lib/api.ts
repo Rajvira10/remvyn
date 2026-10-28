@@ -191,8 +191,12 @@ export const api = {
   remoteShellHistory: (sessionId: string): Promise<string[]> => call.RemoteShellHistory(sessionId),
   /** Where a terminal's shell is, for path completion. */
   terminalDir: (sessionId: string): Promise<ShellDir> => call.TerminalDir(sessionId),
-  /** A folder's entries on the computer a terminal runs on; folders end in /. */
-  listNames: (sessionId: string, dir: string): Promise<string[]> => call.ListNames(sessionId, dir),
+  /**
+   * A folder's entries on the computer a terminal runs on; folders end in /.
+   * dir may be relative to the shell's directory; base is a guess at it for
+   * shells whose directory the app can't ask for.
+   */
+  listNames: (sessionId: string, dir: string, base: string): Promise<string[]> => call.ListNames(sessionId, dir, base),
 
   forwards: (): Promise<ForwardRule[]> => call.ListForwards(),
   forwardStatuses: (): Promise<ForwardStatus[]> => call.ForwardStatuses(),

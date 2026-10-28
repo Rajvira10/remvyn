@@ -6,7 +6,9 @@ import type { IDecoration, IDisposable, IMarker, Terminal } from '@xterm/xterm'
  * more matches, filtered as you keep typing.
  *
  * Typing a path (/var/www/, ~/, src/co) lists what's in that folder under the
- * cursor, narrowing as you type: ↑↓ choose, Tab inserts, Esc hides it.
+ * cursor, narrowing as you type: ↑↓ choose, Tab inserts, Esc hides it. Tab
+ * pressed while the listing is still on its way waits for it, then inserts
+ * the only match, shows the list, or (no match) goes to the shell.
  *
  * The remote shell owns the command line, so it is read back from the screen:
  * the text between where the first key of a line was typed (the end of the
@@ -76,6 +78,8 @@ export class GhostSuggest {
   private paths: { items: string[]; sel: number; word: PathWord; el: HTMLDivElement } | null = null
   // The path whose list Esc hid; it stays hidden until the path changes.
   private dismissed = ''
+  // A Tab waiting for the listing of the path it was pressed on.
+  private pendingTab: { raw: string; timer: number } | null = null
   private raf = 0
   private subs: IDisposable[]
 
@@ -110,6 +114,7 @@ export class GhostSuggest {
     this.fresh = fresh
     this.closeMenu()
     this.closePaths()
+    this.cancelTab()
     this.show('', '')
   }
 
@@ -158,6 +163,10 @@ export class GhostSuggest {
       return true
     }
     if (this.paths && this.pathKey(e, noMods)) {
+      e.preventDefault()
+      return true
+    }
+    if (noMods && !e.shiftKey && e.key === 'Tab' && !this.menu && this.holdTab()) {
       e.preventDefault()
       return true
     }
@@ -238,6 +247,26 @@ export class GhostSuggest {
       return false
     }
     return true
+  }
+
+  /** Holds a Tab pressed on a path whose listing hasn't arrived; true if held. */
+  private holdTab(): boolean {
+    if (this.pendingTab) return true
+    const line = this.read()
+    const word = line && !line.tail && this.opts.listDir ? pathWord(line.text) : null
+    if (!word || this.opts.listDir!(word.dir) !== undefined) return false
+    // Give up waiting after a while and let the shell complete instead.
+    const timer = window.setTimeout(() => {
+      this.pendingTab = null
+      this.opts.send('\t')
+    }, 2000)
+    this.pendingTab = { raw: word.raw, timer }
+    return true
+  }
+
+  private cancelTab() {
+    if (this.pendingTab) clearTimeout(this.pendingTab.timer)
+    this.pendingTab = null
   }
 
   private closePaths() {
@@ -395,6 +424,17 @@ export class GhostSuggest {
     }
     const word = line && !line.tail && this.opts.listDir ? pathWord(line.text) : null
     if (word?.raw !== this.dismissed) this.dismissed = ''
+    if (this.pendingTab) {
+      // Typing on drops the held Tab.
+      if (word?.raw !== this.pendingTab.raw) this.cancelTab()
+      else if (this.opts.listDir!(word.dir) !== undefined) {
+        this.cancelTab()
+        this.dismissed = ''
+        const found = this.pathItems(word)
+        if (found.length === 1) return this.insertPath(word, found[0])
+        if (!found.length) this.opts.send('\t')
+      }
+    }
     const items = word && !this.dismissed ? this.pathItems(word) : []
     if (word && items.length && this.placePaths(word, items)) {
       this.show('', '')

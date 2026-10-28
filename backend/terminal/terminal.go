@@ -47,6 +47,10 @@ type session struct {
 
 	writeMu   sync.Mutex
 	closeOnce sync.Once
+
+	// lister answers path completion's folder listings (SSH only).
+	listMu sync.Mutex
+	lister *lister
 }
 
 // Manager owns all terminal sessions.
@@ -306,7 +310,14 @@ func (m *Manager) remove(id string) {
 }
 
 func (s *session) close() {
-	s.closeOnce.Do(s.end)
+	s.closeOnce.Do(func() {
+		s.listMu.Lock()
+		if s.lister != nil {
+			s.lister.close()
+		}
+		s.listMu.Unlock()
+		s.end()
+	})
 }
 
 // Client returns the connection behind a running session, for side commands

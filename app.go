@@ -827,12 +827,13 @@ func (a *App) TerminalDir(sessionID string) (models.ShellDir, error) {
 }
 
 // ListNames lists a folder on the computer a terminal session runs on, for
-// path completion as you type.
-func (a *App) ListNames(sessionID, dir string) ([]string, error) {
+// path completion as you type. dir may be relative to the shell's
+// directory; base is the UI's guess at it, for shells that can't tell.
+func (a *App) ListNames(sessionID, dir, base string) ([]string, error) {
 	if err := a.ready(); err != nil {
 		return []string{}, err
 	}
-	return a.core.ListNames(sessionID, dir)
+	return a.core.ListNames(sessionID, dir, base)
 }
 
 // ---------------------------------------------------------------- forwarding

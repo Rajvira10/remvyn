@@ -94,12 +94,9 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
   // Where the shell last said it is (OSC 7, or a "user@host: dir" window
   // title), for shells whose directory Remvyn can't ask the server for.
   const dirHint = useRef('')
-  // For path completion: folder listings by absolute path, and the shell's
-  // directory, asked for again after each command.
+  // Folder listings for path completion, by folder as typed. Relative ones
+  // depend on the shell's directory, so they're dropped after each command.
   const dirCache = useRef(new Map<string, { names?: string[]; at: number; loading: boolean }>())
-  const shellDir = useRef<{ cwd: string; home: string } | 'loading' | null>(null)
-  // Bumped by every command, so an answer asked for before it is dropped.
-  const shellDirGen = useRef(0)
 
   const activeRef = useRef(active)
   activeRef.current = active
@@ -167,46 +164,26 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     }
     // Local shells share one history.
     const historyKey = local ? 'local' : tab.hostId
-    const fetchDir = (abs: string) => {
+    const fetchDir = (dir: string) => {
       const cache = dirCache.current
-      cache.set(abs, { names: cache.get(abs)?.names, at: Date.now(), loading: true })
+      cache.set(dir, { names: cache.get(dir)?.names, at: Date.now(), loading: true })
       api
-        .listNames(sidRef.current, abs)
+        .listNames(sidRef.current, dir, dirHint.current)
         .catch(() => [] as string[])
         .then((names) => {
-          cache.set(abs, { names, at: Date.now(), loading: false })
+          // A command ran meanwhile: a relative answer may be for the old directory.
+          if (!cache.has(dir)) return
+          cache.set(dir, { names, at: Date.now(), loading: false })
           ghostRef.current?.refresh()
-        })
-    }
-    const loadShellDir = () => {
-      const gen = shellDirGen.current
-      shellDir.current = 'loading'
-      api
-        .terminalDir(sidRef.current)
-        .then((d) => {
-          if (gen !== shellDirGen.current) return
-          const cwd = d.exact ? d.path : dirHint.current.replace(/^~(?=\/|$)/, d.home)
-          shellDir.current = { cwd: cwd || d.path, home: d.home }
-          ghostRef.current?.refresh()
-        })
-        .catch(() => {
-          if (gen === shellDirGen.current) shellDir.current = null
         })
     }
     /** A folder's entries for path completion; listings are reused for a few seconds. */
     const listDir = (dir: string): string[] | undefined => {
       if (!connectedRef.current) return undefined
-      let abs = dir
-      if (!dir.startsWith('/') && !/^[A-Za-z]:[\\/]/.test(dir)) {
-        // ~user/ isn't supported.
-        if (dir.startsWith('~') && !dir.startsWith('~/')) return undefined
-        const sd = shellDir.current
-        if (!sd) loadShellDir()
-        if (!sd || sd === 'loading') return undefined
-        abs = dir.startsWith('~/') ? sd.home + dir.slice(1) : sd.cwd.replace(/\/?$/, '/') + dir
-      }
-      const hit = dirCache.current.get(abs)
-      if (!hit || (!hit.loading && Date.now() - hit.at > 5000)) fetchDir(abs)
+      // ~user/ isn't supported.
+      if (dir.startsWith('~') && !dir.startsWith('~/')) return []
+      const hit = dirCache.current.get(dir)
+      if (!hit || (!hit.loading && Date.now() - hit.at > 5000)) fetchDir(dir)
       return hit?.names
     }
     const ghost = new GhostSuggest(term, {
@@ -273,10 +250,9 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     })
     term.onData((d) => {
       ghost.input(d)
-      // A command may change directory; ask again when next needed.
+      // A command may change directory.
       if (d.includes('\r')) {
-        shellDirGen.current++
-        shellDir.current = null
+        for (const dir of dirCache.current.keys()) if (!dir.startsWith('/') && !dir.startsWith('~/')) dirCache.current.delete(dir)
       }
       input(d)
     })
@@ -431,8 +407,6 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
         ghostRef.current?.reset(true)
         dirHint.current = ''
         dirCache.current.clear()
-        shellDirGen.current++
-        shellDir.current = null
         if (useSettings.getState().settings?.commandSuggestions ?? true) {
           void useCommandHistory.getState().load(local ? 'local' : tab.hostId)
           if (!local) void useCommandHistory.getState().loadRemote(tab.hostId, sid)

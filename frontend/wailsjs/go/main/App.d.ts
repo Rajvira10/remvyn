@@ -126,7 +126,7 @@ export function ListKnownHosts():Promise<Array<models.KnownHost>>;
 
 export function ListLocal(arg1:string):Promise<models.DirListing>;
 
-export function ListNames(arg1:string,arg2:string):Promise<Array<string>>;
+export function ListNames(arg1:string,arg2:string,arg3:string):Promise<Array<string>>;
 
 export function ListRemote(arg1:string,arg2:string):Promise<models.DirListing>;
 
