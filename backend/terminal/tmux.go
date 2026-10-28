@@ -37,7 +37,28 @@ var tmuxSetup = strings.Join([]string{
 	"set -g terminal-overrides 'xterm*:smcup@:rmcup@:Tc'",
 	"set-environment -g COLORTERM truecolor",
 	"set-environment -g TERM_PROGRAM Remvyn",
+	// The terminal's scrollback misses lines when tmux skips frames of fast
+	// output, and full-screen programs never reach the terminal's alternate
+	// screen, so the UI sends these keys for the mouse wheel instead: at a
+	// prompt they scroll tmux's own history, in nano or vim they are arrow
+	// keys, and the last one leaves the history before typing.
+	// Several wheel keys in one write must not be taken for a paste,
+	// which skips key bindings.
+	"set -g assume-paste-time 0",
+	// Arguments to if are parsed by tmux, which turns "\e" into ESC.
+	`if -F 1 'set -s user-keys[0] "` + WheelUpKey + `" ; set -s user-keys[1] "` + WheelDownKey + `" ; set -s user-keys[2] "` + ScrollExitKey + `"'`,
+	`bind -n User0 if -F '#{alternate_on}' 'send Up' 'copy-mode -e ; send -X scroll-up'`,
+	`bind -n User1 if -F '#{pane_in_mode}' 'send -X scroll-down' "if -F '#{alternate_on}' 'send Down'"`,
+	`bind -n User2 if -F '#{pane_in_mode}' 'send -X cancel'`,
 }, ` \; `)
+
+// Keys the UI sends to a tmux session for the mouse wheel (see tmuxSetup),
+// as tmux escapes; they are CSI sequences no terminal sends.
+const (
+	WheelUpKey    = `\e[990~`
+	WheelDownKey  = `\e[991~`
+	ScrollExitKey = `\e[992~`
+)
 
 // Persist asks Start to run the shell inside a server-side session that
 // outlives the connection.

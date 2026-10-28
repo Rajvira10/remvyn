@@ -55,6 +55,36 @@ import type {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const call = App as unknown as Record<string, (...args: any[]) => Promise<any>>
 
+// The backend runs each call on its own goroutine, so separate writes to a
+// terminal can overtake each other when typing fast. Input to a session waits
+// for the previous write and is batched meanwhile.
+const pending = new Map<string, { data: string; done: Promise<void> }>()
+
+function writeOrdered(id: string, data: string): Promise<void> {
+  const queued = pending.get(id)
+  if (queued) {
+    queued.data += data
+    return queued.done
+  }
+  const entry = { data: '', done: Promise.resolve() }
+  pending.set(id, entry)
+  const run = async () => {
+    try {
+      await call.WriteTerminal(id, data)
+      // Whatever arrived during the write goes in one more.
+      while (entry.data) {
+        const next = entry.data
+        entry.data = ''
+        await call.WriteTerminal(id, next)
+      }
+    } finally {
+      pending.delete(id)
+    }
+  }
+  entry.done = run()
+  return entry.done
+}
+
 export const api = {
   appInfo: (): Promise<AppInfo> => call.GetAppInfo(),
   settings: (): Promise<Settings> => call.GetSettings(),
@@ -79,7 +109,8 @@ export const api = {
 
   openTerminal: (id: string, hostId: string, opts: ConnectOptions): Promise<SessionInfo> => call.OpenTerminal(id, hostId, opts),
   openLocalTerminal: (id: string, opts: ConnectOptions): Promise<SessionInfo> => call.OpenLocalTerminal(id, opts),
-  writeTerminal: (id: string, data: string): Promise<void> => call.WriteTerminal(id, data),
+  /** Sends input to a terminal; writes to one session arrive in order. */
+  writeTerminal: (id: string, data: string): Promise<void> => writeOrdered(id, data),
   resizeTerminal: (id: string, cols: number, rows: number): Promise<void> => call.ResizeTerminal(id, cols, rows),
   closeTerminal: (id: string): Promise<void> => call.CloseTerminal(id),
   endTerminal: (id: string): Promise<void> => call.EndTerminal(id),

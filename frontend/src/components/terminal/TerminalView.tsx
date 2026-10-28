@@ -53,6 +53,13 @@ const RESERVED = ['app+t', 'app+w', 'app+k', 'app+f', 'app+,', 'app+[', 'app+]',
 /** Seconds to wait before each automatic reconnect after a drop. */
 const RETRY_DELAYS = [1, 2, 4, 8, 15, 30]
 
+// Keys Remvyn's tmux binds for the mouse wheel (see tmuxSetup in
+// backend/terminal/tmux.go): scroll tmux's history or, in nano and vim,
+// press the arrow keys; the last leaves the history before typing.
+const WHEEL_UP = '\x1b[990~'
+const WHEEL_DOWN = '\x1b[991~'
+const SCROLL_EXIT = '\x1b[992~'
+
 /** Hosts already told that tmux is missing, so the hint shows once per run. */
 const tmuxHinted = new Set<string>()
 
@@ -92,9 +99,23 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
 
   const activeRef = useRef(active)
   activeRef.current = active
+  const persistentRef = useRef(false)
+  persistentRef.current = !!tab.persistent && tab.state === 'connected'
+  // True once the wheel may have opened tmux's history.
+  const scrolledRef = useRef(false)
   // When the user last typed or pasted, to tell their input from the
   // terminal's own replies (which must not be broadcast).
   const typedAt = useRef(0)
+
+  /**
+   * The key that closes tmux's history if the wheel opened it, to send in
+   * the same write as what follows (separate writes may arrive out of order).
+   */
+  const leaveHistory = () => {
+    if (!scrolledRef.current) return ''
+    scrolledRef.current = false
+    return SCROLL_EXIT
+  }
 
   const send = (data: string) => {
     if (connectedRef.current) void api.writeTerminal(sidRef.current, data).catch(() => {})
@@ -102,7 +123,7 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
 
   /** Sends what the user typed, to every terminal in the broadcast too. */
   const input = (data: string) => {
-    send(data)
+    send(leaveHistory() + data)
     if (!activeRef.current || Date.now() - typedAt.current > 250) return
     const s = useSessions.getState()
     for (const t of broadcastTargets(s.tabs, s.broadcastAll, tab.key)) void api.writeTerminal(t.sessionId, data).catch(() => {})
@@ -189,6 +210,20 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     const markTyped = () => (typedAt.current = Date.now())
     containerRef.current!.addEventListener('input', markTyped, true)
     containerRef.current!.addEventListener('paste', markTyped, true)
+    // In tmux the terminal's own scrollback misses lines tmux skipped
+    // drawing, so the wheel scrolls tmux's history (or a program in it).
+    let wheelRest = 0
+    term.attachCustomWheelEventHandler((e) => {
+      if (!persistentRef.current || e.shiftKey || isLocked()) return true
+      const cell = (term.options.fontSize ?? 13) * (term.options.lineHeight ?? 1)
+      wheelRest += e.deltaMode === WheelEvent.DOM_DELTA_LINE ? e.deltaY : e.deltaMode === WheelEvent.DOM_DELTA_PAGE ? e.deltaY * term.rows : e.deltaY / cell
+      const lines = Math.trunc(wheelRest)
+      wheelRest -= lines
+      if (lines < 0) scrolledRef.current = true
+      if (lines) send((lines < 0 ? WHEEL_UP : WHEEL_DOWN).repeat(Math.min(Math.abs(lines), term.rows)))
+      e.preventDefault()
+      return false
+    })
     term.onData((d) => {
       ghost.input(d)
       input(d)
@@ -453,7 +488,7 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     const before = buf.cursorX > 0 ? buf.getLine(buf.baseY + buf.cursorY)?.translateToString(false, buf.cursorX - 1, buf.cursorX) : ' '
     const out = (before && before !== ' ' ? ' ' : '') + text + ' '
     ghostRef.current?.input(out)
-    send(out)
+    send(leaveHistory() + out)
     term.focus()
   }
 
