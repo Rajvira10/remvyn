@@ -138,6 +138,10 @@ export function ExtractRemote(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExtractRemote'](arg1, arg2, arg3);
 }
 
+export function FindFiles(arg1, arg2) {
+  return window['go']['main']['App']['FindFiles'](arg1, arg2);
+}
+
 export function ForceEditUpload(arg1, arg2) {
   return window['go']['main']['App']['ForceEditUpload'](arg1, arg2);
 }
@@ -524,6 +528,10 @@ export function SyncStartLogin() {
 
 export function SyncWake() {
   return window['go']['main']['App']['SyncWake']();
+}
+
+export function TerminalDir(arg1) {
+  return window['go']['main']['App']['TerminalDir'](arg1);
 }
 
 export function TestUptimeCheck(arg1) {

@@ -186,6 +186,22 @@ export interface DirListing {
   entries: FileEntry[]
 }
 
+/** Where a terminal's shell is. exact is false when only the home folder is known. */
+export interface ShellDir {
+  path: string
+  home: string
+  exact: boolean
+}
+
+/** Everything under dir, relative to it, for the path picker. Pruned folders are listed but not searched. */
+export interface FileIndex {
+  dir: string
+  files: string[]
+  dirs: string[]
+  pruned: string[]
+  truncated: boolean
+}
+
 /** A text file opened in the built-in editor. modTime is the version that was read. */
 export interface FileContent {
   path: string

@@ -9,6 +9,7 @@ import type {
   DirListing,
   Editor,
   FileContent,
+  FileIndex,
   ForwardRule,
   ForwardStatus,
   Group,
@@ -22,6 +23,7 @@ import type {
   SSHConfigImport,
   ServerSession,
   SessionInfo,
+  ShellDir,
   Settings,
   Snippet,
   Transfer,
@@ -157,6 +159,10 @@ export const api = {
   clearCommandHistory: (): Promise<void> => call.ClearCommandHistory(),
   /** The server's own shell history (bash, zsh, fish), most recent first. */
   remoteShellHistory: (sessionId: string): Promise<string[]> => call.RemoteShellHistory(sessionId),
+  /** Where a terminal's shell is, for the path picker. */
+  terminalDir: (sessionId: string): Promise<ShellDir> => call.TerminalDir(sessionId),
+  /** Everything under dir on the computer a terminal runs on. */
+  findFiles: (sessionId: string, dir: string): Promise<FileIndex> => call.FindFiles(sessionId, dir),
 
   forwards: (): Promise<ForwardRule[]> => call.ListForwards(),
   forwardStatuses: (): Promise<ForwardStatus[]> => call.ForwardStatuses(),

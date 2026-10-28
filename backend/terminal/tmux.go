@@ -3,6 +3,7 @@ package terminal
 import (
 	"bytes"
 	"context"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -183,4 +184,40 @@ func ListServerSessions(client *sshconn.Client) []models.ServerSession {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	return probeTmux(ctx, client).sessions
+}
+
+// WorkingDir returns where a session's shell is. Local shells and shells in
+// tmux report their current directory; for other SSH shells only the home
+// directory is known, and Exact is false.
+func (m *Manager) WorkingDir(id string) (models.ShellDir, error) {
+	s, err := m.get(id)
+	if err != nil {
+		return models.ShellDir{}, err
+	}
+	if s.client == nil {
+		home, _ := os.UserHomeDir()
+		d := models.ShellDir{Home: home, Path: home}
+		if s.dir != nil {
+			if p := s.dir(); p != "" {
+				d.Path, d.Exact = p, true
+			}
+		}
+		return d, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := `printf '%s\n' "$HOME"`
+	if s.persist != "" {
+		cmd += "; " + tmuxBin + " display -p -t =" + sessionName(s.persist) + ": '#{pane_current_path}' 2>/dev/null"
+	}
+	out, err := runOutput(ctx, s.client, cmd)
+	if err != nil && out == "" {
+		return models.ShellDir{}, err
+	}
+	home, cur, _ := strings.Cut(strings.TrimRight(out, "\n"), "\n")
+	d := models.ShellDir{Home: home, Path: home}
+	if strings.HasPrefix(cur, "/") {
+		d.Path, d.Exact = cur, true
+	}
+	return d, nil
 }

@@ -817,6 +817,24 @@ func (a *App) RemoteShellHistory(sessionID string) ([]string, error) {
 	return a.core.RemoteShellHistory(sessionID)
 }
 
+// TerminalDir returns where a terminal session's shell is, for the path
+// picker.
+func (a *App) TerminalDir(sessionID string) (models.ShellDir, error) {
+	if err := a.ready(); err != nil {
+		return models.ShellDir{}, err
+	}
+	return a.core.ShellDir(sessionID)
+}
+
+// FindFiles lists the tree under dir on the computer a terminal session runs
+// on, for the path picker.
+func (a *App) FindFiles(sessionID, dir string) (models.FileIndex, error) {
+	if err := a.ready(); err != nil {
+		return models.FileIndex{}, err
+	}
+	return a.core.FindFiles(sessionID, dir)
+}
+
 // ---------------------------------------------------------------- forwarding
 
 // ListForwards returns forwarding rules.

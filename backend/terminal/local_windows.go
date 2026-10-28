@@ -27,3 +27,6 @@ func LocalShell() (string, []string) {
 }
 
 func afterStart(pty.Pty) {}
+
+// shellDir is unknown on Windows; the path picker starts in the home folder.
+func shellDir(pty.Pty, int) string { return "" }

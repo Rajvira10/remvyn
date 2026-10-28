@@ -4,6 +4,7 @@ package terminal
 
 import (
 	"encoding/base64"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -118,5 +119,29 @@ func TestLocalShellClose(t *testing.T) {
 	rec.waitExit(t)
 	if err := m.StartLocal("bad id!", models.SessionInfo{}, 0, 0); err == nil {
 		t.Fatal("invalid id accepted")
+	}
+}
+
+// The path picker follows cd, including in a shell started from the shell.
+func TestLocalShellDir(t *testing.T) {
+	t.Setenv("SHELL", "/bin/sh")
+	rec := newRecorder()
+	m := New(rec.emit)
+	const id = "local-test-3"
+	if err := m.StartLocal(id, models.SessionInfo{ID: id, Kind: "local"}, 80, 24); err != nil {
+		t.Fatal(err)
+	}
+	defer m.Close(id)
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Write(id, "sh\ncd '"+dir+"' && echo in-$((1+1))\n"); err != nil {
+		t.Fatal(err)
+	}
+	rec.waitFor(t, "in-2")
+	got, err := m.WorkingDir(id)
+	if err != nil || got.Path != dir || !got.Exact {
+		t.Fatalf("WorkingDir = %+v, %v; want %s", got, err, dir)
 	}
 }

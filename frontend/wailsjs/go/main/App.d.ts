@@ -74,6 +74,8 @@ export function ExtractLocal(arg1:string,arg2:boolean):Promise<string>;
 
 export function ExtractRemote(arg1:string,arg2:string,arg3:boolean):Promise<string>;
 
+export function FindFiles(arg1:string,arg2:string):Promise<models.FileIndex>;
+
 export function ForceEditUpload(arg1:string,arg2:string):Promise<void>;
 
 export function ForgetCommand(arg1:string,arg2:string):Promise<void>;
@@ -267,6 +269,8 @@ export function SyncSetApp(arg1:string,arg2:string):Promise<vaultsync.Status>;
 export function SyncStartLogin():Promise<vaultsync.DeviceCode>;
 
 export function SyncWake():Promise<void>;
+
+export function TerminalDir(arg1:string):Promise<models.ShellDir>;
 
 export function TestUptimeCheck(arg1:models.UptimeCheck):Promise<models.UptimeResult>;
 

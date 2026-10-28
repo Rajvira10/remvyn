@@ -58,6 +58,10 @@ func TestTmuxPersistence(t *testing.T) {
 	rec.waitFor(t, "started-42")
 	_ = m.Write("sessionone1", "cd /tmp && for i in $(seq 1 60); do echo line-$i; done; MARK=kept\n")
 	rec.waitFor(t, "line-60")
+	// The path picker sees the cd inside tmux.
+	if d, err := m.WorkingDir("sessionone1"); err != nil || d.Path != "/tmp" || !d.Exact || d.Home == "" {
+		t.Fatalf("WorkingDir = %+v, %v", d, err)
+	}
 
 	// Drop the connection: the shell keeps running on the server.
 	m.Close("sessionone1")

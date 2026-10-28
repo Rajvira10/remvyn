@@ -13,6 +13,7 @@ Remvyn is a desktop SSH client in the spirit of Termius. It saves your servers, 
   - Sessions that survive disconnects: SSH shells run inside tmux on the server (when it has tmux 3.0 or later), so a dropped connection, a sleeping laptop or a restart doesn't end them. Remvyn reconnects by itself, backing off and retrying as soon as the network returns, and puts you back where you were. After a restart, a new tab offers to resume sessions that are still running, scrollback included. Closing a tab ends its session. Remvyn uses its own tmux server with no status bar or prefix key, so it feels like a normal shell and never touches your own tmux sessions. Turn it off in Settings → Terminal.
   - Broadcast input: type into every pane of a tab, or every open terminal, at once (⌘⇧B or the toolbar). Terminals receiving input are outlined.
   - Command suggestions: as you type, the rest of a matching past command shows in faint text, as in fish. → or End accepts it, Ctrl+→ accepts one word, Shift+Delete forgets it, and Ctrl+Space lists more matches. Suggestions come from commands typed in Remvyn (saved per host, encrypted, never synced) and from the server's own bash, zsh or fish history (read once per connection, never stored). Passwords aren't recorded, because the command line is read back from the screen and they aren't echoed; a command starting with a space is skipped, as in bash. Turn it off, or clear the history, in Settings → Terminal.
+  - Path picker: ⌘P (or the toolbar) opens a file finder over the terminal, starting in the shell's current folder. Type to fuzzy-search everything below it (`vehcont` finds `app/Http/Controllers/VehicleController.php`), → opens a folder, ← goes up, Tab selects several, and Enter types the paths at the cursor, relative to the shell's folder and quoted for the shell, without running anything. Shift+Enter inserts full paths. It lists files on the computer the shell runs on, over the same connection. The current folder is exact for local shells and tmux sessions; other SSH shells use the folder the shell reports (OSC 7, or a `user@host: dir` window title), else the home folder. Large folders like `.git`, `node_modules` and `vendor` are listed but not searched until you open them.
   - Run a snippet from the terminal toolbar.
   - Dropped connections without tmux show a Reconnect overlay; keepalives detect dead links.
 - **SFTP**:
@@ -213,6 +214,7 @@ On macOS these use ⌘. On Linux and Windows they use Ctrl+Shift, so plain Ctrl+
 | Broadcast input to all panes (or all terminals) | ⌘⇧B |
 | Accept a command suggestion / one word | → or End / Ctrl+→ |
 | List matching past commands | Ctrl+Space |
+| Insert a file path (path picker) | ⌘P |
 | Next / previous tab | ⌘] / ⌘[ |
 | Vault / tab 1–9 | ⌘0 / ⌘1–9 |
 | Copy / paste in terminal | ⌘C / ⌘V (Ctrl+Shift+C/V elsewhere) |
@@ -238,7 +240,8 @@ cd frontend && npx tsc -b && npx oxlint src
 - PTY sessions: banner, input, resize, exit codes.
 - Agent forwarding: listing keys, signatures (including RSA SHA-2) only after approval, "once" versus "for this connection", denials, a read-only agent, and settings that a stale form can't change. Against a real server, a shell hops to another SSH login with a key that only exists in Remvyn, and again after reconnecting to its tmux session.
 - Persistent sessions: parsing the tmux probe and version checks. Against a real server with tmux (`REMVYN_TMUX_TEST=user:password@host:port`), a session survives a dropped connection, keeps its working directory and variables, replays its scrollback, doesn't rerun the startup command, and is removed when the tab is closed.
-- Local shells: output, resize, exit status, closing, and refusing duplicate or invalid session IDs.
+- Local shells: output, resize, exit status, closing, refusing duplicate or invalid session IDs, and following `cd` (in nested shells too) for the path picker.
+- Path picker: the server-side `find` script (POSIX and BusyBox) agrees with the local listing, prunes `.git`/`node_modules`, handles odd file names and missing folders, and keeps what it found when cut short. With `REMVYN_TMUX_TEST`, a tmux session reports the folder it `cd`'d into.
 - Command history: encrypted storage, ordering and limits, forgetting, locked and foreign-key vaults, and parsing bash, zsh and fish history files.
 - Updates: version comparison, choosing the asset for each platform, checking against a fake GitHub, rejecting a bad or missing checksum, and zip/tar extraction.
 - Host-key trust on first use, and changed-key detection and rejection.
@@ -277,7 +280,8 @@ backend/
   sshconn/             dialing, auth methods, keepalive, host-key verification and prompt broker
   terminal/            PTY shell sessions (SSH or local) streaming base64 output events; persistent SSH sessions via tmux
   files/               SFTP and local file operations, recursive transfers with progress, remote text
-                       editing, copy/move/compress/extract, open with an installed editor
+                       editing, copy/move/compress/extract, open with an installed editor, and the
+                       tree listing behind the terminal's path picker
   forward/             -L / -R / SOCKS5 -D forwarding
   keys/                key generation, parsing and passphrases
   keyagent/            read-only SSH agent for agent forwarding, asking before each signature

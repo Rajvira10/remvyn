@@ -449,6 +449,26 @@ export namespace models {
 	    }
 	}
 	
+	export class FileIndex {
+	    dir: string;
+	    files: string[];
+	    dirs: string[];
+	    pruned: string[];
+	    truncated: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new FileIndex(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dir = source["dir"];
+	        this.files = source["files"];
+	        this.dirs = source["dirs"];
+	        this.pruned = source["pruned"];
+	        this.truncated = source["truncated"];
+	    }
+	}
 	export class ForwardRule {
 	    id: string;
 	    label: string;
@@ -1103,6 +1123,22 @@ export namespace models {
 	        this.forwardKeyHosts = source["forwardKeyHosts"];
 	        this.forwardKeysToAI = source["forwardKeysToAI"];
 	        this.autoUpdateCheck = source["autoUpdateCheck"];
+	    }
+	}
+	export class ShellDir {
+	    path: string;
+	    home: string;
+	    exact: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ShellDir(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.home = source["home"];
+	        this.exact = source["exact"];
 	    }
 	}
 	export class Snippet {

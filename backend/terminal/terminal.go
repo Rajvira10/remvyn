@@ -39,9 +39,11 @@ type session struct {
 	client *sshconn.Client // nil for local shells
 	// persist is the server-side session key when the shell runs in tmux.
 	persist string
-	stdin   io.Writer
-	resize  func(cols, rows int) error
-	end     func()
+	// dir reports a local shell's working directory.
+	dir    func() string
+	stdin  io.Writer
+	resize func(cols, rows int) error
+	end    func()
 
 	writeMu   sync.Mutex
 	closeOnce sync.Once

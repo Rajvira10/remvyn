@@ -47,6 +47,7 @@ func (m *Manager) StartLocal(id string, info models.SessionInfo, cols, rows int)
 	s := &session{
 		info: info, stdin: p,
 		resize: p.Resize,
+		dir:    func() string { return shellDir(p, cmd.Process.Pid) },
 		end: func() {
 			// Closing the PTY hangs up the shell; kill it in case it ignores that.
 			_ = p.Close()

@@ -6,6 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform || navigator.userAgent)
+export const isWindows = typeof navigator !== 'undefined' && /Win/i.test(navigator.platform || navigator.userAgent)
 /** Label for app-level shortcuts: ⌘ on macOS, Ctrl+Shift elsewhere (so Ctrl+key still reaches the shell). */
 export const appKey = isMac ? '⌘' : 'Ctrl+Shift+'
 
