@@ -138,10 +138,6 @@ export function ExtractRemote(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExtractRemote'](arg1, arg2, arg3);
 }
 
-export function FindFiles(arg1, arg2) {
-  return window['go']['main']['App']['FindFiles'](arg1, arg2);
-}
-
 export function ForceEditUpload(arg1, arg2) {
   return window['go']['main']['App']['ForceEditUpload'](arg1, arg2);
 }
@@ -244,6 +240,10 @@ export function ListKnownHosts() {
 
 export function ListLocal(arg1) {
   return window['go']['main']['App']['ListLocal'](arg1);
+}
+
+export function ListNames(arg1, arg2) {
+  return window['go']['main']['App']['ListNames'](arg1, arg2);
 }
 
 export function ListRemote(arg1, arg2) {

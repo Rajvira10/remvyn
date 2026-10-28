@@ -74,8 +74,6 @@ export function ExtractLocal(arg1:string,arg2:boolean):Promise<string>;
 
 export function ExtractRemote(arg1:string,arg2:string,arg3:boolean):Promise<string>;
 
-export function FindFiles(arg1:string,arg2:string):Promise<models.FileIndex>;
-
 export function ForceEditUpload(arg1:string,arg2:string):Promise<void>;
 
 export function ForgetCommand(arg1:string,arg2:string):Promise<void>;
@@ -127,6 +125,8 @@ export function ListKeys():Promise<Array<models.Key>>;
 export function ListKnownHosts():Promise<Array<models.KnownHost>>;
 
 export function ListLocal(arg1:string):Promise<models.DirListing>;
+
+export function ListNames(arg1:string,arg2:string):Promise<Array<string>>;
 
 export function ListRemote(arg1:string,arg2:string):Promise<models.DirListing>;
 

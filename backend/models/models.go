@@ -229,18 +229,6 @@ type ShellDir struct {
 	Exact bool   `json:"exact"`
 }
 
-// FileIndex lists everything under Dir for the terminal's path picker, as
-// paths relative to Dir using "/". Pruned directories (.git, node_modules and
-// the like) are listed but not searched. Truncated means the listing stopped
-// at a limit.
-type FileIndex struct {
-	Dir       string   `json:"dir"`
-	Files     []string `json:"files"`
-	Dirs      []string `json:"dirs"`
-	Pruned    []string `json:"pruned"`
-	Truncated bool     `json:"truncated"`
-}
-
 // FileContent is a text file opened in the built-in editor. ModTime is the
 // version that was read; pass it back on save to detect concurrent edits.
 type FileContent struct {

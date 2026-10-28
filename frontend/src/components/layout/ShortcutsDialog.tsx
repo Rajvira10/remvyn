@@ -32,7 +32,6 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
     items: [
       ['Copy selection', isMac ? '⌘C' : 'Ctrl+Shift+C'],
       ['Paste', isMac ? '⌘V' : 'Ctrl+Shift+V'],
-      ['Insert a file path', k('P')],
       ['Accept a command suggestion / one word', '→  Ctrl+→'],
       ['List matching past commands', 'Ctrl+Space'],
       ['Find', k('F')],

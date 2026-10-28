@@ -449,26 +449,6 @@ export namespace models {
 	    }
 	}
 	
-	export class FileIndex {
-	    dir: string;
-	    files: string[];
-	    dirs: string[];
-	    pruned: string[];
-	    truncated: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new FileIndex(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.dir = source["dir"];
-	        this.files = source["files"];
-	        this.dirs = source["dirs"];
-	        this.pruned = source["pruned"];
-	        this.truncated = source["truncated"];
-	    }
-	}
 	export class ForwardRule {
 	    id: string;
 	    label: string;

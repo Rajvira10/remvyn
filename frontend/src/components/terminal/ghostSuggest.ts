@@ -5,6 +5,9 @@ import type { IDecoration, IDisposable, IMarker, Terminal } from '@xterm/xterm'
  * text after the cursor, and → or End accepts it. Ctrl+Space opens a list of
  * more matches, filtered as you keep typing.
  *
+ * Typing a path (/var/www/, ~/, src/co) lists what's in that folder under the
+ * cursor, narrowing as you type: ↑↓ choose, Tab inserts, Esc hides it.
+ *
  * The remote shell owns the command line, so it is read back from the screen:
  * the text between where the first key of a line was typed (the end of the
  * prompt) and the cursor. That follows the shell's own editing, Tab completion
@@ -18,6 +21,8 @@ import type { IDecoration, IDisposable, IMarker, Terminal } from '@xterm/xterm'
 
 // Rows in the suggestion list.
 const LIST_SIZE = 8
+// Rows shown at once in the path list; it scrolls with the selection.
+const PATH_ROWS = 10
 
 // Output must have been quiet this long when the first key of a line is typed.
 // Short, so fast typing right after a prompt still counts.
@@ -37,6 +42,24 @@ export interface GhostOptions {
   send: (text: string) => void
   record: (cmd: string) => void
   forget: (cmd: string) => void
+  /**
+   * A folder's entries, folders ending in /, or undefined while it loads
+   * (call refresh() when it arrives). dir is unquoted and as typed:
+   * absolute, ~/…, or relative to the shell's directory.
+   */
+  listDir?: (dir: string) => string[] | undefined
+}
+
+/** The path being typed at the cursor. */
+interface PathWord {
+  /** As typed, quotes and backslashes included. */
+  raw: string
+  /** The folder part, unquoted, ending in /. */
+  dir: string
+  /** The name being typed, unquoted, and as typed. */
+  prefix: string
+  rawPrefix: string
+  quoted: boolean
 }
 
 export class GhostSuggest {
@@ -50,6 +73,9 @@ export class GhostSuggest {
   private shownAt = ''
   private deco: IDecoration | null = null
   private menu: { items: string[]; sel: number; typed: string; el: HTMLDivElement } | null = null
+  private paths: { items: string[]; sel: number; word: PathWord; el: HTMLDivElement } | null = null
+  // The path whose list Esc hid; it stays hidden until the path changes.
+  private dismissed = ''
   private raf = 0
   private subs: IDisposable[]
 
@@ -69,7 +95,10 @@ export class GhostSuggest {
       term.buffer.onBufferChange((b) => this.reset(b.type === 'normal')),
       term.onScroll(() => this.schedule()),
     ]
-    const blur = () => this.closeMenu()
+    const blur = () => {
+      this.closeMenu()
+      this.closePaths()
+    }
     term.textarea?.addEventListener('blur', blur)
     this.subs.push({ dispose: () => term.textarea?.removeEventListener('blur', blur) })
   }
@@ -80,7 +109,13 @@ export class GhostSuggest {
     this.anchor = null
     this.fresh = fresh
     this.closeMenu()
+    this.closePaths()
     this.show('', '')
+  }
+
+  /** Redraws, e.g. once a folder listing arrives. */
+  refresh() {
+    this.schedule()
   }
 
   /** Call with every piece of user input, before it is sent. */
@@ -122,6 +157,10 @@ export class GhostSuggest {
       e.preventDefault()
       return true
     }
+    if (this.paths && this.pathKey(e, noMods)) {
+      e.preventDefault()
+      return true
+    }
     if (!this.ghost || e.metaKey) return false
     if (noMods && !e.shiftKey && (e.key === 'ArrowRight' || e.key === 'End')) {
       this.accept(this.ghost)
@@ -152,21 +191,8 @@ export class GhostSuggest {
     if (!line || line.tail) return
     const items = this.opts.list(line.text, LIST_SIZE)
     if (!items.length) return
-    const el = document.createElement('div')
-    el.setAttribute('role', 'listbox')
-    el.setAttribute('aria-label', 'Command suggestions')
-    Object.assign(el.style, {
-      position: 'absolute',
-      zIndex: '10',
-      minWidth: '240px',
-      maxWidth: '70%',
-      padding: '4px',
-      borderRadius: 'var(--radius)',
-      border: '1px solid var(--border)',
-      background: 'var(--popover)',
-      color: 'var(--popover-foreground)',
-      boxShadow: '0 8px 24px rgb(0 0 0 / 0.35)',
-    } satisfies Partial<CSSStyleDeclaration>)
+    this.closePaths()
+    const el = popup('Command suggestions')
     this.term.element?.appendChild(el)
     this.menu = { items, sel: 0, typed: line.text, el }
     this.update()
@@ -194,6 +220,117 @@ export class GhostSuggest {
       // Typing goes to the shell and the list follows it.
       return false
     }
+    return true
+  }
+
+  private pathKey(e: KeyboardEvent, noMods: boolean): boolean {
+    const p = this.paths!
+    if (noMods && !e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      p.sel = (p.sel + (e.key === 'ArrowDown' ? 1 : -1) + p.items.length) % p.items.length
+      this.placePaths(p.word, p.items)
+    } else if (noMods && !e.shiftKey && e.key === 'Tab') {
+      this.insertPath(p.word, p.items[p.sel])
+    } else if (e.key === 'Escape' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      this.dismissed = p.word.raw
+      this.closePaths()
+      this.update()
+    } else {
+      return false
+    }
+    return true
+  }
+
+  private closePaths() {
+    this.paths?.el.remove()
+    this.paths = null
+  }
+
+  /** Completes the typed name to name, escaped to match how the path is typed. */
+  private insertPath(word: PathWord, name: string) {
+    const text = word.quoted ? name : name.replace(/[^\w@%+=:,./~-]/g, '\\$&')
+    const raw = word.rawPrefix
+    this.closePaths()
+    this.accept(text.startsWith(raw) ? text.slice(raw.length) : '\x7f'.repeat([...raw].length) + text)
+  }
+
+  /** Entries of the typed folder that start with the typed name. */
+  private pathItems(word: PathWord): string[] {
+    const names = this.opts.listDir?.(word.dir)
+    if (!names) return []
+    // Hidden entries only once a name starting with "." is typed.
+    const shown = (n: string) => word.prefix.startsWith('.') || !n.startsWith('.')
+    let items = names.filter((n) => shown(n) && n.startsWith(word.prefix))
+    if (!items.length && word.prefix) {
+      const lower = word.prefix.toLowerCase()
+      items = names.filter((n) => shown(n) && n.toLowerCase().startsWith(lower))
+    }
+    // Already complete.
+    if (items.length === 1 && items[0] === word.prefix) return []
+    return items
+  }
+
+  /** Draws the path list under (or above) the cursor; false when the cursor is out of view. */
+  private placePaths(word: PathWord, items: string[]): boolean {
+    const buf = this.term.buffer.active
+    const screen = this.term.element?.querySelector<HTMLElement>('.xterm-screen')
+    const row = buf.cursorY + buf.baseY - buf.viewportY
+    if (!screen || row < 0 || row >= this.term.rows) return false
+    if (!this.paths) {
+      const el = popup('Folder contents')
+      this.term.element?.appendChild(el)
+      this.paths = { items, sel: 0, word, el }
+    }
+    const p = this.paths
+    const prev = p.word.dir === word.dir ? p.items[p.sel] : undefined
+    if (p.items !== items) p.sel = Math.max(0, prev ? items.indexOf(prev) : 0)
+    p.items = items
+    p.word = word
+
+    const o = this.term.options
+    const first = Math.max(0, Math.min(p.sel - Math.floor(PATH_ROWS / 2), items.length - PATH_ROWS))
+    const rows = items.slice(first, first + PATH_ROWS).map((name, j) => {
+      const i = first + j
+      const item = document.createElement('div')
+      item.setAttribute('role', 'option')
+      item.setAttribute('aria-selected', String(i === p.sel))
+      Object.assign(item.style, {
+        padding: '2px 8px',
+        borderRadius: 'calc(var(--radius) - 4px)',
+        whiteSpace: 'pre',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        cursor: 'default',
+        font: `${o.fontSize ?? 13}px ${o.fontFamily ?? 'monospace'}`,
+        background: i === p.sel ? 'var(--accent)' : '',
+        color: i === p.sel ? 'var(--accent-foreground)' : name.endsWith('/') ? 'var(--primary)' : '',
+      } satisfies Partial<CSSStyleDeclaration>)
+      const n = word.prefix.length
+      const b = document.createElement('b')
+      b.textContent = name.slice(0, n)
+      item.append(b, name.slice(n))
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault()
+        this.insertPath(p.word, name)
+      })
+      item.addEventListener('mousemove', () => {
+        if (p.sel !== i) {
+          p.sel = i
+          this.placePaths(p.word, p.items)
+        }
+      })
+      return item
+    })
+    const more = items.length > PATH_ROWS ? ` · ${p.sel + 1} of ${items.length}` : ''
+    p.el.replaceChildren(...rows, hint(`↑↓ choose · Tab insert · Esc hide${more}`))
+
+    const cellW = screen.clientWidth / this.term.cols
+    const cellH = screen.clientHeight / this.term.rows
+    const startCol = Math.max(0, buf.cursorX - [...word.rawPrefix].length)
+    const left = Math.min(startCol * cellW, Math.max(0, screen.clientWidth - p.el.offsetWidth))
+    const below = (row + 1) * cellH
+    const top = below + p.el.offsetHeight <= screen.clientHeight ? below : Math.max(0, row * cellH - p.el.offsetHeight)
+    p.el.style.left = `${left}px`
+    p.el.style.top = `${top}px`
     return true
   }
 
@@ -256,6 +393,14 @@ export class GhostSuggest {
       }
       this.closeMenu()
     }
+    const word = line && !line.tail && this.opts.listDir ? pathWord(line.text) : null
+    if (word?.raw !== this.dismissed) this.dismissed = ''
+    const items = word && !this.dismissed ? this.pathItems(word) : []
+    if (word && items.length && this.placePaths(word, items)) {
+      this.show('', '')
+      return
+    }
+    this.closePaths()
     const full = line && !line.tail ? this.opts.suggest(line.text) : undefined
     this.show(full && line ? full.slice(line.text.length) : '', full ?? '')
   }
@@ -312,7 +457,7 @@ export class GhostSuggest {
         })
         return item
       }),
-      hint(),
+      hint('↑↓ choose · Enter insert · Shift+Del forget · Esc close'),
     )
 
     // Line it up with the start of the typed text, inside the terminal.
@@ -364,9 +509,68 @@ export class GhostSuggest {
   }
 }
 
-function hint(): HTMLElement {
+function popup(label: string): HTMLDivElement {
   const el = document.createElement('div')
-  el.textContent = '↑↓ choose · Enter insert · Shift+Del forget · Esc close'
+  el.setAttribute('role', 'listbox')
+  el.setAttribute('aria-label', label)
+  Object.assign(el.style, {
+    position: 'absolute',
+    zIndex: '10',
+    minWidth: '240px',
+    maxWidth: '70%',
+    padding: '4px',
+    borderRadius: 'var(--radius)',
+    border: '1px solid var(--border)',
+    background: 'var(--popover)',
+    color: 'var(--popover-foreground)',
+    boxShadow: '0 8px 24px rgb(0 0 0 / 0.35)',
+  } satisfies Partial<CSSStyleDeclaration>)
+  return el
+}
+
+/** The path being typed at the end of line, or null when the last word isn't one. */
+export function pathWord(line: string): PathWord | null {
+  let start = 0
+  let quote = ''
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]
+    if (quote) {
+      if (c === quote) quote = ''
+      else if (c === '\\' && quote === '"') i++
+    } else if (c === '\\') i++
+    else if (c === "'" || c === '"') quote = c
+    else if (/\s/.test(c) || ';|&<>()'.includes(c)) start = i + 1
+  }
+  let raw = line.slice(start)
+  // --option=/path and NAME=/path
+  const eq = /^[^/'"]*=/.exec(raw)
+  if (eq) raw = raw.slice(eq[0].length)
+  if (!raw.includes('/') || raw.includes('://')) return null
+  const value = unquote(raw)
+  const cut = value.lastIndexOf('/') + 1
+  return { raw, dir: value.slice(0, cut), prefix: value.slice(cut), rawPrefix: raw.slice(raw.lastIndexOf('/') + 1), quoted: /['"]/.test(raw) }
+}
+
+/** Removes shell quoting: quotes and backslash escapes. */
+function unquote(s: string): string {
+  let out = ''
+  let quote = ''
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i]
+    if (quote) {
+      if (c === quote) quote = ''
+      else if (c === '\\' && quote === '"' && i + 1 < s.length) out += s[++i]
+      else out += c
+    } else if (c === "'" || c === '"') quote = c
+    else if (c === '\\' && i + 1 < s.length) out += s[++i]
+    else out += c
+  }
+  return out
+}
+
+function hint(text: string): HTMLElement {
+  const el = document.createElement('div')
+  el.textContent = text
   Object.assign(el.style, {
     marginTop: '4px',
     padding: '4px 8px 2px',

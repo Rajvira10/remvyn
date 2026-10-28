@@ -5,13 +5,12 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal, type ITheme } from '@xterm/xterm'
-import { ActivityIcon, ChevronDownIcon, ChevronUpIcon, CodeIcon, Columns2Icon, FileSearchIcon, FolderIcon, HistoryIcon, InfinityIcon, RadioTowerIcon, RotateCwIcon, Rows2Icon, SearchIcon, XIcon } from 'lucide-react'
+import { ActivityIcon, ChevronDownIcon, ChevronUpIcon, CodeIcon, Columns2Icon, FolderIcon, HistoryIcon, InfinityIcon, RadioTowerIcon, RotateCwIcon, Rows2Icon, SearchIcon, XIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
 import { AppearancePicker, changeFontSize, cycleTerminalTheme } from '@/components/terminal/AppearancePicker'
 import { GhostSuggest } from '@/components/terminal/ghostSuggest'
-import { PathPicker, type PickerStart } from '@/components/terminal/PathPicker'
 import { MonitorPanel } from '@/components/monitor/MonitorPanel'
 import { ConnectOverlay, type Credentials } from '@/components/session/ConnectOverlay'
 import { Button } from '@/components/ui/button'
@@ -29,7 +28,7 @@ import { matchesCombo } from '@/hooks/useHotkeys'
 import { api, copyText, errorCode, errorMessage, events, onEvent, readClipboard } from '@/lib/api'
 import type { ServerSession, SessionExit } from '@/lib/types'
 import { terminalTheme } from '@/lib/terminalThemes'
-import { appKey, cn, isMac, isWindows, relativeTime, uid } from '@/lib/utils'
+import { appKey, cn, isMac, relativeTime, uid } from '@/lib/utils'
 import { listCommands, suggestCommand, useCommandHistory } from '@/stores/history'
 import { isLocked } from '@/stores/lock'
 import { broadcastTargets, isBroadcasting, useSessions, type Rect, type Tab } from '@/stores/sessions'
@@ -48,7 +47,7 @@ function decode(b64: string): Uint8Array {
 const RESERVED = ['app+t', 'app+w', 'app+k', 'app+f', 'app+,', 'app+[', 'app+]', 'app+shift+[', 'app+shift+]',
   'app+1', 'app+2', 'app+3', 'app+4', 'app+5', 'app+6', 'app+7', 'app+8', 'app+9', 'app+0', 'app+/', 'app+i',
   'app+alt+[', 'app+alt+]', 'app+=', 'app+-', 'app+l', 'app+d', 'app+alt+d', 'app+alt+t',
-  'app+alt+arrowleft', 'app+alt+arrowright', 'app+alt+arrowup', 'app+alt+arrowdown', 'app+shift+b', 'app+p']
+  'app+alt+arrowleft', 'app+alt+arrowright', 'app+alt+arrowup', 'app+alt+arrowdown', 'app+shift+b']
 
 /** Seconds to wait before each automatic reconnect after a drop. */
 const RETRY_DELAYS = [1, 2, 4, 8, 15, 30]
@@ -92,10 +91,13 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
   const [query, setQuery] = useState('')
   const [preview, setPreview] = useState<ITheme | null>(null)
   const searchInput = useRef<HTMLInputElement>(null)
-  const [picker, setPicker] = useState<PickerStart | null>(null)
   // Where the shell last said it is (OSC 7, or a "user@host: dir" window
   // title), for shells whose directory Remvyn can't ask the server for.
   const dirHint = useRef('')
+  // For path completion: folder listings by absolute path, and the shell's
+  // directory, asked for again after each command.
+  const dirCache = useRef(new Map<string, { names?: string[]; at: number; loading: boolean }>())
+  const shellDir = useRef<{ cwd: string; home: string } | 'loading' | null>(null)
 
   const activeRef = useRef(active)
   activeRef.current = active
@@ -163,7 +165,46 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     }
     // Local shells share one history.
     const historyKey = local ? 'local' : tab.hostId
+    const fetchDir = (abs: string) => {
+      const cache = dirCache.current
+      cache.set(abs, { names: cache.get(abs)?.names, at: Date.now(), loading: true })
+      api
+        .listNames(sidRef.current, abs)
+        .catch(() => [] as string[])
+        .then((names) => {
+          cache.set(abs, { names, at: Date.now(), loading: false })
+          ghostRef.current?.refresh()
+        })
+    }
+    const loadShellDir = () => {
+      shellDir.current = 'loading'
+      api
+        .terminalDir(sidRef.current)
+        .then((d) => {
+          const cwd = d.exact ? d.path : dirHint.current.replace(/^~(?=\/|$)/, d.home)
+          shellDir.current = { cwd: cwd || d.path, home: d.home }
+          ghostRef.current?.refresh()
+        })
+        .catch(() => (shellDir.current = null))
+    }
+    /** A folder's entries for path completion; listings are reused for a few seconds. */
+    const listDir = (dir: string): string[] | undefined => {
+      if (!connectedRef.current) return undefined
+      let abs = dir
+      if (!dir.startsWith('/') && !/^[A-Za-z]:[\\/]/.test(dir)) {
+        // ~user/ isn't supported.
+        if (dir.startsWith('~') && !dir.startsWith('~/')) return undefined
+        const sd = shellDir.current
+        if (!sd) loadShellDir()
+        if (!sd || sd === 'loading') return undefined
+        abs = dir.startsWith('~/') ? sd.home + dir.slice(1) : sd.cwd.replace(/\/?$/, '/') + dir
+      }
+      const hit = dirCache.current.get(abs)
+      if (!hit || (!hit.loading && Date.now() - hit.at > 5000)) fetchDir(abs)
+      return hit?.names
+    }
     const ghost = new GhostSuggest(term, {
+      listDir,
       suggest: (typed) => suggestCommand(historyKey, typed),
       list: (typed, limit) => listCommands(historyKey, typed, limit),
       // Accepted suggestions go to broadcast terminals too, like typing,
@@ -226,6 +267,8 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     })
     term.onData((d) => {
       ghost.input(d)
+      // A command may change directory.
+      if (d.includes('\r') && shellDir.current !== 'loading') shellDir.current = null
       input(d)
     })
     term.onBinary((d) => input(d))
@@ -321,7 +364,6 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     const sid = tab.sessionId
     sidRef.current = sid
     connectedRef.current = false
-    setPicker(null)
     const restore = !!tab.restore
     if (restore) term.reset()
     else if (tab.attempt > 0 && !tab.retries) term.write('\r\n\x1b[2m── reconnecting ──\x1b[0m\r\n')
@@ -379,6 +421,8 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
         }
         ghostRef.current?.reset(true)
         dirHint.current = ''
+        dirCache.current.clear()
+        shellDir.current = null
         if (useSettings.getState().settings?.commandSuggestions ?? true) {
           void useCommandHistory.getState().load(local ? 'local' : tab.hostId)
           if (!local) void useCommandHistory.getState().loadRemote(tab.hostId, sid)
@@ -465,33 +509,6 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
     termRef.current?.focus()
   }
 
-  /** Opens the path picker at the shell's current directory. */
-  const openPicker = async () => {
-    if (!connectedRef.current || picker) return
-    let d
-    try {
-      d = await api.terminalDir(sidRef.current)
-    } catch (err) {
-      toast.error("Couldn't open the path picker", { description: errorMessage(err) })
-      return
-    }
-    const cwd = d.exact ? d.path : dirHint.current.replace(/^~(?=\/|$)/, d.home)
-    setPicker({ cwd: cwd || d.path, home: d.home })
-  }
-
-  /** Types picked paths at the cursor, in this terminal only, without running anything. */
-  const insertPaths = (text: string) => {
-    setPicker(null)
-    const term = termRef.current
-    if (!term) return
-    const buf = term.buffer.active
-    const before = buf.cursorX > 0 ? buf.getLine(buf.baseY + buf.cursorY)?.translateToString(false, buf.cursorX - 1, buf.cursorX) : ' '
-    const out = (before && before !== ' ' ? ' ' : '') + text + ' '
-    ghostRef.current?.input(out)
-    send(leaveHistory() + out)
-    term.focus()
-  }
-
   const doSearch = (dir: 'next' | 'prev') => {
     if (!query) return
     const opts = { caseSensitive: false, incremental: dir === 'next' }
@@ -523,15 +540,12 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
       } else if (matchesCombo(e, 'app+shift+b')) {
         e.preventDefault()
         toggleBroadcast()
-      } else if (matchesCombo(e, 'app+p')) {
-        e.preventDefault()
-        void openPicker()
       }
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, rootTab?.layout, rootTab?.broadcast, picker])
+  }, [active, rootTab?.layout, rootTab?.broadcast])
 
   const theme = terminalTheme(settings?.terminalTheme ?? 'flux')
 
@@ -618,11 +632,6 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
               </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Tooltip content={`Insert a file path (${appKey}P)`}>
-            <Button variant="ghost" size="icon-xs" aria-label="Insert a file path" disabled={tab.state !== 'connected'} onClick={() => void openPicker()}>
-              <FileSearchIcon />
-            </Button>
-          </Tooltip>
           <AppearancePicker onPreview={setPreview} />
           <Tooltip content={`Find (${appKey}F)`}>
             <Button variant="ghost" size="icon-xs" aria-label="Find" onClick={() => { setSearchOpen((o) => !o); setTimeout(() => searchInput.current?.focus(), 0) }}>
@@ -733,18 +742,6 @@ export function TerminalView({ tab, visible, rect, focused = true, split = false
             onSubmitCredentials={submitCredentials}
             onCancel={() => void api.cancelConnect(tab.sessionId)}
           />
-          {picker && tab.state === 'connected' && (
-            <PathPicker
-              sessionId={tab.sessionId}
-              start={picker}
-              powershell={local && isWindows}
-              onInsert={insertPaths}
-              onClose={() => {
-                setPicker(null)
-                termRef.current?.focus()
-              }}
-            />
-          )}
         </div>
         {monitorOpen && !local && (
           <aside className="w-[320px] shrink-0 overflow-y-auto border-l bg-sidebar" aria-label="Server metrics">

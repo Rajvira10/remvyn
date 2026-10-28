@@ -9,7 +9,6 @@ import type {
   DirListing,
   Editor,
   FileContent,
-  FileIndex,
   ForwardRule,
   ForwardStatus,
   Group,
@@ -190,10 +189,10 @@ export const api = {
   clearCommandHistory: (): Promise<void> => call.ClearCommandHistory(),
   /** The server's own shell history (bash, zsh, fish), most recent first. */
   remoteShellHistory: (sessionId: string): Promise<string[]> => call.RemoteShellHistory(sessionId),
-  /** Where a terminal's shell is, for the path picker. */
+  /** Where a terminal's shell is, for path completion. */
   terminalDir: (sessionId: string): Promise<ShellDir> => call.TerminalDir(sessionId),
-  /** Everything under dir on the computer a terminal runs on. */
-  findFiles: (sessionId: string, dir: string): Promise<FileIndex> => call.FindFiles(sessionId, dir),
+  /** A folder's entries on the computer a terminal runs on; folders end in /. */
+  listNames: (sessionId: string, dir: string): Promise<string[]> => call.ListNames(sessionId, dir),
 
   forwards: (): Promise<ForwardRule[]> => call.ListForwards(),
   forwardStatuses: (): Promise<ForwardStatus[]> => call.ForwardStatuses(),
