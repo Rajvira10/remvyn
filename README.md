@@ -34,7 +34,7 @@ Remvyn is a desktop SSH client in the spirit of Termius. It saves your servers, 
 - **Monitoring**: live CPU, memory, disk, network, Docker containers, services and top processes beside the terminal, plus history, alerts, uptime checks and a multi-server dashboard. See [Monitoring](#monitoring).
 - **Master password and app lock**: optional master password, auto-lock after inactivity, and ⌘L to lock. See [Master password and sync](#master-password-and-sync).
 - **AI agents**: let Claude Code (or any MCP client) run commands and edit files on servers you choose. Remvyn makes the connections with its own saved credentials, so the agent never sees a key or password; you can approve each action. See [AI agents](#ai-agents-claude-code).
-- **Sync**: keep your vault in sync between computers through a private GitHub repository, end-to-end encrypted. Sign in with GitHub; no server needed.
+- **Sync**: keep your vault in sync between computers through a private GitHub repository, end-to-end encrypted. Sign in with GitHub; no server needed. Keep several vaults, each synced to its own repository, under one GitHub sign-in.
 - **Settings**: theme, terminal appearance, keepalive and connect timeout, SFTP defaults, close confirmation, and clearing all data.
 
 ## Monitoring
@@ -116,6 +116,8 @@ REMVYN_SIGNING=/path/to/signing.properties ./gradlew assembleRelease
 On another computer, sign in, choose the same repository and enter the same master password; its local data is merged in, and it adopts that master password.
 
 What's synced: hosts (with saved passwords), keys (with passphrases), groups, snippets, forwarding rules, known hosts and password vault items. Settings and monitoring history stay per device.
+
+**Several vaults, one GitHub account.** Settings → Vaults → *New vault* opens an empty vault next to the one you have, for example to keep work servers apart from personal ones. It stays signed in to the same GitHub account, so Sync goes straight to choosing a repository: pick a new private repository and the vault syncs there, with its own master password. Each vault has its own hosts, keys, passwords, snippets and settings; switching closes open terminals, file browsers and forwards, and the other vault asks for its own master password. Repositories already used by another vault on this computer are greyed out in the picker. The first vault stays in the data folder; the others live under `vaults/` in it, listed in `vaults.json`. Deleting a vault erases it on this computer only; its copy on GitHub stays.
 
 How it works:
 - The repository holds `vault.json` (a random sync key wrapped with your master password) and one file per item under `records/`. Each file is AES-256-GCM encrypted and bound to its path; file names are keyed hashes, so GitHub sees only how many items you have and when they change.

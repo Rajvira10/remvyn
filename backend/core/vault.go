@@ -26,8 +26,13 @@ const EventLock = "lock:status"
 
 // Start runs background work once the UI is up: auto-start forwards,
 // monitoring and sync. While locked, forwards and sync wait for Unlock.
+// Calling it again (the window reloaded) does nothing.
 func (c *Core) Start() {
 	c.keyMu.Lock()
+	if c.started {
+		c.keyMu.Unlock()
+		return
+	}
 	c.started = true
 	unlocked := !c.store.Locked()
 	c.keyMu.Unlock()
@@ -275,6 +280,13 @@ func (c *Core) SyncStartLogin() (vaultsync.DeviceCode, error) {
 func (c *Core) SyncFinishLogin() (string, error) {
 	return c.sync.FinishLogin(context.Background())
 }
+
+// SyncAccount returns this vault's GitHub sign-in, for opening another
+// vault with the same account.
+func (c *Core) SyncAccount() (vaultsync.Account, bool) { return c.sync.Account() }
+
+// SyncUseAccount signs this vault in with another vault's GitHub account.
+func (c *Core) SyncUseAccount(a vaultsync.Account) error { return c.sync.UseAccount(a) }
 
 // SyncCancelLogin stops waiting for sign-in.
 func (c *Core) SyncCancelLogin() { c.sync.CancelLogin() }

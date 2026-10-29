@@ -13,17 +13,20 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 
 	"remvyn/backend/testutil"
 )
 
 func main() {
 	addr := flag.String("addr", "127.0.0.1:2280", "listen address")
-	repo := flag.String("repo", "octo/remvyn-vault", "private repository to create")
+	repo := flag.String("repo", "octo/remvyn-vault", "private repositories to create, comma-separated")
 	flag.Parse()
 	gh := testutil.NewFakeGitHubOn(*addr)
 	defer gh.Close()
-	gh.AddRepo(*repo, true)
+	for _, r := range strings.Split(*repo, ",") {
+		gh.AddRepo(strings.TrimSpace(r), true)
+	}
 	fmt.Printf("fake GitHub on %s (user %q, repo %s)\n", gh.URL, gh.Login, *repo)
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)

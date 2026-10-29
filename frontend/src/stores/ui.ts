@@ -16,8 +16,18 @@ interface UIState {
   editHost: (id: string | null) => void
 }
 
+const REOPEN_KEY = 'remvyn.reopenPage'
+
+/** Open page after the next window reload (switching vaults reloads). */
+export function reopenPage(page: VaultPage) {
+  sessionStorage.setItem(REOPEN_KEY, page)
+}
+
+const initialPage = (sessionStorage.getItem(REOPEN_KEY) as VaultPage | null) ?? 'hosts'
+sessionStorage.removeItem(REOPEN_KEY)
+
 export const useUI = create<UIState>((set) => ({
-  page: 'hosts',
+  page: initialPage,
   paletteOpen: false,
   shortcutsOpen: false,
   editingHostId: null,

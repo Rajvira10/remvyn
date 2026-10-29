@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api, copyText, errorCode, errorMessage } from '@/lib/api'
-import type { DeviceCode, RepoInfo, SyncRepo, SyncStatus } from '@/lib/types'
+import type { DeviceCode, RepoInfo, SyncRepo, SyncStatus, VaultProfile } from '@/lib/types'
 import { cn, relativeTime } from '@/lib/utils'
 import { useLock } from '@/stores/lock'
 import { useVault } from '@/stores/vault'
@@ -127,6 +127,7 @@ function ConnectDialog({ open, onOpenChange, relogin }: { open: boolean; onOpenC
   const [codeError, setCodeError] = useState('')
   const [login, setLogin] = useState('')
   const [repos, setRepos] = useState<SyncRepo[] | null>(null)
+  const [otherVaults, setOtherVaults] = useState<VaultProfile[]>([])
   const [installed, setInstalled] = useState(true)
   const [loadingRepos, setLoadingRepos] = useState(false)
   const [picked, setPicked] = useState('')
@@ -140,10 +141,14 @@ function ConnectDialog({ open, onOpenChange, relogin }: { open: boolean; onOpenC
   const loadRepos = async () => {
     setLoadingRepos(true)
     try {
-      const r = await api.syncRepos()
+      const [r, vaults] = await Promise.all([api.syncRepos(), api.listVaults().catch(() => [])])
+      // Repositories already used by another vault on this computer.
+      const others = vaults.filter((v) => !v.current && v.repo)
       setRepos(r.repos)
+      setOtherVaults(others)
       setInstalled(r.installed)
-      const vault = r.repos.find((x) => x.private && /remvyn|flux/i.test(x.fullName)) ?? (r.repos.length === 1 && r.repos[0].private ? r.repos[0] : undefined)
+      const free = r.repos.filter((x) => x.private && !others.some((v) => v.repo === x.fullName))
+      const vault = free.find((x) => /remvyn|flux/i.test(x.fullName)) ?? (free.length === 1 ? free[0] : undefined)
       if (vault && !picked) setPicked(vault.fullName)
     } catch (e) {
       toast.error('Could not list repositories', { description: errorMessage(e) })
@@ -186,7 +191,14 @@ function ConnectDialog({ open, onOpenChange, relogin }: { open: boolean; onOpenC
     setPassword('')
     setConfirm('')
     setError('')
-    void begin()
+    // Already signed in: another vault on this computer shared its account.
+    if (!relogin && sync?.signedIn) {
+      setLogin(sync.login)
+      setStage('repo')
+      void loadRepos()
+    } else {
+      void begin()
+    }
     return () => {
       attempt.current++
       void api.syncCancelLogin()
@@ -290,19 +302,25 @@ function ConnectDialog({ open, onOpenChange, relogin }: { open: boolean; onOpenC
               <>
                 {repos.length > 0 && (
                   <div className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-lg border p-1" role="radiogroup" aria-label="Repository">
-                    {repos.map((r) => (
-                      <button
-                        key={r.fullName}
-                        role="radio"
-                        aria-checked={picked === r.fullName}
-                        onClick={() => setPicked(r.fullName)}
-                        className={cn('flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] hover:bg-accent', picked === r.fullName && 'bg-accent')}
-                      >
-                        <span className="flex-1 truncate font-mono text-[12px]">{r.fullName}</span>
-                        {!r.private && <span className="text-[11px] text-warning">public</span>}
-                        {picked === r.fullName && <CheckIcon className="size-3.5 text-primary" />}
-                      </button>
-                    ))}
+                    {repos.map((r) => {
+                      const usedBy = otherVaults.find((v) => v.repo === r.fullName)
+                      return (
+                        <button
+                          key={r.fullName}
+                          role="radio"
+                          aria-checked={picked === r.fullName}
+                          disabled={!!usedBy}
+                          title={usedBy ? `Already your “${usedBy.name}” vault; open it in Vaults above` : undefined}
+                          onClick={() => setPicked(r.fullName)}
+                          className={cn('flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] hover:bg-accent disabled:pointer-events-none disabled:opacity-50', picked === r.fullName && 'bg-accent')}
+                        >
+                          <span className="flex-1 truncate font-mono text-[12px]">{r.fullName}</span>
+                          {usedBy && <span className="truncate text-[11px] text-muted-foreground">vault “{usedBy.name}”</span>}
+                          {!r.private && <span className="text-[11px] text-warning">public</span>}
+                          {picked === r.fullName && <CheckIcon className="size-3.5 text-primary" />}
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
                 <div className="rounded-lg border border-dashed p-3 text-[12.5px]">

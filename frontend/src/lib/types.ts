@@ -559,12 +559,23 @@ export interface SyncStatus {
   repo: string
   repoUrl: string
   login: string
+  /** A GitHub sign-in is ready, so connecting can skip the device code. */
+  signedIn: boolean
   state: 'off' | 'idle' | 'syncing' | 'error' | 'locked'
   lastSyncAt: number
   error: string
   errorCode: string
   installUrl: string
   newRepoUrl: string
+}
+
+/** A vault on this computer; each has its own data and usually its own repository. */
+export interface VaultProfile {
+  id: string
+  name: string
+  repo: string
+  createdAt: number
+  current: boolean
 }
 
 export interface DeviceCode {

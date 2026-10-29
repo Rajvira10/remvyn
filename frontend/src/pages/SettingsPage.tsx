@@ -7,6 +7,7 @@ import { SecuritySection } from '@/components/settings/SecuritySection'
 import { Field, Section } from '@/components/settings/Section'
 import { SyncSection } from '@/components/settings/SyncSection'
 import { UpdatesSection } from '@/components/settings/UpdatesSection'
+import { VaultsSection } from '@/components/settings/VaultsSection'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -214,6 +215,7 @@ export function SettingsPage() {
 
           <SecuritySection form={form} apply={apply} />
 
+          <VaultsSection />
           <SyncSection />
 
           <UpdatesSection form={form} apply={apply} />

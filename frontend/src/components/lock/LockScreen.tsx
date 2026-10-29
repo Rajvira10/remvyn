@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { api, errorCode, errorMessage } from '@/lib/api'
+import type { VaultProfile } from '@/lib/types'
 import { useLock } from '@/stores/lock'
 import { useSessions } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
@@ -18,6 +19,7 @@ export function LockScreen() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [forgot, setForgot] = useState(false)
+  const [vaults, setVaults] = useState<VaultProfile[]>([])
   const input = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -27,10 +29,14 @@ export function LockScreen() {
     // Take focus away from any terminal.
     ;(document.activeElement as HTMLElement | null)?.blur()
     const id = setTimeout(() => input.current?.focus(), 30)
+    api.listVaults().then(setVaults, () => setVaults([]))
     return () => clearTimeout(id)
   }, [status?.locked])
 
   if (!status?.locked) return null
+  // With several vaults, say which one is locked (each has its own password).
+  const current = vaults.length > 1 ? vaults.find((v) => v.current) : undefined
+  const others = current ? vaults.filter((v) => !v.current) : []
 
   const unlock = async () => {
     if (!password || busy) return
@@ -67,7 +73,9 @@ export function LockScreen() {
         </div>
         <div className="text-center">
           <h1 className="text-[16px] font-semibold">Remvyn is locked</h1>
-          <p className="mt-1 text-xs text-muted-foreground">Enter your master password to continue.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {current ? `Enter the master password for the “${current.name}” vault.` : 'Enter your master password to continue.'}
+          </p>
         </div>
         <div className="flex w-full flex-col gap-2">
           <div className="relative">
@@ -103,6 +111,29 @@ export function LockScreen() {
         <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setForgot(true)}>
           Forgot your password?
         </button>
+        {others.length > 0 && (
+          <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs text-muted-foreground">
+            Open another vault:
+            {others.map((v) => (
+              <Button
+                key={v.id}
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={async () => {
+                  try {
+                    await api.switchVault(v.id)
+                    window.location.reload()
+                  } catch (e) {
+                    toast.error('Could not open that vault', { description: errorMessage(e) })
+                  }
+                }}
+              >
+                {v.name}
+              </Button>
+            ))}
+          </div>
+        )}
       </form>
       {forgot && (
         // Inline rather than a dialog: dialogs sit below the lock screen.

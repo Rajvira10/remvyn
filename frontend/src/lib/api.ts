@@ -48,6 +48,7 @@ import type {
   UpdateStatus,
   VaultItem,
   VaultItemInput,
+  VaultProfile,
   VaultSecret,
 } from './types'
 
@@ -243,6 +244,12 @@ export const api = {
   syncDisconnect: (): Promise<SyncStatus> => call.SyncDisconnect(),
   syncNow: (): Promise<SyncStatus> => call.SyncNow(),
   syncWake: (): Promise<void> => call.SyncWake(),
+
+  listVaults: async (): Promise<VaultProfile[]> => (await call.ListVaults()) ?? [],
+  createVault: (name: string): Promise<VaultProfile> => call.CreateVault(name),
+  switchVault: (id: string): Promise<void> => call.SwitchVault(id),
+  renameVault: (id: string, name: string): Promise<void> => call.RenameVault(id, name),
+  deleteVault: (id: string): Promise<void> => call.DeleteVault(id),
 
   agentStatus: (): Promise<AgentStatus> => call.GetAgentStatus(),
   setAgentEnabled: (on: boolean): Promise<Settings> => call.SetAgentEnabled(on),

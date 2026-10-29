@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 
 	"remvyn/backend/core"
 	"remvyn/backend/files"
+	"remvyn/backend/mcp"
 	"remvyn/backend/models"
 	"remvyn/backend/sshconn"
 	"remvyn/backend/updater"
@@ -47,8 +49,11 @@ func envOr(key, fallback string) string {
 // callable from the frontend.
 type App struct {
 	ctx     context.Context
-	core    *core.Core
+	cur     atomic.Pointer[core.Core]
+	vaults  *core.Vaults
 	initErr string
+	// switchMu serialises opening another vault.
+	switchMu sync.Mutex
 
 	notifyReady atomic.Bool
 	clip        clipState
@@ -93,9 +98,35 @@ func (a *App) startup(ctx context.Context) {
 		Repo:    envOr("REMVYN_UPDATE_REPO", updater.DefaultRepo),
 		Emit:    func(s updater.Status) { wruntime.EventsEmit(ctx, "update:status", s) },
 	})
-	c, err := core.Open(ctx, core.Options{
-		Emit:   func(event string, data any) { wruntime.EventsEmit(ctx, event, data) },
-		Notify: a.notify,
+	base, err := core.DefaultDataDir()
+	if err != nil {
+		a.initErr = err.Error()
+		return
+	}
+	a.vaults = core.OpenVaults(base)
+	_, dir, err := a.vaults.Active()
+	if err != nil {
+		wruntime.LogErrorf(ctx, "remvyn: reading the vault list failed: %v", err)
+	}
+	c, err := core.Open(ctx, a.coreOptions(dir))
+	if err != nil {
+		a.initErr = err.Error()
+		wruntime.LogErrorf(ctx, "remvyn: initialisation failed: %v", err)
+		return
+	}
+	a.cur.Store(c)
+	a.noteRepo()
+}
+
+// core is the open vault's service layer, or nil if it failed to open.
+func (a *App) core() *core.Core { return a.cur.Load() }
+
+func (a *App) coreOptions(dir string) core.Options {
+	ctx := a.ctx
+	return core.Options{
+		DataDir: dir,
+		Emit:    func(event string, data any) { wruntime.EventsEmit(ctx, event, data) },
+		Notify:  a.notify,
 		Sync: vaultsync.Options{
 			// REMVYN_GITHUB_WEB/API point sync at GitHub Enterprise (or a test server).
 			Endpoints: vaultsync.Endpoints{
@@ -105,19 +136,16 @@ func (a *App) startup(ctx context.Context) {
 			ClientID: envOr("REMVYN_GITHUB_CLIENT_ID", githubClientID),
 			AppSlug:  envOr("REMVYN_GITHUB_APP_SLUG", githubAppSlug),
 		},
+		// Every vault shares one agent socket, so `remvyn mcp` reaches
+		// whichever vault is open.
+		AgentSocket:  mcp.SocketPath(a.vaults.Base()),
 		AgentCommand: agentCommand(),
-	})
-	if err != nil {
-		a.initErr = err.Error()
-		wruntime.LogErrorf(ctx, "remvyn: initialisation failed: %v", err)
-		return
 	}
-	a.core = c
 }
 
 func (a *App) domReady(context.Context) {
-	if a.core != nil {
-		a.core.Start()
+	if a.core() != nil {
+		a.core().Start()
 	}
 	go a.autoCheckUpdates()
 	// Ask for notification permission once, in the background: on macOS
@@ -154,15 +182,15 @@ func (a *App) notify(title, body string) {
 }
 
 func (a *App) shutdown(context.Context) {
-	if a.core != nil {
-		a.core.Close()
+	if a.core() != nil {
+		a.core().Close()
 	}
 }
 
 var errNotReady = errors.New("Remvyn failed to initialise; see Settings for details")
 
 func (a *App) ready() error {
-	if a.core == nil {
+	if a.core() == nil {
 		return errNotReady
 	}
 	return nil
@@ -174,18 +202,18 @@ func (a *App) ready() error {
 func (a *App) GetAppInfo() AppInfo {
 	info := AppInfo{Version: Version, Platform: runtime.GOOS + "/" + runtime.GOARCH, InitErr: a.initErr,
 		HomeDir: files.LocalHome(), HasAgent: os.Getenv("SSH_AUTH_SOCK") != ""}
-	if a.core != nil {
-		info.DataDir = a.core.DataDir
+	if a.core() != nil {
+		info.DataDir = a.core().DataDir
 	}
 	return info
 }
 
 // GetSettings returns settings.
 func (a *App) GetSettings() models.Settings {
-	if a.core == nil {
+	if a.core() == nil {
 		return models.DefaultSettings()
 	}
-	return a.core.Settings()
+	return a.core().Settings()
 }
 
 // UpdateSettings saves settings.
@@ -193,7 +221,7 @@ func (a *App) UpdateSettings(s models.Settings) (models.Settings, error) {
 	if err := a.ready(); err != nil {
 		return s, err
 	}
-	return a.core.UpdateSettings(s)
+	return a.core().UpdateSettings(s)
 }
 
 // ClearAppData wipes all data and closes sessions.
@@ -201,13 +229,14 @@ func (a *App) ClearAppData() (models.Settings, error) {
 	if err := a.ready(); err != nil {
 		return models.DefaultSettings(), err
 	}
-	return a.core.ClearAppData()
+	defer a.noteRepo()
+	return a.core().ClearAppData()
 }
 
 // RevealDataDir opens the data folder in the file manager.
 func (a *App) RevealDataDir() {
-	if a.core != nil {
-		openPath(a.core.DataDir)
+	if a.core() != nil {
+		openPath(a.core().DataDir)
 	}
 }
 
@@ -231,7 +260,7 @@ func (a *App) ListHosts() ([]models.Host, error) {
 	if err := a.ready(); err != nil {
 		return []models.Host{}, err
 	}
-	return a.core.Hosts()
+	return a.core().Hosts()
 }
 
 // SaveHost creates or updates a host.
@@ -239,7 +268,7 @@ func (a *App) SaveHost(in models.HostInput) (models.Host, error) {
 	if err := a.ready(); err != nil {
 		return in.Host, err
 	}
-	return a.core.SaveHost(in)
+	return a.core().SaveHost(in)
 }
 
 // RevealHostPassword returns a host's saved password so it can be shown in the editor.
@@ -247,7 +276,7 @@ func (a *App) RevealHostPassword(id string) (string, error) {
 	if err := a.ready(); err != nil {
 		return "", err
 	}
-	return a.core.HostPassword(id)
+	return a.core().HostPassword(id)
 }
 
 // DeleteHost removes a host.
@@ -255,7 +284,7 @@ func (a *App) DeleteHost(id string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.DeleteHost(id)
+	return a.core().DeleteHost(id)
 }
 
 // ListGroups returns all groups.
@@ -263,7 +292,7 @@ func (a *App) ListGroups() ([]models.Group, error) {
 	if err := a.ready(); err != nil {
 		return []models.Group{}, err
 	}
-	return a.core.Groups()
+	return a.core().Groups()
 }
 
 // SaveGroup creates or renames a group.
@@ -271,7 +300,7 @@ func (a *App) SaveGroup(g models.Group) (models.Group, error) {
 	if err := a.ready(); err != nil {
 		return g, err
 	}
-	return a.core.SaveGroup(g)
+	return a.core().SaveGroup(g)
 }
 
 // DeleteGroup removes a group; hosts are kept.
@@ -279,7 +308,7 @@ func (a *App) DeleteGroup(id string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.DeleteGroup(id)
+	return a.core().DeleteGroup(id)
 }
 
 // ImportSSHConfig imports hosts from ~/.ssh/config.
@@ -287,7 +316,7 @@ func (a *App) ImportSSHConfig() (models.SSHConfigImport, error) {
 	if err := a.ready(); err != nil {
 		return models.SSHConfigImport{Warnings: []string{}}, err
 	}
-	return a.core.ImportSSHConfig("")
+	return a.core().ImportSSHConfig("")
 }
 
 // ImportSSHConfigFile lets the user pick an OpenSSH config file to import.
@@ -306,7 +335,7 @@ func (a *App) ImportSSHConfigFile() (models.SSHConfigImport, error) {
 	if err != nil || path == "" {
 		return empty, err
 	}
-	return a.core.ImportSSHConfig(path)
+	return a.core().ImportSSHConfig(path)
 }
 
 // ---------------------------------------------------------------- connections
@@ -317,7 +346,7 @@ func (a *App) OpenTerminal(id, hostID string, opts models.ConnectOptions) (model
 	if err := a.ready(); err != nil {
 		return models.SessionInfo{}, err
 	}
-	return a.core.OpenTerminal(id, hostID, opts)
+	return a.core().OpenTerminal(id, hostID, opts)
 }
 
 // OpenLocalTerminal starts a shell on this computer. Subscribe to the same
@@ -326,7 +355,7 @@ func (a *App) OpenLocalTerminal(id string, opts models.ConnectOptions) (models.S
 	if err := a.ready(); err != nil {
 		return models.SessionInfo{}, err
 	}
-	return a.core.OpenLocalTerminal(id, opts)
+	return a.core().OpenLocalTerminal(id, opts)
 }
 
 // WriteTerminal sends keyboard input.
@@ -334,7 +363,7 @@ func (a *App) WriteTerminal(id, data string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.WriteTerminal(id, data)
+	return a.core().WriteTerminal(id, data)
 }
 
 // ResizeTerminal updates the terminal size.
@@ -342,21 +371,21 @@ func (a *App) ResizeTerminal(id string, cols, rows int) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.ResizeTerminal(id, cols, rows)
+	return a.core().ResizeTerminal(id, cols, rows)
 }
 
 // CloseTerminal disconnects a terminal session; a persistent session keeps
 // running on the server.
 func (a *App) CloseTerminal(id string) {
-	if a.core != nil {
-		a.core.CloseTerminal(id)
+	if a.core() != nil {
+		a.core().CloseTerminal(id)
 	}
 }
 
 // EndTerminal closes a terminal session and ends it on the server too.
 func (a *App) EndTerminal(id string) {
-	if a.core != nil {
-		a.core.EndTerminal(id)
+	if a.core() != nil {
+		a.core().EndTerminal(id)
 	}
 }
 
@@ -365,7 +394,7 @@ func (a *App) ListServerSessions(hostID string) ([]models.ServerSession, error) 
 	if err := a.ready(); err != nil {
 		return nil, err
 	}
-	return a.core.ListServerSessions(hostID), nil
+	return a.core().ListServerSessions(hostID), nil
 }
 
 // SetForwardKeys turns SSH key forwarding on or off for a host.
@@ -373,7 +402,7 @@ func (a *App) SetForwardKeys(hostID string, on bool) (models.Settings, error) {
 	if err := a.ready(); err != nil {
 		return models.Settings{}, err
 	}
-	return a.core.SetForwardKeys(hostID, on)
+	return a.core().SetForwardKeys(hostID, on)
 }
 
 // SetForwardKeysToAI lets AI agents' connections forward keys too.
@@ -381,23 +410,23 @@ func (a *App) SetForwardKeysToAI(on bool) (models.Settings, error) {
 	if err := a.ready(); err != nil {
 		return models.Settings{}, err
 	}
-	return a.core.SetForwardKeysToAI(on)
+	return a.core().SetForwardKeysToAI(on)
 }
 
 // PendingKeyUses lists key-use requests waiting for an answer.
 func (a *App) PendingKeyUses() []models.KeyUseRequest {
-	if a.core == nil {
+	if a.core() == nil {
 		return nil
 	}
-	return a.core.PendingKeyUses()
+	return a.core().PendingKeyUses()
 }
 
 // ResolveKeyUse answers a key-use request: deny, once or session.
 func (a *App) ResolveKeyUse(id, decision string) bool {
-	if a.core == nil {
+	if a.core() == nil {
 		return false
 	}
-	return a.core.ResolveKeyUse(id, decision)
+	return a.core().ResolveKeyUse(id, decision)
 }
 
 // EndServerSession ends a persistent session on a host.
@@ -405,22 +434,22 @@ func (a *App) EndServerSession(hostID, key string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.EndServerSession(hostID, key)
+	return a.core().EndServerSession(hostID, key)
 }
 
 // CancelConnect aborts an in-flight connection attempt.
 func (a *App) CancelConnect(id string) {
-	if a.core != nil {
-		a.core.CancelConnect(id)
+	if a.core() != nil {
+		a.core().CancelConnect(id)
 	}
 }
 
 // ResolveHostKey answers a host-key prompt.
 func (a *App) ResolveHostKey(promptID string, accept bool) bool {
-	if a.core == nil {
+	if a.core() == nil {
 		return false
 	}
-	return a.core.ResolveHostKey(promptID, accept)
+	return a.core().ResolveHostKey(promptID, accept)
 }
 
 // ---------------------------------------------------------------- sftp
@@ -430,13 +459,13 @@ func (a *App) OpenSFTP(id, hostID string, opts models.ConnectOptions) (models.Se
 	if err := a.ready(); err != nil {
 		return models.SessionInfo{}, err
 	}
-	return a.core.OpenSFTP(id, hostID, opts)
+	return a.core().OpenSFTP(id, hostID, opts)
 }
 
 // CloseSFTP ends an SFTP session.
 func (a *App) CloseSFTP(id string) {
-	if a.core != nil {
-		a.core.Files().Close(id)
+	if a.core() != nil {
+		a.core().Files().Close(id)
 	}
 }
 
@@ -445,7 +474,7 @@ func (a *App) RemoteHome(id string) (string, error) {
 	if err := a.ready(); err != nil {
 		return "", err
 	}
-	return a.core.Files().Home(id)
+	return a.core().Files().Home(id)
 }
 
 // ListRemote lists a remote directory.
@@ -453,7 +482,7 @@ func (a *App) ListRemote(id, dir string) (models.DirListing, error) {
 	if err := a.ready(); err != nil {
 		return models.DirListing{}, err
 	}
-	return a.core.Files().List(id, dir)
+	return a.core().Files().List(id, dir)
 }
 
 // MkdirRemote creates a remote directory.
@@ -461,7 +490,7 @@ func (a *App) MkdirRemote(id, dir, name string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.Files().Mkdir(id, dir, name)
+	return a.core().Files().Mkdir(id, dir, name)
 }
 
 // RenameRemote renames a remote entry.
@@ -469,7 +498,7 @@ func (a *App) RenameRemote(id, from, newName string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.Files().Rename(id, from, newName)
+	return a.core().Files().Rename(id, from, newName)
 }
 
 // RemoveRemote deletes remote entries (recursively).
@@ -477,7 +506,7 @@ func (a *App) RemoveRemote(id string, paths []string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.Files().Remove(id, paths)
+	return a.core().Files().Remove(id, paths)
 }
 
 // ListLocal lists a local directory.
@@ -499,7 +528,7 @@ func (a *App) Upload(id string, localPaths []string, remoteDir string) (string, 
 	if err := a.ready(); err != nil {
 		return "", err
 	}
-	return a.core.Files().Upload(id, localPaths, remoteDir)
+	return a.core().Files().Upload(id, localPaths, remoteDir)
 }
 
 // Download copies remote paths into a local directory.
@@ -507,29 +536,29 @@ func (a *App) Download(id string, remotePaths []string, localDir string) (string
 	if err := a.ready(); err != nil {
 		return "", err
 	}
-	return a.core.Files().Download(id, remotePaths, localDir)
+	return a.core().Files().Download(id, remotePaths, localDir)
 }
 
 // ListTransfers returns transfers.
 func (a *App) ListTransfers() []models.Transfer {
-	if a.core == nil {
+	if a.core() == nil {
 		return []models.Transfer{}
 	}
-	return a.core.Files().Transfers()
+	return a.core().Files().Transfers()
 }
 
 // CancelTransfer aborts a transfer.
 func (a *App) CancelTransfer(id string) bool {
-	if a.core == nil {
+	if a.core() == nil {
 		return false
 	}
-	return a.core.Files().CancelTransfer(id)
+	return a.core().Files().CancelTransfer(id)
 }
 
 // ClearTransfers removes finished transfers from the list.
 func (a *App) ClearTransfers() {
-	if a.core != nil {
-		a.core.Files().ClearTransfers()
+	if a.core() != nil {
+		a.core().Files().ClearTransfers()
 	}
 }
 
@@ -540,7 +569,7 @@ func (a *App) ReadRemoteText(id, path string) (models.FileContent, error) {
 	if err := a.ready(); err != nil {
 		return models.FileContent{}, err
 	}
-	return a.core.Files().ReadText(id, path)
+	return a.core().Files().ReadText(id, path)
 }
 
 // WriteRemoteText saves a remote text file. expectModTime is the version
@@ -549,7 +578,7 @@ func (a *App) WriteRemoteText(id, path, content string, expectModTime int64) (mo
 	if err := a.ready(); err != nil {
 		return models.FileContent{}, err
 	}
-	return a.core.Files().WriteText(id, path, content, expectModTime)
+	return a.core().Files().WriteText(id, path, content, expectModTime)
 }
 
 // ReadLocalText opens a local text file in the built-in editor.
@@ -567,7 +596,7 @@ func (a *App) CreateRemoteFile(id, dir, name string) (string, error) {
 	if err := a.ready(); err != nil {
 		return "", err
 	}
-	return a.core.Files().CreateFile(id, dir, name)
+	return a.core().Files().CreateFile(id, dir, name)
 }
 
 // CreateLocalFile makes an empty local file and returns its path.
@@ -580,7 +609,7 @@ func (a *App) CopyRemote(id string, paths []string, dir string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.Files().Copy(id, paths, dir)
+	return a.core().Files().Copy(id, paths, dir)
 }
 
 // MoveRemote moves remote entries into a remote directory.
@@ -588,7 +617,7 @@ func (a *App) MoveRemote(id string, paths []string, dir string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.Files().Move(id, paths, dir)
+	return a.core().Files().Move(id, paths, dir)
 }
 
 // CopyLocal copies local entries into a local directory.
@@ -602,7 +631,7 @@ func (a *App) CompressRemote(id, dir string, names []string, archiveName, format
 	if err := a.ready(); err != nil {
 		return "", err
 	}
-	return a.core.Files().Compress(id, dir, names, archiveName, format)
+	return a.core().Files().Compress(id, dir, names, archiveName, format)
 }
 
 // CompressLocal archives entries of a local directory ("zip" or "tar.gz").
@@ -615,7 +644,7 @@ func (a *App) ExtractRemote(id, archive string, intoFolder bool) (string, error)
 	if err := a.ready(); err != nil {
 		return "", err
 	}
-	return a.core.Files().Extract(id, archive, intoFolder)
+	return a.core().Files().Extract(id, archive, intoFolder)
 }
 
 // ExtractLocal unpacks a local archive next to it, or into a new folder.
@@ -628,7 +657,7 @@ func (a *App) ChmodRemote(id, path string, mode uint32) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.Files().Chmod(id, path, mode)
+	return a.core().Files().Chmod(id, path, mode)
 }
 
 // ListEditors returns the editors installed on this computer.
@@ -647,7 +676,7 @@ func (a *App) OpenRemoteWith(id, path, editorID string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.Files().OpenRemoteWith(id, path, editorID)
+	return a.core().Files().OpenRemoteWith(id, path, editorID)
 }
 
 // ForceEditUpload uploads an externally edited file over a newer server copy.
@@ -655,7 +684,7 @@ func (a *App) ForceEditUpload(id, path string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.Files().ForceEditUpload(id, path)
+	return a.core().Files().ForceEditUpload(id, path)
 }
 
 // ---------------------------------------------------------------- keychain
@@ -665,7 +694,7 @@ func (a *App) ListKeys() ([]models.Key, error) {
 	if err := a.ready(); err != nil {
 		return []models.Key{}, err
 	}
-	return a.core.Keys()
+	return a.core().Keys()
 }
 
 // GenerateKey creates a key pair.
@@ -673,7 +702,7 @@ func (a *App) GenerateKey(in models.KeyGenerateInput) (models.Key, error) {
 	if err := a.ready(); err != nil {
 		return models.Key{}, err
 	}
-	return a.core.GenerateKey(in)
+	return a.core().GenerateKey(in)
 }
 
 // ImportKey imports a pasted private key.
@@ -681,7 +710,7 @@ func (a *App) ImportKey(in models.KeyImportInput) (models.Key, error) {
 	if err := a.ready(); err != nil {
 		return models.Key{}, err
 	}
-	return a.core.ImportKey(in)
+	return a.core().ImportKey(in)
 }
 
 // ReadKeyFile asks for a private key file and returns its contents for import.
@@ -712,7 +741,7 @@ func (a *App) RenameKey(id, name string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.RenameKey(id, name)
+	return a.core().RenameKey(id, name)
 }
 
 // DeleteKey removes a key.
@@ -720,7 +749,7 @@ func (a *App) DeleteKey(id string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.DeleteKey(id)
+	return a.core().DeleteKey(id)
 }
 
 // ExportPrivateKey saves the private key to a user-chosen file (0600).
@@ -728,7 +757,7 @@ func (a *App) ExportPrivateKey(id string) (string, error) {
 	if err := a.ready(); err != nil {
 		return "", err
 	}
-	pem, err := a.core.ExportPrivateKey(id)
+	pem, err := a.core().ExportPrivateKey(id)
 	if err != nil {
 		return "", err
 	}
@@ -744,7 +773,7 @@ func (a *App) InstallPublicKey(hostID, keyID string, opts models.ConnectOptions)
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.InstallPublicKey(hostID, keyID, opts)
+	return a.core().InstallPublicKey(hostID, keyID, opts)
 }
 
 // ---------------------------------------------------------------- snippets
@@ -754,7 +783,7 @@ func (a *App) ListSnippets() ([]models.Snippet, error) {
 	if err := a.ready(); err != nil {
 		return []models.Snippet{}, err
 	}
-	return a.core.Snippets()
+	return a.core().Snippets()
 }
 
 // SaveSnippet creates or updates a snippet.
@@ -762,7 +791,7 @@ func (a *App) SaveSnippet(s models.Snippet) (models.Snippet, error) {
 	if err := a.ready(); err != nil {
 		return s, err
 	}
-	return a.core.SaveSnippet(s)
+	return a.core().SaveSnippet(s)
 }
 
 // DeleteSnippet removes a snippet.
@@ -770,7 +799,7 @@ func (a *App) DeleteSnippet(id string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.DeleteSnippet(id)
+	return a.core().DeleteSnippet(id)
 }
 
 // ---------------------------------------------------------------- command history
@@ -781,7 +810,7 @@ func (a *App) CommandHistory(hostID string) ([]string, error) {
 	if err := a.ready(); err != nil {
 		return []string{}, err
 	}
-	return a.core.CommandHistory(hostID)
+	return a.core().CommandHistory(hostID)
 }
 
 // AddCommand records a command typed in a host's terminal.
@@ -789,7 +818,7 @@ func (a *App) AddCommand(hostID, cmd string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.AddCommand(hostID, cmd)
+	return a.core().AddCommand(hostID, cmd)
 }
 
 // ForgetCommand removes a command from a host's history.
@@ -797,7 +826,7 @@ func (a *App) ForgetCommand(hostID, cmd string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.ForgetCommand(hostID, cmd)
+	return a.core().ForgetCommand(hostID, cmd)
 }
 
 // ClearCommandHistory deletes the command history of every host.
@@ -805,7 +834,7 @@ func (a *App) ClearCommandHistory() error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.ClearCommandHistory()
+	return a.core().ClearCommandHistory()
 }
 
 // RemoteShellHistory reads the server's own shell history through a
@@ -814,7 +843,7 @@ func (a *App) RemoteShellHistory(sessionID string) ([]string, error) {
 	if err := a.ready(); err != nil {
 		return []string{}, err
 	}
-	return a.core.RemoteShellHistory(sessionID)
+	return a.core().RemoteShellHistory(sessionID)
 }
 
 // TerminalDir returns where a terminal session's shell is, for path
@@ -823,7 +852,7 @@ func (a *App) TerminalDir(sessionID string) (models.ShellDir, error) {
 	if err := a.ready(); err != nil {
 		return models.ShellDir{}, err
 	}
-	return a.core.ShellDir(sessionID)
+	return a.core().ShellDir(sessionID)
 }
 
 // ListNames lists a folder on the computer a terminal session runs on, for
@@ -833,7 +862,7 @@ func (a *App) ListNames(sessionID, dir, base string) ([]string, error) {
 	if err := a.ready(); err != nil {
 		return []string{}, err
 	}
-	return a.core.ListNames(sessionID, dir, base)
+	return a.core().ListNames(sessionID, dir, base)
 }
 
 // ---------------------------------------------------------------- forwarding
@@ -843,15 +872,15 @@ func (a *App) ListForwards() ([]models.ForwardRule, error) {
 	if err := a.ready(); err != nil {
 		return []models.ForwardRule{}, err
 	}
-	return a.core.Forwards()
+	return a.core().Forwards()
 }
 
 // ForwardStatuses returns live forwarding states.
 func (a *App) ForwardStatuses() []models.ForwardStatus {
-	if a.core == nil {
+	if a.core() == nil {
 		return []models.ForwardStatus{}
 	}
-	return a.core.ForwardStatuses()
+	return a.core().ForwardStatuses()
 }
 
 // SaveForward creates or updates a rule.
@@ -859,7 +888,7 @@ func (a *App) SaveForward(f models.ForwardRule) (models.ForwardRule, error) {
 	if err := a.ready(); err != nil {
 		return f, err
 	}
-	return a.core.SaveForward(f)
+	return a.core().SaveForward(f)
 }
 
 // DeleteForward removes a rule.
@@ -867,7 +896,7 @@ func (a *App) DeleteForward(id string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.DeleteForward(id)
+	return a.core().DeleteForward(id)
 }
 
 // StartForward starts a rule.
@@ -875,13 +904,13 @@ func (a *App) StartForward(id string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.StartForward(id)
+	return a.core().StartForward(id)
 }
 
 // StopForward stops a rule.
 func (a *App) StopForward(id string) {
-	if a.core != nil {
-		a.core.StopForward(id)
+	if a.core() != nil {
+		a.core().StopForward(id)
 	}
 }
 
@@ -892,7 +921,7 @@ func (a *App) ListKnownHosts() ([]models.KnownHost, error) {
 	if err := a.ready(); err != nil {
 		return []models.KnownHost{}, err
 	}
-	return a.core.KnownHosts()
+	return a.core().KnownHosts()
 }
 
 // ForgetKnownHost removes a trusted host key.
@@ -900,7 +929,7 @@ func (a *App) ForgetKnownHost(host string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.ForgetKnownHost(host)
+	return a.core().ForgetKnownHost(host)
 }
 
 // ---------------------------------------------------------------- monitoring
@@ -910,30 +939,30 @@ func (a *App) MonitorWatch(hostID string) (models.MonitorStatus, error) {
 	if err := a.ready(); err != nil {
 		return models.MonitorStatus{}, err
 	}
-	return a.core.MonitorWatch(hostID)
+	return a.core().MonitorWatch(hostID)
 }
 
 // MonitorUnwatch stops live monitoring for one viewer.
 func (a *App) MonitorUnwatch(hostID string) {
-	if a.core != nil {
-		a.core.MonitorUnwatch(hostID)
+	if a.core() != nil {
+		a.core().MonitorUnwatch(hostID)
 	}
 }
 
 // MonitorStatuses lists monitored hosts and their collection state.
 func (a *App) MonitorStatuses() []models.MonitorStatus {
-	if a.core == nil {
+	if a.core() == nil {
 		return []models.MonitorStatus{}
 	}
-	return a.core.MonitorStatuses()
+	return a.core().MonitorStatuses()
 }
 
 // MonitorLatest returns the newest sample for a host (null if none).
 func (a *App) MonitorLatest(hostID string) *models.Metrics {
-	if a.core == nil {
+	if a.core() == nil {
 		return nil
 	}
-	return a.core.MonitorLatest(hostID)
+	return a.core().MonitorLatest(hostID)
 }
 
 // ContainerAction starts, stops or restarts a Docker container.
@@ -941,7 +970,7 @@ func (a *App) ContainerAction(hostID, container, action string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.ContainerAction(hostID, container, action)
+	return a.core().ContainerAction(hostID, container, action)
 }
 
 // MetricsHistory returns history for the last rangeMinutes.
@@ -949,7 +978,7 @@ func (a *App) MetricsHistory(hostID string, rangeMinutes int) ([]models.MetricPo
 	if err := a.ready(); err != nil {
 		return []models.MetricPoint{}, err
 	}
-	return a.core.MetricsHistory(hostID, rangeMinutes)
+	return a.core().MetricsHistory(hostID, rangeMinutes)
 }
 
 // ListAlertRules lists alert rules.
@@ -957,7 +986,7 @@ func (a *App) ListAlertRules() ([]models.AlertRule, error) {
 	if err := a.ready(); err != nil {
 		return []models.AlertRule{}, err
 	}
-	return a.core.AlertRules()
+	return a.core().AlertRules()
 }
 
 // SaveAlertRule creates or updates an alert rule.
@@ -965,7 +994,7 @@ func (a *App) SaveAlertRule(r models.AlertRule) (models.AlertRule, error) {
 	if err := a.ready(); err != nil {
 		return r, err
 	}
-	return a.core.SaveAlertRule(r)
+	return a.core().SaveAlertRule(r)
 }
 
 // DeleteAlertRule removes an alert rule.
@@ -973,7 +1002,7 @@ func (a *App) DeleteAlertRule(id string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.DeleteAlertRule(id)
+	return a.core().DeleteAlertRule(id)
 }
 
 // ListAlertEvents returns recent alerts.
@@ -981,7 +1010,7 @@ func (a *App) ListAlertEvents() ([]models.AlertEvent, error) {
 	if err := a.ready(); err != nil {
 		return []models.AlertEvent{}, err
 	}
-	return a.core.AlertEvents()
+	return a.core().AlertEvents()
 }
 
 // ListUptime returns uptime checks with their status.
@@ -989,7 +1018,7 @@ func (a *App) ListUptime() ([]models.UptimeSummary, error) {
 	if err := a.ready(); err != nil {
 		return []models.UptimeSummary{}, err
 	}
-	return a.core.UptimeSummaries()
+	return a.core().UptimeSummaries()
 }
 
 // SaveUptimeCheck creates or updates an uptime check.
@@ -997,7 +1026,7 @@ func (a *App) SaveUptimeCheck(c models.UptimeCheck) (models.UptimeCheck, error) 
 	if err := a.ready(); err != nil {
 		return c, err
 	}
-	return a.core.SaveUptimeCheck(c)
+	return a.core().SaveUptimeCheck(c)
 }
 
 // DeleteUptimeCheck removes an uptime check.
@@ -1005,7 +1034,7 @@ func (a *App) DeleteUptimeCheck(id string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.DeleteUptimeCheck(id)
+	return a.core().DeleteUptimeCheck(id)
 }
 
 // TestUptimeCheck probes a check once without saving it.
@@ -1013,7 +1042,7 @@ func (a *App) TestUptimeCheck(c models.UptimeCheck) (models.UptimeResult, error)
 	if err := a.ready(); err != nil {
 		return models.UptimeResult{}, err
 	}
-	return a.core.TestUptimeCheck(c)
+	return a.core().TestUptimeCheck(c)
 }
 
 // SendTestNotification shows a sample alert notification.
@@ -1025,10 +1054,10 @@ func (a *App) SendTestNotification() {
 
 // GetLockStatus reports whether a master password is set and Remvyn is locked.
 func (a *App) GetLockStatus() models.LockStatus {
-	if a.core == nil {
+	if a.core() == nil {
 		return models.LockStatus{}
 	}
-	return a.core.LockStatus()
+	return a.core().LockStatus()
 }
 
 // Unlock opens the vault with the master password.
@@ -1036,7 +1065,7 @@ func (a *App) Unlock(password string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.Unlock(password)
+	return a.core().Unlock(password)
 }
 
 // Lock locks Remvyn until the master password is entered.
@@ -1045,7 +1074,7 @@ func (a *App) Lock() error {
 		return err
 	}
 	a.clearCopiedSecret()
-	return a.core.Lock()
+	return a.core().Lock()
 }
 
 // SetMasterPassword sets or changes the master password.
@@ -1053,7 +1082,7 @@ func (a *App) SetMasterPassword(current, next string) (models.LockStatus, error)
 	if err := a.ready(); err != nil {
 		return models.LockStatus{}, err
 	}
-	return a.core.SetMasterPassword(current, next)
+	return a.core().SetMasterPassword(current, next)
 }
 
 // RemoveMasterPassword turns the master password off.
@@ -1061,7 +1090,7 @@ func (a *App) RemoveMasterPassword(current string) (models.LockStatus, error) {
 	if err := a.ready(); err != nil {
 		return models.LockStatus{}, err
 	}
-	return a.core.RemoveMasterPassword(current)
+	return a.core().RemoveMasterPassword(current)
 }
 
 // ResetVault erases all local data after a forgotten master password.
@@ -1069,17 +1098,18 @@ func (a *App) ResetVault() (models.Settings, error) {
 	if err := a.ready(); err != nil {
 		return models.DefaultSettings(), err
 	}
-	return a.core.ResetVault()
+	defer a.noteRepo()
+	return a.core().ResetVault()
 }
 
 // ---------------------------------------------------------------- sync
 
 // GetSyncStatus returns GitHub sync state.
 func (a *App) GetSyncStatus() vaultsync.Status {
-	if a.core == nil {
+	if a.core() == nil {
 		return vaultsync.Status{State: "off"}
 	}
-	return a.core.SyncStatus()
+	return a.core().SyncStatus()
 }
 
 // SyncSetApp stores a GitHub App client ID and name for sign-in.
@@ -1087,7 +1117,7 @@ func (a *App) SyncSetApp(clientID, slug string) (vaultsync.Status, error) {
 	if err := a.ready(); err != nil {
 		return vaultsync.Status{}, err
 	}
-	return a.core.SyncSetApp(clientID, slug)
+	return a.core().SyncSetApp(clientID, slug)
 }
 
 // SyncStartLogin begins "Sign in with GitHub" and returns the code to enter.
@@ -1095,7 +1125,7 @@ func (a *App) SyncStartLogin() (vaultsync.DeviceCode, error) {
 	if err := a.ready(); err != nil {
 		return vaultsync.DeviceCode{}, err
 	}
-	return a.core.SyncStartLogin()
+	return a.core().SyncStartLogin()
 }
 
 // SyncFinishLogin waits for the user to approve sign-in on GitHub.
@@ -1103,13 +1133,13 @@ func (a *App) SyncFinishLogin() (string, error) {
 	if err := a.ready(); err != nil {
 		return "", err
 	}
-	return a.core.SyncFinishLogin()
+	return a.core().SyncFinishLogin()
 }
 
 // SyncCancelLogin stops waiting for sign-in.
 func (a *App) SyncCancelLogin() {
-	if a.core != nil {
-		a.core.SyncCancelLogin()
+	if a.core() != nil {
+		a.core().SyncCancelLogin()
 	}
 }
 
@@ -1118,7 +1148,7 @@ func (a *App) SyncRepos() (core.SyncRepos, error) {
 	if err := a.ready(); err != nil {
 		return core.SyncRepos{}, err
 	}
-	return a.core.SyncRepos()
+	return a.core().SyncRepos()
 }
 
 // SyncInspect reports whether a repository already holds a vault.
@@ -1126,7 +1156,7 @@ func (a *App) SyncInspect(repo string) (vaultsync.RepoInfo, error) {
 	if err := a.ready(); err != nil {
 		return vaultsync.RepoInfo{}, err
 	}
-	return a.core.SyncInspect(repo)
+	return a.core().SyncInspect(repo)
 }
 
 // SyncConnect creates or joins the vault in repo and starts syncing.
@@ -1134,7 +1164,9 @@ func (a *App) SyncConnect(repo, password string) (vaultsync.Status, error) {
 	if err := a.ready(); err != nil {
 		return vaultsync.Status{}, err
 	}
-	return a.core.SyncConnect(repo, password)
+	st, err := a.core().SyncConnect(repo, password)
+	a.noteRepo()
+	return st, err
 }
 
 // SyncDisconnect stops syncing on this device.
@@ -1142,7 +1174,9 @@ func (a *App) SyncDisconnect() (vaultsync.Status, error) {
 	if err := a.ready(); err != nil {
 		return vaultsync.Status{}, err
 	}
-	return a.core.SyncDisconnect()
+	st, err := a.core().SyncDisconnect()
+	a.noteRepo()
+	return st, err
 }
 
 // SyncNow runs a sync pass immediately.
@@ -1150,13 +1184,121 @@ func (a *App) SyncNow() (vaultsync.Status, error) {
 	if err := a.ready(); err != nil {
 		return vaultsync.Status{}, err
 	}
-	return a.core.SyncNow()
+	return a.core().SyncNow()
 }
 
 // SyncWake asks for a sync pass soon (window focus).
 func (a *App) SyncWake() {
-	if a.core != nil {
-		a.core.SyncWake()
+	if a.core() != nil {
+		a.core().SyncWake()
+	}
+}
+
+// ---------------------------------------------------------------- vaults
+
+// ListVaults returns the vaults on this computer.
+func (a *App) ListVaults() ([]core.VaultProfile, error) {
+	if a.vaults == nil {
+		return nil, errNotReady
+	}
+	return a.vaults.List()
+}
+
+// CreateVault adds an empty vault and opens it, signed in to the same
+// GitHub account as the vault that was open. The UI reloads afterwards.
+func (a *App) CreateVault(name string) (core.VaultProfile, error) {
+	if err := a.ready(); err != nil {
+		return core.VaultProfile{}, err
+	}
+	p, err := a.vaults.Create(name)
+	if err != nil {
+		return p, err
+	}
+	acct, signedIn := a.core().SyncAccount()
+	if err := a.openVault(p.ID); err != nil {
+		return p, err
+	}
+	if signedIn {
+		_ = a.core().SyncUseAccount(acct)
+	}
+	return p, nil
+}
+
+// SwitchVault closes the open vault and opens another. Open terminals,
+// file browsers and forwards close. The UI reloads afterwards.
+func (a *App) SwitchVault(id string) error {
+	if a.vaults == nil {
+		return errNotReady
+	}
+	return a.openVault(id)
+}
+
+// RenameVault changes a vault's name.
+func (a *App) RenameVault(id, name string) error {
+	if a.vaults == nil {
+		return errNotReady
+	}
+	return a.vaults.Rename(id, name)
+}
+
+// DeleteVault erases a closed vault's data on this computer. Its synced
+// copy on GitHub is left untouched.
+func (a *App) DeleteVault(id string) error {
+	if a.vaults == nil {
+		return errNotReady
+	}
+	return a.vaults.Delete(id)
+}
+
+func (a *App) openVault(id string) error {
+	a.switchMu.Lock()
+	defer a.switchMu.Unlock()
+	prev, _, err := a.vaults.Active()
+	if err != nil {
+		return err
+	}
+	if prev.ID == id && a.core() != nil {
+		return nil
+	}
+	dir, err := a.vaults.SetActive(id)
+	if err != nil {
+		return err
+	}
+	if old := a.core(); old != nil {
+		old.Close()
+	}
+	c, err := core.Open(a.ctx, a.coreOptions(dir))
+	if err != nil {
+		// Go back to the vault that was open.
+		openErr := err
+		if dir, err = a.vaults.SetActive(prev.ID); err == nil {
+			c, err = core.Open(a.ctx, a.coreOptions(dir))
+		}
+		if err != nil {
+			a.cur.Store(nil)
+			a.initErr = err.Error()
+			return fmt.Errorf("couldn't open that vault: %w", openErr)
+		}
+		a.cur.Store(c)
+		c.Start()
+		return fmt.Errorf("couldn't open that vault: %w", openErr)
+	}
+	a.initErr = ""
+	a.cur.Store(c)
+	c.Start()
+	a.noteRepo()
+	return nil
+}
+
+// noteRepo records the open vault's repository in the vault list.
+func (a *App) noteRepo() {
+	c := a.core()
+	if c == nil || a.vaults == nil {
+		return
+	}
+	p, _, err := a.vaults.Active()
+	if err == nil {
+		_ = a.vaults.SetRepo(p.ID, c.SyncStatus().Repo)
 	}
 }
 
@@ -1176,10 +1318,10 @@ func (a *App) showWindow() {
 
 // GetAgentStatus describes AI agent access (MCP bridge).
 func (a *App) GetAgentStatus() models.AgentStatus {
-	if a.core == nil {
+	if a.core() == nil {
 		return models.AgentStatus{Command: agentCommand(), Grants: []models.AgentGrant{}}
 	}
-	return a.core.AgentStatus()
+	return a.core().AgentStatus()
 }
 
 // SetAgentEnabled turns AI agent access on or off.
@@ -1187,7 +1329,7 @@ func (a *App) SetAgentEnabled(on bool) (models.Settings, error) {
 	if err := a.ready(); err != nil {
 		return models.Settings{}, err
 	}
-	return a.core.SetAgentEnabled(on)
+	return a.core().SetAgentEnabled(on)
 }
 
 // SetAgentHostMode opens a host to agents ("ask" or "auto") or closes it ("").
@@ -1195,30 +1337,30 @@ func (a *App) SetAgentHostMode(hostID, mode string) (models.Settings, error) {
 	if err := a.ready(); err != nil {
 		return models.Settings{}, err
 	}
-	return a.core.SetAgentHostMode(hostID, mode)
+	return a.core().SetAgentHostMode(hostID, mode)
 }
 
 // RevokeAgentGrants makes hosts in "ask" mode ask again.
 func (a *App) RevokeAgentGrants() {
-	if a.core != nil {
-		a.core.RevokeAgentGrants()
+	if a.core() != nil {
+		a.core().RevokeAgentGrants()
 	}
 }
 
 // PendingAgentApprovals lists agent actions waiting for approval.
 func (a *App) PendingAgentApprovals() []models.AgentApproval {
-	if a.core == nil {
+	if a.core() == nil {
 		return []models.AgentApproval{}
 	}
-	return a.core.PendingAgentApprovals()
+	return a.core().PendingAgentApprovals()
 }
 
 // ResolveAgentApproval answers an approval: deny, once or session.
 func (a *App) ResolveAgentApproval(id, decision string) bool {
-	if a.core == nil {
+	if a.core() == nil {
 		return false
 	}
-	return a.core.ResolveAgentApproval(id, decision)
+	return a.core().ResolveAgentApproval(id, decision)
 }
 
 // ListAgentLog returns recent agent actions, newest first.
@@ -1226,7 +1368,7 @@ func (a *App) ListAgentLog(limit int) ([]models.AgentLogEntry, error) {
 	if err := a.ready(); err != nil {
 		return []models.AgentLogEntry{}, err
 	}
-	return a.core.AgentLog(limit)
+	return a.core().AgentLog(limit)
 }
 
 // ClearAgentLog deletes the agent activity log.
@@ -1234,5 +1376,5 @@ func (a *App) ClearAgentLog() error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.ClearAgentLog()
+	return a.core().ClearAgentLog()
 }

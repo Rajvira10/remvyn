@@ -27,7 +27,7 @@ func (a *App) ListVaultItems() ([]models.VaultItem, error) {
 	if err := a.ready(); err != nil {
 		return []models.VaultItem{}, err
 	}
-	return a.core.VaultItems()
+	return a.core().VaultItems()
 }
 
 // SaveVaultItem creates or updates a vault item.
@@ -35,7 +35,7 @@ func (a *App) SaveVaultItem(in models.VaultItemInput) (models.VaultItem, error) 
 	if err := a.ready(); err != nil {
 		return in.Item, err
 	}
-	return a.core.SaveVaultItem(in)
+	return a.core().SaveVaultItem(in)
 }
 
 // SetVaultItemFavorite stars or unstars a vault item.
@@ -43,7 +43,7 @@ func (a *App) SetVaultItemFavorite(id string, favorite bool) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.SetVaultItemFavorite(id, favorite)
+	return a.core().SetVaultItemFavorite(id, favorite)
 }
 
 // DeleteVaultItem removes a vault item.
@@ -51,7 +51,7 @@ func (a *App) DeleteVaultItem(id string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.core.DeleteVaultItem(id)
+	return a.core().DeleteVaultItem(id)
 }
 
 // RevealVaultItem decrypts a vault item's secrets.
@@ -59,7 +59,7 @@ func (a *App) RevealVaultItem(id string) (models.VaultSecret, error) {
 	if err := a.ready(); err != nil {
 		return models.VaultSecret{}, err
 	}
-	return a.core.RevealVaultItem(id)
+	return a.core().RevealVaultItem(id)
 }
 
 // VaultItemTOTP returns a vault item's current two-factor code.
@@ -67,7 +67,7 @@ func (a *App) VaultItemTOTP(id string) (models.TOTPCode, error) {
 	if err := a.ready(); err != nil {
 		return models.TOTPCode{}, err
 	}
-	return a.core.VaultItemTOTP(id)
+	return a.core().VaultItemTOTP(id)
 }
 
 // CopyVaultItemValue copies one value of an item to the clipboard without
@@ -77,7 +77,7 @@ func (a *App) CopyVaultItemValue(id, field string) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	v, err := a.core.VaultItemValue(id, field)
+	v, err := a.core().VaultItemValue(id, field)
 	if err != nil {
 		return err
 	}

@@ -32,6 +32,26 @@ export namespace core {
 		    return a;
 		}
 	}
+	export class VaultProfile {
+	    id: string;
+	    name: string;
+	    repo: string;
+	    createdAt: number;
+	    current: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new VaultProfile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.repo = source["repo"];
+	        this.createdAt = source["createdAt"];
+	        this.current = source["current"];
+	    }
+	}
 
 }
 
@@ -1574,6 +1594,7 @@ export namespace vaultsync {
 	    repo: string;
 	    repoUrl: string;
 	    login: string;
+	    signedIn: boolean;
 	    state: string;
 	    lastSyncAt: number;
 	    error: string;
@@ -1595,6 +1616,7 @@ export namespace vaultsync {
 	        this.repo = source["repo"];
 	        this.repoUrl = source["repoUrl"];
 	        this.login = source["login"];
+	        this.signedIn = source["signedIn"];
 	        this.state = source["state"];
 	        this.lastSyncAt = source["lastSyncAt"];
 	        this.error = source["error"];

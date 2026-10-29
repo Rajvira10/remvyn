@@ -49,6 +49,9 @@ type Status struct {
 	Repo       string `json:"repo"`
 	RepoURL    string `json:"repoUrl"`
 	Login      string `json:"login"`
+	// SignedIn is true when a GitHub sign-in is ready for choosing a
+	// repository, so connecting can skip the device code.
+	SignedIn bool `json:"signedIn"`
 	// State is off, idle, syncing, error or locked.
 	State      string `json:"state"`
 	LastSyncAt int64  `json:"lastSyncAt"`
@@ -167,7 +170,7 @@ func (s *Service) Status() Status {
 func (s *Service) statusLocked() Status {
 	id, slug, builtIn := s.clientID()
 	st := Status{AppConfigured: id != "", ClientID: id, AppSlug: slug, BuiltInApp: builtIn, Connected: s.cfg.connected(),
-		Repo: s.cfg.Repo, Login: s.cfg.Login, State: s.state, LastSyncAt: s.cfg.LastSyncAt,
+		Repo: s.cfg.Repo, Login: s.cfg.Login, SignedIn: s.pendingTk != "", State: s.state, LastSyncAt: s.cfg.LastSyncAt,
 		NewRepoURL: s.o.Endpoints.Web + "/new?" + url.Values{"name": {"remvyn-vault"}, "visibility": {"private"},
 			"description": {"Encrypted Remvyn vault (synced by the Remvyn app)"}}.Encode()}
 	if slug != "" {
@@ -295,6 +298,53 @@ func (s *Service) CancelLogin() {
 	}
 	s.pendingDC = nil
 	s.mu.Unlock()
+}
+
+// Account is a GitHub sign-in that can be handed to another vault on this
+// computer, so one GitHub account serves every vault.
+type Account struct {
+	Login    string
+	ClientID string
+	AppSlug  string
+	token    string
+}
+
+// Account returns this vault's GitHub sign-in, if it has one. A connected
+// vault's token is sealed, so the store must be unlocked.
+func (s *Service) Account() (Account, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	tok := s.pendingTk
+	if tok == "" && len(s.cfg.TokenSealed) > 0 {
+		if b, err := s.o.Store.OpenSecret(s.cfg.TokenSealed); err == nil {
+			tok = string(b)
+		}
+	}
+	if tok == "" {
+		return Account{}, false
+	}
+	return Account{Login: s.cfg.Login, ClientID: s.cfg.ClientID, AppSlug: s.cfg.AppSlug, token: tok}, true
+}
+
+// UseAccount signs this vault in with an account from another vault. It
+// does nothing once the vault is connected.
+func (s *Service) UseAccount(a Account) error {
+	if a.token == "" {
+		return nil
+	}
+	s.mu.Lock()
+	if s.cfg.connected() {
+		s.mu.Unlock()
+		return nil
+	}
+	s.pendingTk, s.cfg.Login = a.token, a.Login
+	if a.ClientID != "" {
+		s.cfg.ClientID, s.cfg.AppSlug = a.ClientID, a.AppSlug
+	}
+	err := s.saveLocked()
+	s.mu.Unlock()
+	s.emitStatus()
+	return err
 }
 
 func (s *Service) loginGH() (*GitHub, error) {

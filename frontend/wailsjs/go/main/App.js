@@ -82,6 +82,10 @@ export function CreateRemoteFile(arg1, arg2, arg3) {
   return window['go']['main']['App']['CreateRemoteFile'](arg1, arg2, arg3);
 }
 
+export function CreateVault(arg1) {
+  return window['go']['main']['App']['CreateVault'](arg1);
+}
+
 export function DeleteAlertRule(arg1) {
   return window['go']['main']['App']['DeleteAlertRule'](arg1);
 }
@@ -108,6 +112,10 @@ export function DeleteSnippet(arg1) {
 
 export function DeleteUptimeCheck(arg1) {
   return window['go']['main']['App']['DeleteUptimeCheck'](arg1);
+}
+
+export function DeleteVault(arg1) {
+  return window['go']['main']['App']['DeleteVault'](arg1);
 }
 
 export function DeleteVaultItem(arg1) {
@@ -270,6 +278,10 @@ export function ListVaultItems() {
   return window['go']['main']['App']['ListVaultItems']();
 }
 
+export function ListVaults() {
+  return window['go']['main']['App']['ListVaults']();
+}
+
 export function Lock() {
   return window['go']['main']['App']['Lock']();
 }
@@ -386,6 +398,10 @@ export function RenameRemote(arg1, arg2, arg3) {
   return window['go']['main']['App']['RenameRemote'](arg1, arg2, arg3);
 }
 
+export function RenameVault(arg1, arg2) {
+  return window['go']['main']['App']['RenameVault'](arg1, arg2);
+}
+
 export function ResetVault() {
   return window['go']['main']['App']['ResetVault']();
 }
@@ -488,6 +504,10 @@ export function StartForward(arg1) {
 
 export function StopForward(arg1) {
   return window['go']['main']['App']['StopForward'](arg1);
+}
+
+export function SwitchVault(arg1) {
+  return window['go']['main']['App']['SwitchVault'](arg1);
 }
 
 export function SyncCancelLogin() {
