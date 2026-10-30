@@ -1,6 +1,21 @@
 # Remvyn
 
-Remvyn is a desktop SSH client in the spirit of Termius. It saves your servers, opens tabbed terminals, transfers files over SFTP, manages SSH keys, and runs port-forwarding tunnels. It is built with Wails v2, Go, React, TypeScript, xterm.js and SQLite.
+**Open-source SSH and server management for your desktop, with encrypted sync and controlled AI-agent access.**
+
+Connect to servers, transfer files, monitor Linux hosts, and manage credentials from one app. Remvyn also lets you grant AI coding agents access to selected servers through MCP, without exposing saved SSH passwords or private keys to the agent.
+
+[**Download Remvyn**](https://github.com/Rajvira10/remvyn/releases) · [Installation instructions](#install) · [AI agent setup](#ai-agents-claude-code)
+
+### Why Remvyn?
+
+- **Keep working through disconnects.** Persistent tmux-backed terminals can reconnect and resume sessions after network interruptions or app restarts, when tmux is available on the server.
+- **Manage servers without installing agents.** Inspect CPU, memory, disks, Docker containers, systemd services, and alerts over SSH on Linux hosts.
+- **Give AI agents controlled access.** Choose which servers an MCP client can use, require approval for actions, and keep SSH credentials inside Remvyn.
+- **Bring your tools together.** Tabbed and split terminals, SFTP with a file editor, port forwarding, SSH keys, snippets, and encrypted GitHub-backed vault sync.
+
+**Platforms:** Windows, macOS, Linux, and an Android companion app. See [Releases](https://github.com/Rajvira10/remvyn/releases) for available builds. Windows builds are not yet code-signed and macOS builds are not yet notarized; review the [installation notes](#install) before installing.
+
+Built with Wails v2, Go, React, TypeScript, xterm.js, and SQLite.
 
 ## Features
 
