@@ -74,17 +74,26 @@ data class SyncConfig(
     val lastSyncAt: Long = 0,
 )
 
+/** One vault on this phone, synced from its own repository. */
+data class VaultProfile(val id: String, val name: String, val repo: String, val branch: String = "main", val lastSyncAt: Long = 0)
+
 /**
  * Keeps the repository's encrypted files on the device. Nothing is stored
  * decrypted: records stay encrypted with the sync key, which only exists
  * wrapped by the master password, so opening the app needs the password.
  * The GitHub token is sealed with a non-exportable Android Keystore key.
+ *
+ * Like the desktop, the phone can keep several vaults under one GitHub
+ * sign-in, each from its own repository. The first vault keeps its cache in
+ * the vault folder itself (so 2.7.0 installs carry on unchanged); the others
+ * live under vaults/<id>. vaults.json lists them and says which one is open.
  */
 class VaultStore(private val ctx: Context) {
     private val dir = File(ctx.filesDir, "vault").apply { mkdirs() }
     private val configFile = File(dir, "config.json")
-    private val cacheFile = File(dir, "cache.json")
+    private val vaultsFile = File(dir, "vaults.json")
     private val trustedFile = File(dir, "trusted-hosts.json")
+    private val cacheFile get() = File(vaultDir(activeId()), "cache.json")
 
     private var cipher: RecordCipher? = null
     var vault: Vault? = null
@@ -94,25 +103,128 @@ class VaultStore(private val ctx: Context) {
 
     // ------------------------------------------------------------ config
 
+    /** The GitHub sign-in plus the open vault's repository. */
     fun config(): SyncConfig {
         if (!configFile.exists()) return SyncConfig()
         val o = JSONObject(configFile.readText())
         val token = o.optString("token").takeIf { it.isNotEmpty() }?.let { runCatching { unsealToken(it) }.getOrDefault("") } ?: ""
+        val v = profiles().firstOrNull { it.id == activeId() }
         return SyncConfig(o.optString("web", "https://github.com"), o.optString("api", "https://api.github.com"),
-            o.optString("clientId"), o.optString("appSlug"), o.optString("repo"), o.optString("branch", "main"),
-            o.optString("login"), token, o.optLong("lastSyncAt"))
+            o.optString("clientId"), o.optString("appSlug"), v?.repo ?: "", v?.branch ?: "main",
+            o.optString("login"), token, v?.lastSyncAt ?: 0)
     }
 
+    /** Saves the GitHub sign-in, and the repository for the open vault. */
     fun saveConfig(c: SyncConfig) {
         val o = JSONObject()
             .put("web", c.web).put("api", c.api).put("clientId", c.clientId).put("appSlug", c.appSlug)
-            .put("repo", c.repo).put("branch", c.branch).put("login", c.login).put("lastSyncAt", c.lastSyncAt)
-            .put("token", if (c.token.isEmpty()) "" else sealToken(c.token))
+            .put("login", c.login).put("token", if (c.token.isEmpty()) "" else sealToken(c.token))
         writeAtomic(configFile, o.toString())
+        val (active, list) = loadVaults()
+        val i = list.indexOfFirst { it.id == active }
+        if (i < 0) list += VaultProfile(active, DEFAULT_NAME, c.repo, c.branch, c.lastSyncAt)
+        else list[i] = list[i].copy(repo = c.repo, branch = c.branch, lastSyncAt = c.lastSyncAt)
+        saveVaults(active, list)
     }
 
     /** A vault has been downloaded to this device. */
     fun hasVault(): Boolean = cacheFile.exists() && config().repo.isNotEmpty()
+
+    /** A GitHub sign-in is saved, so another vault can be added without signing in again. */
+    fun signedIn(): Boolean = config().token.isNotEmpty()
+
+    // ------------------------------------------------------------ vaults
+
+    fun profiles(): List<VaultProfile> = loadVaults().second
+
+    fun activeId(): String = loadVaults().first
+
+    fun active(): VaultProfile? = profiles().firstOrNull { it.id == activeId() }
+
+    private fun vaultDir(id: String) = if (id == DEFAULT_ID) dir else File(dir, "vaults/$id")
+
+    private fun loadVaults(): Pair<String, MutableList<VaultProfile>> {
+        if (!vaultsFile.exists()) {
+            // 2.7.0 kept one vault's repository in config.json.
+            if (!configFile.exists()) return DEFAULT_ID to mutableListOf()
+            val o = JSONObject(configFile.readText())
+            val repo = o.optString("repo")
+            if (repo.isEmpty()) return DEFAULT_ID to mutableListOf()
+            return DEFAULT_ID to mutableListOf(VaultProfile(DEFAULT_ID, DEFAULT_NAME, repo, o.optString("branch", "main"), o.optLong("lastSyncAt")))
+        }
+        val o = JSONObject(vaultsFile.readText())
+        val arr = o.optJSONArray("vaults") ?: JSONArray()
+        val list = (0 until arr.length()).map {
+            val v = arr.getJSONObject(it)
+            VaultProfile(v.getString("id"), v.optString("name"), v.optString("repo"), v.optString("branch", "main"), v.optLong("lastSyncAt"))
+        }.toMutableList()
+        val active = o.optString("active").takeIf { id -> list.any { it.id == id } } ?: list.firstOrNull()?.id ?: DEFAULT_ID
+        return active to list
+    }
+
+    private fun saveVaults(active: String, list: List<VaultProfile>) {
+        val arr = JSONArray()
+        for (v in list) {
+            arr.put(JSONObject().put("id", v.id).put("name", v.name).put("repo", v.repo).put("branch", v.branch).put("lastSyncAt", v.lastSyncAt))
+        }
+        writeAtomic(vaultsFile, JSONObject().put("active", active).put("vaults", arr).toString())
+    }
+
+    /** Opens another vault on this phone; it starts locked. */
+    fun switchTo(id: String) {
+        val (_, list) = loadVaults()
+        require(list.any { it.id == id }) { "No such vault" }
+        lock()
+        saveVaults(id, list)
+    }
+
+    fun rename(id: String, name: String) {
+        val (active, list) = loadVaults()
+        val i = list.indexOfFirst { it.id == id }
+        if (i < 0) return
+        list[i] = list[i].copy(name = name.trim().take(MAX_NAME).ifEmpty { list[i].name })
+        saveVaults(active, list)
+    }
+
+    /**
+     * Downloads another vault with the saved GitHub sign-in and opens it. If
+     * that fails (say, a wrong password) the vault that was open stays open.
+     */
+    fun addVault(gh: GitHub, repo: Repo, password: String) {
+        val (prevActive, list) = loadVaults()
+        if (list.any { it.repo == repo.fullName }) throw GitHubException("That repository is already a vault on this phone")
+        val prevCipher = cipher
+        val prevVault = vault
+        val id = java.util.UUID.randomUUID().toString().replace("-", "").take(12)
+        val used = list.map { it.name }.toSet()
+        val base = repo.fullName.substringAfter('/')
+        val name = generateSequence(1) { it + 1 }.map { if (it == 1) base else "$base $it" }.first { it !in used }
+        list += VaultProfile(id, name, repo.fullName, repo.defaultBranch)
+        saveVaults(id, list)
+        try {
+            vaultDir(id).mkdirs()
+            join(gh, repo, password)
+        } catch (e: Exception) {
+            vaultDir(id).deleteRecursively()
+            saveVaults(prevActive, list.filter { it.id != id })
+            cipher = prevCipher
+            vault = prevVault
+            throw e
+        }
+    }
+
+    /** Removes a vault from this phone (it stays in GitHub). The last one signs out. */
+    fun remove(id: String) {
+        val (active, list) = loadVaults()
+        val rest = list.filter { it.id != id }
+        if (rest.isEmpty()) {
+            erase()
+            return
+        }
+        if (id == active) lock()
+        if (id == DEFAULT_ID) File(dir, "cache.json").delete() else vaultDir(id).deleteRecursively()
+        saveVaults(if (id == active) rest.first().id else active, rest)
+    }
 
     // ------------------------------------------------------------ cache
 
@@ -269,6 +381,7 @@ class VaultStore(private val ctx: Context) {
     // ------------------------------------------------------------ helpers
 
     private fun writeAtomic(f: File, text: String) {
+        f.parentFile?.mkdirs()
         val tmp = File(f.parentFile, f.name + ".tmp")
         tmp.writeText(text)
         if (!tmp.renameTo(f)) {
@@ -303,5 +416,8 @@ class VaultStore(private val ctx: Context) {
 
     companion object {
         private const val ALIAS = "remvyn-github-token"
+        const val DEFAULT_ID = "default"
+        private const val DEFAULT_NAME = "Default"
+        private const val MAX_NAME = 60
     }
 }

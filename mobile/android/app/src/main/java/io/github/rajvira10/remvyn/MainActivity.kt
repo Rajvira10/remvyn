@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
                 Surface(Modifier.fillMaxSize(), color = Background) {
                     when (val s = app.screen) {
                         Screen.Setup -> SetupScreen(app)
+                        Screen.AddVault -> SetupScreen(app, adding = true)
                         Screen.Unlock -> UnlockScreen(app)
                         Screen.Hosts -> HostsScreen(app)
                         Screen.Passwords -> PasswordsScreen(app)

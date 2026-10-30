@@ -45,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -83,11 +84,17 @@ private fun Centered(content: @Composable () -> Unit) {
 
 private enum class Step { WELCOME, CODE, REPO, PASSWORD }
 
+/**
+ * First-time setup: GitHub sign-in, repository, master password. With
+ * [adding], the saved sign-in is reused to add another vault, starting at
+ * the repository picker.
+ */
 @Composable
-fun SetupScreen(app: AppState) {
+fun SetupScreen(app: AppState, adding: Boolean = false) {
     val ctx = LocalContext.current
     val saved = remember { app.store.config() }
-    var step by remember { mutableStateOf(Step.WELCOME) }
+    val usedRepos = remember { if (adding) app.store.profiles().map { it.repo }.toSet() else emptySet() }
+    var step by remember { mutableStateOf(if (adding) Step.REPO else Step.WELCOME) }
     var clientId by remember { mutableStateOf(BuildConfig.GITHUB_CLIENT_ID.ifEmpty { saved.clientId }) }
     var slug by remember { mutableStateOf(BuildConfig.GITHUB_APP_SLUG.ifEmpty { saved.appSlug }) }
     var web by remember { mutableStateOf(saved.web) }
@@ -96,8 +103,8 @@ fun SetupScreen(app: AppState) {
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var code by remember { mutableStateOf<DeviceCode?>(null) }
-    var gh by remember { mutableStateOf<GitHub?>(null) }
-    var login by remember { mutableStateOf("") }
+    var gh by remember { mutableStateOf(if (adding) GitHub(saved.web, saved.api, saved.clientId, saved.token) else null) }
+    var login by remember { mutableStateOf(if (adding) saved.login else "") }
     var repos by remember { mutableStateOf<List<Repo>?>(null) }
     var installed by remember { mutableStateOf(true) }
     var picked by remember { mutableStateOf<Repo?>(null) }
@@ -115,7 +122,9 @@ fun SetupScreen(app: AppState) {
                 r.onSuccess { list ->
                     installed = list != null
                     repos = list ?: emptyList()
-                    if (picked == null) picked = list?.firstOrNull { it.private && (it.fullName.contains("remvyn", true) || it.fullName.contains("flux", true)) }
+                    if (picked == null) picked = list?.firstOrNull {
+                        it.private && it.fullName !in usedRepos && (it.fullName.contains("remvyn", true) || it.fullName.contains("flux", true))
+                    }
                 }
                 r.onFailure { error = it.message }
             }
@@ -159,6 +168,11 @@ fun SetupScreen(app: AppState) {
         error = null
         Thread {
             try {
+                if (adding) {
+                    app.store.addVault(g, repo, password)
+                    onMain { busy = false; password = ""; app.vaultAdded() }
+                    return@Thread
+                }
                 app.store.saveConfig(SyncConfig(web.trimEnd('/'), api.trimEnd('/'), clientId.trim(), slug.trim(), repo.fullName,
                     repo.defaultBranch, login, g.token))
                 app.store.join(g, repo, password)
@@ -172,6 +186,9 @@ fun SetupScreen(app: AppState) {
     }
 
     DisposableEffect(Unit) { onDispose { attempt.incrementAndGet() } }
+    LaunchedEffect(Unit) { if (adding) loadRepos() }
+    fun leave() { app.screen = if (app.store.unlocked) Screen.Settings else Screen.Unlock }
+    if (adding) androidx.activity.compose.BackHandler { if (step == Step.PASSWORD) step = Step.REPO else leave() }
 
     Centered {
         Logo()
@@ -233,22 +250,29 @@ fun SetupScreen(app: AppState) {
             }
 
             Step.REPO -> {
-                Text("Choose your vault", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Text(if (adding) "Add a vault" else "Choose your vault", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
-                Text("Signed in as $login. Pick the private repository your computer syncs to.", color = Muted, textAlign = TextAlign.Center)
+                Text(
+                    if (adding) "Signed in as $login. Pick the private repository another vault on your computer syncs to."
+                    else "Signed in as $login. Pick the private repository your computer syncs to.",
+                    color = Muted, textAlign = TextAlign.Center,
+                )
                 Spacer(Modifier.height(16.dp))
                 val list = repos
                 if (list == null) CircularProgressIndicator(Modifier.size(28.dp))
                 else {
                     list.forEach { r ->
+                        val used = r.fullName in usedRepos
                         Row(
                             Modifier.fillMaxWidth().padding(vertical = 3.dp)
                                 .background(if (picked == r) SurfaceHigh else Surface, RoundedCornerShape(10.dp))
-                                .clickable { picked = r }.padding(14.dp),
+                                .clickable(enabled = !used) { picked = r }.padding(14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(r.fullName, fontFamily = FontFamily.Monospace, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                            if (!r.private) Text("public", color = Warning, fontSize = 12.sp)
+                            Text(r.fullName, fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = if (used) Muted else Color.Unspecified,
+                                modifier = Modifier.weight(1f))
+                            if (used) Text("on this phone", color = Muted, fontSize = 12.sp)
+                            else if (!r.private) Text("public", color = Warning, fontSize = 12.sp)
                             if (picked == r) Icon(Icons.Default.Check, null, tint = Primary, modifier = Modifier.size(18.dp))
                         }
                     }
@@ -272,15 +296,21 @@ fun SetupScreen(app: AppState) {
                 }
                 error?.let { Spacer(Modifier.height(8.dp)); Text(it, color = Danger, fontSize = 13.sp, textAlign = TextAlign.Center) }
                 Spacer(Modifier.height(16.dp))
-                Button(onClick = { error = null; step = Step.PASSWORD }, enabled = picked?.private == true, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                Button(onClick = { error = null; step = Step.PASSWORD }, enabled = picked?.private == true && picked?.fullName !in usedRepos,
+                    modifier = Modifier.fillMaxWidth().height(48.dp)) {
                     Text("Continue")
                 }
+                if (adding) TextButton(onClick = { leave() }) { Text("Cancel") }
             }
 
             Step.PASSWORD -> {
                 Text("Master password", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
-                Text("Enter the master password you use in Remvyn on your computer. It never leaves this phone.", color = Muted, textAlign = TextAlign.Center)
+                Text(
+                    if (adding) "Enter the master password of the vault in ${picked?.fullName}. It never leaves this phone."
+                    else "Enter the master password you use in Remvyn on your computer. It never leaves this phone.",
+                    color = Muted, textAlign = TextAlign.Center,
+                )
                 Spacer(Modifier.height(18.dp))
                 val focus = remember { FocusRequester() }
                 LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
@@ -308,6 +338,9 @@ fun UnlockScreen(app: AppState) {
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var confirmErase by remember { mutableStateOf(false) }
+    val profiles = remember(app.version) { app.store.profiles() }
+    val active = remember(app.version) { app.store.activeId() }
+    var pickVault by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
 
@@ -333,7 +366,9 @@ fun UnlockScreen(app: AppState) {
             Text("Remvyn is locked", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
         }
         Spacer(Modifier.height(6.dp))
-        Text("Enter your master password.", color = Muted)
+        val name = profiles.firstOrNull { it.id == active }?.name
+        Text(if (profiles.size > 1 && name != null) "Enter the master password for “$name”." else "Enter your master password.",
+            color = Muted, textAlign = TextAlign.Center)
         Spacer(Modifier.height(20.dp))
         OutlinedTextField(
             password, { password = it; error = null }, label = { Text("Master password") }, singleLine = true,
@@ -347,15 +382,32 @@ fun UnlockScreen(app: AppState) {
         Button(onClick = { unlock() }, enabled = password.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth().height(48.dp)) {
             if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text("Unlock")
         }
+        if (profiles.size > 1) {
+            Spacer(Modifier.height(4.dp))
+            TextButton(onClick = { pickVault = !pickVault }) { Text("Open another vault") }
+            if (pickVault) profiles.filter { it.id != active }.forEach { v ->
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 3.dp).background(Surface, RoundedCornerShape(10.dp))
+                        .clickable { pickVault = false; password = ""; error = null; app.switchVault(v.id) }.padding(14.dp),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(v.name, fontSize = 14.sp)
+                        Text(v.repo, color = Muted, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
         Spacer(Modifier.height(8.dp))
         if (!confirmErase) {
             TextButton(onClick = { confirmErase = true }) { Text("Forgot password?", color = Muted) }
         } else {
             Text(
-                "The password can’t be recovered. You can sign out, which removes the vault from this phone; it stays safe in GitHub.",
+                if (profiles.size > 1) "The password can’t be recovered. You can remove this vault from the phone; it stays safe in GitHub."
+                else "The password can’t be recovered. You can sign out, which removes the vault from this phone; it stays safe in GitHub.",
                 color = Muted, fontSize = 13.sp, textAlign = TextAlign.Center,
             )
-            TextButton(onClick = { app.signOut() }) { Text("Sign out of this phone", color = Danger) }
+            if (profiles.size > 1) TextButton(onClick = { confirmErase = false; app.removeVault(active) }) { Text("Remove this vault", color = Danger) }
+            else TextButton(onClick = { app.signOut() }) { Text("Sign out of this phone", color = Danger) }
         }
     }
 }

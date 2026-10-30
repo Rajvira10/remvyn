@@ -26,6 +26,8 @@ import java.util.concurrent.CompletableFuture
 
 sealed interface Screen {
     data object Setup : Screen
+    /** Picking another repository to add as a vault, with the saved sign-in. */
+    data object AddVault : Screen
     data object Unlock : Screen
     data object Hosts : Screen
     data object Passwords : Screen
@@ -176,8 +178,52 @@ class AppState(ctx: Context) {
 
     fun unlocked() {
         vault = store.vault
+        lastSyncAt = store.config().lastSyncAt
+        syncError = null
         screen = Screen.Hosts
         sync()
+    }
+
+    private fun closeSessions() {
+        clearSecretClip()
+        sessions.values.forEach { it.close() }
+        sessions.clear()
+    }
+
+    /** A vault was added and opened; terminals of the previous one close, like switching. */
+    fun vaultAdded() {
+        closeSessions()
+        version++
+        unlocked()
+    }
+
+    /** Opens another vault on this phone. It starts locked. */
+    fun switchVault(id: String) {
+        if (id == store.activeId()) return
+        closeSessions()
+        store.switchTo(id)
+        vault = null
+        syncError = null
+        lastSyncAt = store.config().lastSyncAt
+        version++
+        screen = Screen.Unlock
+    }
+
+    /** Removes a vault from this phone. Removing the open one locks and opens the next; the last one signs out. */
+    fun removeVault(id: String) {
+        val wasActive = id == store.activeId()
+        if (wasActive) closeSessions()
+        store.remove(id)
+        version++
+        when {
+            store.profiles().isEmpty() -> signOut()
+            wasActive -> {
+                vault = null
+                syncError = null
+                lastSyncAt = store.config().lastSyncAt
+                screen = Screen.Unlock
+            }
+        }
     }
 
     fun sync() {
