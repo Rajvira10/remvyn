@@ -42,6 +42,21 @@ class VaultsTest {
         assertEquals("a", Vaults(root).current)
     }
 
+    @Test fun namesVaultsAndRenames() {
+        val root = tmp.newFolder()
+        val v = Vaults(root)
+        download(v, Vaults.DEFAULT, "me/remvyn-vault")
+        download(v, "a", "me/work-servers")
+        assertEquals(listOf("Default", "work-servers"), v.list().map { it.name })
+        v.rename("a", "  Work  ")
+        v.rename(Vaults.DEFAULT, "   ") // blank: ignored
+        v.current = "a" // keeps the names
+        assertEquals(listOf("Default", "Work"), Vaults(root).list().map { it.name })
+        v.remove("a")
+        download(v, "a", "me/again")
+        assertEquals("again", v.list()[1].name)
+    }
+
     @Test fun removesAndCleansUp() {
         val root = tmp.newFolder()
         val v = Vaults(root)

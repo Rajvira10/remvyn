@@ -378,8 +378,8 @@ private fun UnlockVault(app: AppState) {
         val others = app.vaultList.filter { it.id != app.currentVault?.id }
         if (others.isEmpty()) Text("Enter your master password.", color = Muted)
         else {
-            Text("Enter the master password for", color = Muted)
-            Text(app.currentVault?.repo ?: "", fontFamily = FontFamily.Monospace, fontSize = 13.sp)
+            Text("Enter the master password for ${app.currentVault?.name ?: ""}", color = Muted, textAlign = TextAlign.Center)
+            Text(app.currentVault?.repo ?: "", color = Muted, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
         }
         Spacer(Modifier.height(20.dp))
         OutlinedTextField(
@@ -414,7 +414,7 @@ private fun UnlockVault(app: AppState) {
             Spacer(Modifier.height(16.dp))
             Text("Open another vault", color = Muted, fontSize = 12.sp)
             others.forEach { v ->
-                TextButton(onClick = { app.switchVault(v.id) }) { Text(v.repo, fontFamily = FontFamily.Monospace, fontSize = 13.sp) }
+                TextButton(onClick = { app.switchVault(v.id) }) { Text(v.name) }
             }
         }
     }

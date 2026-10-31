@@ -15,6 +15,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,6 +39,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,6 +67,7 @@ fun SettingsScreen(app: AppState) {
     val cfg = remember(app.lastSyncAt) { app.store.config() }
     var confirmSignOut by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf<VaultInfo?>(null) }
+    var renaming by remember { mutableStateOf<VaultInfo?>(null) }
     BackHandler { app.screen = app.lastTab }
 
     Scaffold(
@@ -106,9 +115,12 @@ fun SettingsScreen(app: AppState) {
                             .clickable(enabled = !open) { app.switchVault(v.id) }.padding(start = 12.dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(v.repo, fontFamily = FontFamily.Monospace, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                        if (open) Text("open", color = Primary, fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
-                        else TextButton(onClick = { confirmRemove = v }) { Text("Remove", color = Muted, fontSize = 12.sp) }
+                        Column(Modifier.weight(1f)) {
+                            Text(v.name, fontSize = 14.sp, fontWeight = if (open) FontWeight.SemiBold else FontWeight.Normal)
+                            Text(if (open) "${v.repo} · open" else v.repo, color = Muted, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                        }
+                        IconButton(onClick = { renaming = v }) { Icon(Icons.Default.Edit, "Rename", tint = Muted, modifier = Modifier.size(18.dp)) }
+                        if (!open) IconButton(onClick = { confirmRemove = v }) { Icon(Icons.Default.Delete, "Remove", tint = Muted, modifier = Modifier.size(18.dp)) }
                     }
                 }
                 Spacer(Modifier.size(8.dp))
@@ -135,11 +147,27 @@ fun SettingsScreen(app: AppState) {
         }
     }
 
+    renaming?.let { v ->
+        // Starts selected, so typing replaces it.
+        var name by remember(v.id) { mutableStateOf(TextFieldValue(v.name, TextRange(0, v.name.length))) }
+        val focus = remember { FocusRequester() }
+        LaunchedEffect(v.id) { runCatching { focus.requestFocus() } }
+        AlertDialog(
+            onDismissRequest = { renaming = null },
+            title = { Text("Rename vault") },
+            text = { OutlinedTextField(name, { name = it }, singleLine = true, label = { Text("Name") }, modifier = Modifier.focusRequester(focus)) },
+            confirmButton = {
+                TextButton(onClick = { app.renameVault(v.id, name.text); renaming = null }, enabled = name.text.isNotBlank()) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { renaming = null }) { Text("Cancel") } },
+        )
+    }
+
     confirmRemove?.let { v ->
         AlertDialog(
             onDismissRequest = { confirmRemove = null },
             title = { Text("Remove this vault from the phone?") },
-            text = { Text("${v.repo} is deleted from this phone. It stays in GitHub and on your computer, and you can add it again.") },
+            text = { Text("${v.name} (${v.repo}) is deleted from this phone. It stays in GitHub and on your computer, and you can add it again.") },
             confirmButton = { TextButton(onClick = { confirmRemove = null; app.removeVault(v.id) }) { Text("Remove", color = Danger) } },
             dismissButton = { TextButton(onClick = { confirmRemove = null }) { Text("Cancel") } },
         )

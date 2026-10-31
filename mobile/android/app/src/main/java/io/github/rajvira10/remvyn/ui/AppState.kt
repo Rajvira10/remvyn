@@ -200,6 +200,11 @@ class AppState(ctx: Context) {
         unlocked()
     }
 
+    fun renameVault(id: String, name: String) {
+        vaults.rename(id, name)
+        vaultList = vaults.list()
+    }
+
     /** Deletes a vault from this phone; removing the open one moves to another, or to setup. */
     fun removeVault(id: String) {
         if (id == currentId) {
