@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -39,6 +40,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.rajvira10.remvyn.BuildConfig
+import io.github.rajvira10.remvyn.sync.VaultInfo
+import androidx.compose.foundation.clickable
 
 @Composable
 private fun Card(title: String, content: @Composable () -> Unit) {
@@ -55,6 +58,7 @@ fun SettingsScreen(app: AppState) {
     val ctx = LocalContext.current
     val cfg = remember(app.lastSyncAt) { app.store.config() }
     var confirmSignOut by remember { mutableStateOf(false) }
+    var confirmRemove by remember { mutableStateOf<VaultInfo?>(null) }
     BackHandler { app.screen = app.lastTab }
 
     Scaffold(
@@ -87,6 +91,29 @@ fun SettingsScreen(app: AppState) {
                     color = Muted, fontSize = 12.sp,
                 )
             }
+            Card("Vaults") {
+                Text(
+                    "Each vault syncs to its own repository and has its own master password, like Settings → Vaults on your computer. " +
+                        "Opening another vault closes open terminals.",
+                    color = Muted, fontSize = 12.sp,
+                )
+                Spacer(Modifier.size(8.dp))
+                app.vaultList.forEach { v ->
+                    val open = v.id == app.currentVault?.id
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 2.dp)
+                            .background(if (open) SurfaceHigh else Background, RoundedCornerShape(10.dp))
+                            .clickable(enabled = !open) { app.switchVault(v.id) }.padding(start = 12.dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(v.repo, fontFamily = FontFamily.Monospace, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                        if (open) Text("open", color = Primary, fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
+                        else TextButton(onClick = { confirmRemove = v }) { Text("Remove", color = Muted, fontSize = 12.sp) }
+                    }
+                }
+                Spacer(Modifier.size(8.dp))
+                OutlinedButton(onClick = { app.screen = Screen.Setup(adding = true) }) { Text("Add vault") }
+            }
             Card("Terminal") {
                 Text("Text size: ${app.fontSize.toInt()}", color = Muted, fontSize = 13.sp)
                 Slider(app.fontSize, { app.saveFontSize(it) }, valueRange = 8f..24f, steps = 15)
@@ -108,11 +135,26 @@ fun SettingsScreen(app: AppState) {
         }
     }
 
+    confirmRemove?.let { v ->
+        AlertDialog(
+            onDismissRequest = { confirmRemove = null },
+            title = { Text("Remove this vault from the phone?") },
+            text = { Text("${v.repo} is deleted from this phone. It stays in GitHub and on your computer, and you can add it again.") },
+            confirmButton = { TextButton(onClick = { confirmRemove = null; app.removeVault(v.id) }) { Text("Remove", color = Danger) } },
+            dismissButton = { TextButton(onClick = { confirmRemove = null }) { Text("Cancel") } },
+        )
+    }
+
     if (confirmSignOut) {
         AlertDialog(
             onDismissRequest = { confirmSignOut = false },
             title = { Text("Sign out of this phone?") },
-            text = { Text("The vault is removed from this phone and open sessions are closed. Everything stays in GitHub and on your computer.") },
+            text = {
+                Text(
+                    if (app.vaultList.size > 1) "All ${app.vaultList.size} vaults are removed from this phone and open sessions are closed. Everything stays in GitHub and on your computer."
+                    else "The vault is removed from this phone and open sessions are closed. Everything stays in GitHub and on your computer.",
+                )
+            },
             confirmButton = { TextButton(onClick = { confirmSignOut = false; app.signOut() }) { Text("Sign out", color = Danger) } },
             dismissButton = { TextButton(onClick = { confirmSignOut = false }) { Text("Cancel") } },
         )

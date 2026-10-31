@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
             RemvynTheme {
                 Surface(Modifier.fillMaxSize(), color = Background) {
                     when (val s = app.screen) {
-                        Screen.Setup -> SetupScreen(app)
+                        is Screen.Setup -> SetupScreen(app, s.adding)
                         Screen.Unlock -> UnlockScreen(app)
                         Screen.Hosts -> HostsScreen(app)
                         Screen.Passwords -> PasswordsScreen(app)

@@ -1,6 +1,5 @@
 package io.github.rajvira10.remvyn.sync
 
-import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import io.github.rajvira10.remvyn.crypto.RecordCipher
@@ -75,13 +74,16 @@ data class SyncConfig(
 )
 
 /**
- * Keeps the repository's encrypted files on the device. Nothing is stored
+ * Keeps one vault's repository files on the device, in [dir]. Nothing is stored
  * decrypted: records stay encrypted with the sync key, which only exists
  * wrapped by the master password, so opening the app needs the password.
  * The GitHub token is sealed with a non-exportable Android Keystore key.
  */
-class VaultStore(private val ctx: Context) {
-    private val dir = File(ctx.filesDir, "vault").apply { mkdirs() }
+class VaultStore(val dir: File) {
+    init {
+        dir.mkdirs()
+    }
+
     private val configFile = File(dir, "config.json")
     private val cacheFile = File(dir, "cache.json")
     private val trustedFile = File(dir, "trusted-hosts.json")
@@ -259,11 +261,10 @@ class VaultStore(private val ctx: Context) {
         writeAtomic(trustedFile, all.toString())
     }
 
-    /** Signs out and deletes everything stored by the app. */
+    /** Deletes this vault from the device. */
     fun erase() {
         lock()
         dir.deleteRecursively()
-        dir.mkdirs()
     }
 
     // ------------------------------------------------------------ helpers
