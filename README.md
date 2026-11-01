@@ -218,6 +218,15 @@ go run ./tools/devsshd -addr 127.0.0.1:2223 -user demo -password demo
 
 This is the in-process test server: password auth, a tiny shell, SFTP over your real filesystem, and port forwarding. For a full shell, point Remvyn at any OpenSSH server.
 
+### Checking the updater against a real release
+
+```bash
+go build -o /tmp/remvyn-e2e/Remvyn ./tools/updsmoke
+cd /tmp/remvyn-e2e && mkdir -p data && REMVYN_DATA_DIR="$PWD/data" ./Remvyn -as 2.7.0
+```
+
+It pretends to be the given version, downloads the latest release, checks its SHA-256, replaces itself and relaunches the new Remvyn, which opens with the empty `data` folder. Afterwards the binary in that folder matches the release asset.
+
 ## Keyboard shortcuts
 
 On macOS these use ⌘. On Linux and Windows they use Ctrl+Shift, so plain Ctrl+W, Ctrl+K and so on still reach the remote shell.
@@ -318,6 +327,7 @@ backend/
   testutil/            in-process SSH server and fake GitHub for tests
 tools/devsshd/         run the test server for manual testing
 tools/devgithub/       run the fake GitHub for trying sync
+tools/updsmoke/        run a real self-update to the latest release
 packaging/             Linux tarball build (Docker) and Arch PKGBUILD
 mobile/android/        Android companion app (Kotlin, Jetpack Compose, JSch)
 branding/              logo, app icons and naming research (BRANDING.md)
