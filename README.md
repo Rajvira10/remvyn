@@ -33,7 +33,8 @@ Built with Wails v2, Go, React, TypeScript, xterm.js, and SQLite.
   - Dropped connections without tmux show a Reconnect overlay; keepalives detect dead links.
 - **SFTP**:
   - Dual-pane browser, local and remote, with breadcrumbs, a typed path bar and hidden-file toggle.
-  - Multi-select, drag and drop between panes, mkdir, rename, and recursive delete with confirmation.
+  - Sort by name, size or date by clicking a column (again to reverse; folders stay on top), and filter the folder as you type with the box beside the path, or ⌘F / Ctrl+F.
+  - Multi-select, then drag the whole selection between panes, or drag files and folders in from Finder, Explorer or your file manager to upload them. New file, new folder, rename, and recursive delete with confirmation.
   - Recursive uploads and downloads with progress, cancellation and overwrite confirmation. Downloads use a temp file and rename, so a cancelled download never leaves a truncated file behind.
   - Built-in editor: double-click a text file to edit it in a tab, with syntax highlighting, find and replace, and Ctrl/⌘+S. Saves warn if the file changed since you opened it.
   - Open with an installed editor (VS Code, Cursor, Sublime, JetBrains IDEs, …); remote files are uploaded back on every save.
@@ -245,6 +246,7 @@ On macOS these use ⌘. On Linux and Windows they use Ctrl+Shift, so plain Ctrl+
 | Save in the file editor | ⌘S |
 | SFTP: select all / copy / cut / paste | ⌘A / ⌘C / ⌘X / ⌘V |
 | SFTP: rename / delete | F2 / Delete or ⌘⌫ |
+| SFTP: filter this folder | ⌘F |
 
 ## Tests
 

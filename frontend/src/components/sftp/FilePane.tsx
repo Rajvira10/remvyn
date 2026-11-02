@@ -1,5 +1,6 @@
 import {
   AppWindowIcon,
+  ArrowDownIcon,
   ArrowUpIcon,
   ChevronRightIcon,
   ClipboardPasteIcon,
@@ -24,12 +25,14 @@ import {
   PackageOpenIcon,
   RefreshCwIcon,
   ScissorsIcon,
+  SearchIcon,
   ServerIcon,
   SquarePenIcon,
   TextCursorInputIcon,
   Trash2Icon,
+  XIcon,
 } from 'lucide-react'
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Spinner } from '@/components/common/Spinner'
 import { Button } from '@/components/ui/button'
@@ -46,6 +49,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { Tooltip } from '@/components/ui/tooltip'
+import { FILE_DROP_EVENT } from '@/lib/fileDrop'
 import type { ArchiveFormat, DirListing, Editor, FileEntry } from '@/lib/types'
 import { cn, formatBytes, formatDate, isMac } from '@/lib/utils'
 
@@ -97,6 +101,8 @@ export interface PaneProps {
   onTransfer: (entries: FileEntry[]) => void
   /** Entries dropped from the other pane. */
   onDrop: (paths: string[]) => void
+  /** Files dropped from the OS (Finder, Explorer, a file manager). */
+  onOsDrop: (paths: string[]) => void
   transferLabel: string
   transferIcon: ReactNode
   actions: PaneActions
@@ -104,17 +110,57 @@ export interface PaneProps {
 
 const DRAG_MIME = 'application/x-remvyn-paths'
 
+type SortKey = 'name' | 'size' | 'modTime'
+const byName = (a: FileEntry, b: FileEntry) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+
+/** Folders first, then by key; ties fall back to the name. */
+function sortEntries(list: FileEntry[], key: SortKey, desc: boolean): FileEntry[] {
+  const sign = desc ? -1 : 1
+  return [...list].sort((a, b) => {
+    if (a.isDir !== b.isDir) return a.isDir ? -1 : 1
+    const d = key === 'name' ? byName(a, b) : key === 'size' && a.isDir ? 0 : a[key] - b[key]
+    return d ? d * sign : byName(a, b)
+  })
+}
+
 export function FilePane(p: PaneProps) {
   const [pathInput, setPathInput] = useState('')
   const [editingPath, setEditingPath] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const anchor = useRef<string | null>(null)
+  // A plain click inside a multi-selection narrows it on release, so the
+  // whole selection can still be dragged.
+  const narrowTo = useRef<string | null>(null)
+  const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'name', desc: false })
+  const [filter, setFilter] = useState('')
+  const filterRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const paneRef = useRef<HTMLDivElement>(null)
   const startEditing = () => {
     setPathInput(p.listing?.path ?? '')
     setEditingPath(true)
   }
 
-  const entries = (p.listing?.entries ?? []).filter((e) => p.showHidden || !e.isHidden)
+  // A new folder starts unfiltered.
+  const shownPath = p.listing?.path
+  useEffect(() => setFilter(''), [shownPath])
+
+  const onOsDrop = useRef(p.onOsDrop)
+  onOsDrop.current = p.onOsDrop
+  useEffect(() => {
+    const el = paneRef.current
+    if (!el) return
+    const handle = (e: Event) => onOsDrop.current((e as CustomEvent<string[]>).detail)
+    el.addEventListener(FILE_DROP_EVENT, handle)
+    return () => el.removeEventListener(FILE_DROP_EVENT, handle)
+  }, [])
+
+  const listed = p.listing?.entries
+  const entries = useMemo(() => {
+    const q = filter.trim().toLowerCase()
+    const shown = (listed ?? []).filter((e) => (p.showHidden || !e.isHidden || (q && q.startsWith('.'))) && (!q || e.name.toLowerCase().includes(q)))
+    return sortEntries(shown, sort.key, sort.desc)
+  }, [listed, p.showHidden, filter, sort])
   const selectedEntries = entries.filter((e) => p.selected.has(e.path))
 
   const [menuTargets, setMenuTargets] = useState<FileEntry[]>([])
@@ -123,6 +169,7 @@ export function FilePane(p: PaneProps) {
   const click = (e: React.MouseEvent, entry: FileEntry, index: number) => {
     // Right-clicking inside the selection keeps it, so the menu acts on all of it.
     if (e.button === 2 && p.selected.has(entry.path)) return
+    narrowTo.current = null
     if (e.button === 2) {
       anchor.current = entry.path
       p.onSelect(new Set([entry.path]))
@@ -145,8 +192,20 @@ export function FilePane(p: PaneProps) {
       return
     }
     anchor.current = entry.path
+    if (p.selected.has(entry.path) && p.selected.size > 1) {
+      narrowTo.current = entry.path
+      return
+    }
     p.onSelect(new Set([entry.path]))
   }
+
+  const sortBy = (key: SortKey) => setSort((s) => (s.key === key ? { key, desc: !s.desc } : { key, desc: key !== 'name' }))
+  const header = (key: SortKey, label: string, className?: string) => (
+    <button className={cn('flex items-center gap-0.5 uppercase hover:text-foreground', sort.key === key && 'text-foreground', className)} onClick={() => sortBy(key)}>
+      {label}
+      {sort.key === key && (sort.desc ? <ArrowDownIcon className="size-3" /> : <ArrowUpIcon className="size-3" />)}
+    </button>
+  )
 
   const open = (entry: FileEntry) => {
     if (entry.isDir) p.onNavigate(entry.path)
@@ -304,7 +363,13 @@ export function FilePane(p: PaneProps) {
 
   return (
     <div
-      className={cn('flex min-w-0 flex-1 flex-col', dragOver && 'bg-primary/5 ring-2 ring-primary/40 ring-inset')}
+      ref={paneRef}
+      data-file-drop
+      style={{ '--wails-drop-target': 'drop' } as React.CSSProperties}
+      className={cn(
+        'flex min-w-0 flex-1 flex-col [&.wails-drop-target-active]:bg-primary/5 [&.wails-drop-target-active]:ring-2 [&.wails-drop-target-active]:ring-primary/40 [&.wails-drop-target-active]:ring-inset',
+        dragOver && 'bg-primary/5 ring-2 ring-primary/40 ring-inset',
+      )}
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes(DRAG_MIME + '-' + (p.side === 'local' ? 'remote' : 'local'))) {
           e.preventDefault()
@@ -345,6 +410,11 @@ export function FilePane(p: PaneProps) {
           </Button>
         </Tooltip>
         <div className="mx-1 h-4 w-px bg-border" />
+        <Tooltip content="New file">
+          <Button variant="ghost" size="icon-xs" aria-label="New file" onClick={a.newFile} disabled={!p.listing}>
+            <FilePlusIcon />
+          </Button>
+        </Tooltip>
         <Tooltip content="New folder">
           <Button variant="ghost" size="icon-xs" aria-label="New folder" onClick={p.onMkdir} disabled={!p.listing}>
             <FolderPlusIcon />
@@ -401,16 +471,50 @@ export function FilePane(p: PaneProps) {
             ))}
           </div>
         )}
+        <label
+          className={cn(
+            'ml-1 flex h-6 shrink-0 items-center gap-1 rounded border bg-background px-1.5 text-muted-foreground focus-within:text-foreground',
+            filter ? 'w-44' : 'w-28 focus-within:w-44',
+          )}
+        >
+          <SearchIcon className="size-3 shrink-0" />
+          <input
+            ref={filterRef}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setFilter('')
+                listRef.current?.focus()
+              }
+              if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                e.preventDefault()
+                if (entries.length) p.onSelect(new Set([entries[0].path]))
+                listRef.current?.focus()
+              }
+            }}
+            placeholder="Filter"
+            spellCheck={false}
+            aria-label="Filter this folder"
+            className="h-full min-w-0 flex-1 bg-transparent text-[12px] text-foreground outline-none placeholder:text-muted-foreground"
+          />
+          {filter && (
+            <button aria-label="Clear filter" onClick={() => setFilter('')} className="hover:text-foreground">
+              <XIcon className="size-3" />
+            </button>
+          )}
+        </label>
       </div>
       <div className="grid shrink-0 grid-cols-[1fr_80px_150px_96px] border-b px-2 py-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-        <span>Name</span>
-        <span className="text-right">Size</span>
-        <span className="pl-3">Modified</span>
+        {header('name', 'Name')}
+        {header('size', 'Size', 'justify-end')}
+        {header('modTime', 'Modified', 'pl-3')}
         <span className="pl-2">Mode</span>
       </div>
       <ContextMenu>
         <ContextMenuTrigger asChild disabled={!p.listing}>
           <div
+            ref={listRef}
             className="min-h-0 flex-1 overflow-auto outline-none"
             tabIndex={0}
             onKeyDown={(e) => {
@@ -422,6 +526,10 @@ export function FilePane(p: PaneProps) {
               if (e.key === 'F2' && selectedEntries.length === 1) p.onRename(selectedEntries[0])
               if (cmd && !e.shiftKey && !e.altKey) {
                 const k = e.key.toLowerCase()
+                if (k === 'f') {
+                  e.preventDefault()
+                  filterRef.current?.focus()
+                }
                 if (k === 'a') {
                   e.preventDefault()
                   p.onSelect(new Set(entries.map((x) => x.path)))
@@ -453,6 +561,8 @@ export function FilePane(p: PaneProps) {
               <div className="p-4 text-xs text-danger" data-selectable>
                 {p.error}
               </div>
+            ) : entries.length === 0 && filter.trim() ? (
+              <EmptyState icon={SearchIcon} title={`Nothing here matches “${filter.trim()}”`} />
             ) : entries.length === 0 ? (
               <EmptyState icon={FolderIcon} title="Empty folder" />
             ) : (
@@ -465,10 +575,23 @@ export function FilePane(p: PaneProps) {
                     onDragStart={(e) => {
                       const paths = sel ? selectedEntries.map((x) => x.path) : [entry.path]
                       if (!sel) p.onSelect(new Set([entry.path]))
+                      narrowTo.current = null
                       e.dataTransfer.setData(DRAG_MIME + '-' + p.side, JSON.stringify(paths))
                       e.dataTransfer.effectAllowed = 'copy'
+                      if (paths.length > 1) {
+                        const ghost = document.createElement('div')
+                        ghost.textContent = `${paths.length} items`
+                        ghost.className = 'fixed -top-20 rounded bg-primary px-2 py-1 text-xs font-medium text-primary-foreground'
+                        document.body.appendChild(ghost)
+                        e.dataTransfer.setDragImage(ghost, -8, -8)
+                        setTimeout(() => ghost.remove())
+                      }
                     }}
                     onMouseDown={(e) => click(e, entry, i)}
+                    onClick={() => {
+                      if (narrowTo.current === entry.path) p.onSelect(new Set([entry.path]))
+                      narrowTo.current = null
+                    }}
                     onDoubleClick={() => open(entry)}
                     onContextMenu={() => setMenuTargets(sel ? selectedEntries : [entry])}
                     className={cn(
@@ -502,6 +625,7 @@ export function FilePane(p: PaneProps) {
       </ContextMenu>
       <div className="flex h-6 shrink-0 items-center border-t px-2 text-[11px] text-muted-foreground">
         {entries.length} item{entries.length === 1 ? '' : 's'}
+        {filter.trim() && ` matching “${filter.trim()}”`}
         {selectedEntries.length > 0 && ` · ${selectedEntries.length} selected`}
         {p.loading && p.listing && <Spinner className="ml-auto size-3" />}
       </div>

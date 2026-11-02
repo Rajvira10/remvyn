@@ -55,7 +55,9 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
     items: [
       ['Open folder / transfer file', 'Double-click'],
       ['Multi-select / range', isMac ? '⌘-click  ⇧-click' : 'Ctrl-click  Shift-click'],
-      ['Transfer between panes', 'Drag and drop'],
+      ['Transfer between panes, or upload from your computer', 'Drag and drop'],
+      ['Filter this folder', isMac ? '⌘F' : 'Ctrl+F'],
+      ['Sort by name, size or date', 'Click the column'],
       ['Delete selected', isMac ? '⌘⌫' : 'Delete'],
     ],
   },

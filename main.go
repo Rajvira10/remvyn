@@ -76,6 +76,8 @@ func main() {
 			OnSecondInstanceLaunch: func(options.SecondInstanceData) { app.showWindow() },
 		},
 		Bind: []interface{}{app},
+		// Files dragged in from the OS upload in the SFTP view.
+		DragAndDrop: &options.DragAndDrop{EnableFileDrop: true},
 		Linux: &linux.Options{
 			Icon: icon,
 			// Matches StartupWMClass in remvyn.desktop so launchers and

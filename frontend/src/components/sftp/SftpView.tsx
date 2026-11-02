@@ -497,6 +497,14 @@ export function SftpView({ tab, visible }: { tab: Tab; visible: boolean }) {
               onDelete={(paths) => setPending({ kind: 'delete', side: 'local', paths })}
               onTransfer={(entries) => void upload(entries.map((e) => e.path))}
               onDrop={(paths) => void download(paths)}
+              onOsDrop={(paths) => {
+                const dir = local.listing?.path
+                if (!dir) return
+                const what = paths.length === 1 ? baseName(paths[0]) : `${paths.length} items`
+                withOverwriteCheck(paths.map(baseName), local.listing, () =>
+                  void longOp('local', `Copying ${what}…`, () => api.copyLocal(paths, dir), () => `Copied ${what}`),
+                )
+              }}
               transferLabel="Upload"
               transferIcon={<ArrowRightIcon />}
               actions={actionsFor('local')}
@@ -519,6 +527,7 @@ export function SftpView({ tab, visible }: { tab: Tab; visible: boolean }) {
               onDelete={(paths) => setPending({ kind: 'delete', side: 'remote', paths })}
               onTransfer={(entries) => void download(entries.map((e) => e.path))}
               onDrop={(paths) => void upload(paths)}
+              onOsDrop={(paths) => void upload(paths)}
               transferLabel="Download"
               transferIcon={<ArrowLeftIcon />}
               actions={actionsFor('remote')}
