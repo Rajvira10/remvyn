@@ -149,6 +149,8 @@ export interface KeyUseRequest {
   /** "terminal", or the AI agent using the connection. */
   source: string
   ai: boolean
+  /** A program on this computer, through the local SSH agent; source names it. */
+  local: boolean
   createdAt: number
   expiresAt: number
 }
@@ -266,6 +268,7 @@ export interface Settings {
   forwardKeyHosts: string[]
   /** Also forward keys on AI agents' connections to those hosts. */
   forwardKeysToAI: boolean
+  localKeyAgent: boolean
   /** Look for a new release at startup and every few hours. */
   autoUpdateCheck: boolean
 }
@@ -329,6 +332,14 @@ export interface AgentLogEntry {
 export interface AgentGrant {
   hostId: string
   until: number
+}
+
+export interface LocalAgentStatus {
+  enabled: boolean
+  listening: boolean
+  listenError?: string
+  socketPath: string
+  supported: boolean
 }
 
 export interface AgentStatus {

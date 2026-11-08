@@ -17,8 +17,8 @@ import { HostAvatar } from '@/components/hosts/HostAvatar'
 import { Section } from '@/components/settings/Section'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { api, errorMessage } from '@/lib/api'
-import type { AgentLogEntry, AgentMode, Host } from '@/lib/types'
+import { api, errorMessage, events, onEvent } from '@/lib/api'
+import type { AgentLogEntry, AgentMode, Host, LocalAgentStatus } from '@/lib/types'
 import { cn, relativeTime } from '@/lib/utils'
 import { useAgent } from '@/stores/agent'
 import { useSettings } from '@/stores/settings'
@@ -113,6 +113,7 @@ export function AgentsPage() {
               />
             </div>
           </Section>
+          <LocalAgentSection />
           <ActivitySection />
         </div>
       </div>
@@ -150,6 +151,73 @@ function SetupSection({ command }: { command: string[] }) {
           </div>
         )}
       </div>
+    </Section>
+  )
+}
+
+/** The local SSH agent: programs on this computer use the keychain's keys. */
+function LocalAgentSection() {
+  const [status, setStatus] = useState<LocalAgentStatus | null>(null)
+  useEffect(() => {
+    void api
+      .localAgentStatus()
+      .then(setStatus)
+      .catch(() => {})
+    return onEvent<LocalAgentStatus>(events.LOCAL_AGENT_STATUS, setStatus)
+  }, [])
+  if (!status?.supported) return null
+  const toggle = async (on: boolean) => {
+    try {
+      useSettings.getState().setLocal(await api.setLocalKeyAgent(on))
+      setStatus(await api.localAgentStatus())
+    } catch (e) {
+      toast.error('Could not change the setting', { description: errorMessage(e) })
+    }
+  }
+  const sock = status.socketPath
+  const sshConfig = `Host github.com\n  IdentityAgent "${sock}"`
+  const env = `export SSH_AUTH_SOCK=${shellQuote(sock)}`
+  return (
+    <Section
+      title="SSH keys for apps on this computer"
+      description="git, ssh, and AI coding agents like Claude Code running on this computer can log in with your keychain's keys, for example to git push. The keys never leave Remvyn."
+    >
+      <div className="flex items-center justify-between gap-4 px-4 py-3">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[13px] font-medium">Let apps on this computer use my keys</span>
+          <span className="text-xs text-muted-foreground">
+            Remvyn asks you each time a key is used and shows which program asked (for example ssh ← git ← claude). Works while Remvyn is open and
+            unlocked, whether or not “Allow AI agents” is on.
+          </span>
+        </div>
+        <Switch checked={status.enabled} aria-label="Let apps on this computer use my keys" onCheckedChange={(on) => void toggle(on)} />
+      </div>
+      {status.enabled && status.listenError && (
+        <div className="mx-4 mb-3 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
+          <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+          <span>The SSH agent couldn't start: {status.listenError}</span>
+        </div>
+      )}
+      {status.enabled && (
+        <div className="flex flex-col gap-2 px-4 pb-3">
+          <p className="text-xs text-muted-foreground">
+            For GitHub everywhere (terminals, editors and AI agents), add this to <span className="font-mono">~/.ssh/config</span>:
+          </p>
+          <div className="flex items-start gap-2 rounded-lg border bg-muted/40 py-2 pr-1.5 pl-3">
+            <pre data-selectable className="min-w-0 flex-1 overflow-x-auto font-mono text-[12px] leading-relaxed">
+              {sshConfig}
+            </pre>
+            <CopyButton text={sshConfig} tooltip="Copy" />
+          </div>
+          <p className="text-xs text-muted-foreground">Or, for every SSH login from one shell:</p>
+          <div className="flex items-start gap-2 rounded-lg border bg-muted/40 py-2 pr-1.5 pl-3">
+            <code data-selectable className="min-w-0 flex-1 py-0.5 font-mono text-[12px] leading-relaxed break-all">
+              {env}
+            </code>
+            <CopyButton text={env} tooltip="Copy" />
+          </div>
+        </div>
+      )}
     </Section>
   )
 }

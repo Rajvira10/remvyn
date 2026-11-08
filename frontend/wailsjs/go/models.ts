@@ -682,6 +682,7 @@ export namespace models {
 	    fingerprint: string;
 	    source: string;
 	    ai: boolean;
+	    local: boolean;
 	    createdAt: number;
 	    expiresAt: number;
 	
@@ -699,6 +700,7 @@ export namespace models {
 	        this.fingerprint = source["fingerprint"];
 	        this.source = source["source"];
 	        this.ai = source["ai"];
+	        this.local = source["local"];
 	        this.createdAt = source["createdAt"];
 	        this.expiresAt = source["expiresAt"];
 	    }
@@ -719,6 +721,26 @@ export namespace models {
 	        this.keyType = source["keyType"];
 	        this.fingerprint = source["fingerprint"];
 	        this.addedAt = source["addedAt"];
+	    }
+	}
+	export class LocalAgentStatus {
+	    enabled: boolean;
+	    listening: boolean;
+	    listenError?: string;
+	    socketPath: string;
+	    supported: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new LocalAgentStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.listening = source["listening"];
+	        this.listenError = source["listenError"];
+	        this.socketPath = source["socketPath"];
+	        this.supported = source["supported"];
 	    }
 	}
 	export class LockStatus {
@@ -1091,6 +1113,7 @@ export namespace models {
 	    agentHosts: Record<string, string>;
 	    forwardKeyHosts: string[];
 	    forwardKeysToAI: boolean;
+	    localKeyAgent: boolean;
 	    autoUpdateCheck: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -1122,6 +1145,7 @@ export namespace models {
 	        this.agentHosts = source["agentHosts"];
 	        this.forwardKeyHosts = source["forwardKeyHosts"];
 	        this.forwardKeysToAI = source["forwardKeysToAI"];
+	        this.localKeyAgent = source["localKeyAgent"];
 	        this.autoUpdateCheck = source["autoUpdateCheck"];
 	    }
 	}

@@ -44,6 +44,7 @@ import type {
   AgentLogEntry,
   AgentMode,
   AgentStatus,
+  LocalAgentStatus,
   TOTPCode,
   UpdateStatus,
   VaultItem,
@@ -252,6 +253,8 @@ export const api = {
   deleteVault: (id: string): Promise<void> => call.DeleteVault(id),
 
   agentStatus: (): Promise<AgentStatus> => call.GetAgentStatus(),
+  localAgentStatus: (): Promise<LocalAgentStatus> => call.LocalAgentStatus(),
+  setLocalKeyAgent: (on: boolean): Promise<Settings> => call.SetLocalKeyAgent(on),
   setAgentEnabled: (on: boolean): Promise<Settings> => call.SetAgentEnabled(on),
   setAgentHostMode: (hostId: string, mode: AgentMode | ''): Promise<Settings> => call.SetAgentHostMode(hostId, mode),
   revokeAgentGrants: (): Promise<void> => call.RevokeAgentGrants(),
@@ -288,6 +291,7 @@ export const events = {
   AGENT_APPROVAL_DONE: 'agent:approval-done',
   AGENT_ACTIVITY: 'agent:activity',
   AGENT_STATUS: 'agent:status',
+  LOCAL_AGENT_STATUS: 'localagent:status',
   UPDATE_STATUS: 'update:status',
 } as const
 

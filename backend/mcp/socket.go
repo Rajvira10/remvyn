@@ -72,25 +72,10 @@ var ErrAlreadyRunning = errors.New("another Remvyn window is already serving AI 
 // Listen creates the socket (readable only by this user) and serves calls
 // with h until Close.
 func Listen(path string, h Handler) (*Listener, error) {
-	if _, err := os.Stat(path); err == nil {
-		if c, err := net.DialTimeout("unix", path, time.Second); err == nil {
-			c.Close()
-			return nil, ErrAlreadyRunning
-		}
-		_ = os.Remove(path) // left over from a crash
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	ln, err := ListenSocket(path)
+	if err != nil {
 		return nil, err
 	}
-	// Create the socket with no group/other access from the start, so there
-	// is no window where another user could connect.
-	old := umask(0o177)
-	ln, err := net.Listen("unix", path)
-	umask(old)
-	if err != nil {
-		return nil, fmt.Errorf("could not open the agent socket: %w", err)
-	}
-	_ = os.Chmod(path, 0o600)
 	l := &Listener{path: path, ln: ln}
 	l.wg.Add(1)
 	go func() {
@@ -108,6 +93,32 @@ func Listen(path string, h Handler) (*Listener, error) {
 		}
 	}()
 	return l, nil
+}
+
+// ListenSocket creates a Unix socket only this user can connect to,
+// replacing one left over from a crash. ErrAlreadyRunning means another
+// process is serving it.
+func ListenSocket(path string) (net.Listener, error) {
+	if _, err := os.Stat(path); err == nil {
+		if c, err := net.DialTimeout("unix", path, time.Second); err == nil {
+			c.Close()
+			return nil, ErrAlreadyRunning
+		}
+		_ = os.Remove(path) // left over from a crash
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, err
+	}
+	// Create the socket with no group/other access from the start, so there
+	// is no window where another user could connect.
+	old := umask(0o177)
+	ln, err := net.Listen("unix", path)
+	umask(old)
+	if err != nil {
+		return nil, fmt.Errorf("could not open the socket: %w", err)
+	}
+	_ = os.Chmod(path, 0o600)
+	return ln, nil
 }
 
 // Path is the socket path.

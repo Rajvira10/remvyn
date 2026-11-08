@@ -94,6 +94,8 @@ type Core struct {
 
 	keyUseMu sync.Mutex
 	keyUses  map[string]*pendingKeyUse
+
+	local localAgent
 }
 
 // DefaultDataDir returns the per-user data directory, honouring REMVYN_DATA_DIR.
@@ -241,6 +243,7 @@ func (c *Core) close() {
 	c.connMu.Unlock()
 	close(c.stop)
 	c.closeAgent()
+	c.stopLocalAgent()
 	c.sync.Close()
 	c.monitor.StopAll()
 	c.uptime.StopAll()
@@ -311,6 +314,7 @@ func (c *Core) UpdateSettings(s models.Settings) (models.Settings, error) {
 	cur := c.Settings()
 	s.AgentEnabled, s.AgentHosts = cur.AgentEnabled, cur.AgentHosts
 	s.ForwardKeyHosts, s.ForwardKeysToAI = cur.ForwardKeyHosts, cur.ForwardKeysToAI
+	s.LocalKeyAgent = cur.LocalKeyAgent
 	err := c.saveSettingsLocked(s)
 	c.saveMu.Unlock()
 	if err != nil {

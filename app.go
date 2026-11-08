@@ -413,6 +413,23 @@ func (a *App) SetForwardKeysToAI(on bool) (models.Settings, error) {
 	return a.core().SetForwardKeysToAI(on)
 }
 
+// SetLocalKeyAgent turns on the SSH agent that lets programs on this
+// computer use the keychain's keys, with approval for each use.
+func (a *App) SetLocalKeyAgent(on bool) (models.Settings, error) {
+	if err := a.ready(); err != nil {
+		return models.Settings{}, err
+	}
+	return a.core().SetLocalKeyAgent(on)
+}
+
+// LocalAgentStatus describes the local SSH agent socket.
+func (a *App) LocalAgentStatus() (models.LocalAgentStatus, error) {
+	if err := a.ready(); err != nil {
+		return models.LocalAgentStatus{}, err
+	}
+	return a.core().LocalAgentStatus(), nil
+}
+
 // PendingKeyUses lists key-use requests waiting for an answer.
 func (a *App) PendingKeyUses() []models.KeyUseRequest {
 	if a.core() == nil {

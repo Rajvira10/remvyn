@@ -36,6 +36,14 @@ func (c *Core) forwardsKeys(hostID string) bool {
 // keyAgent returns an agent for one connection to h. source names who is
 // using the connection: "terminal", or an AI agent's name.
 func (c *Core) keyAgent(h models.Host, source string) *keyagent.Agent {
+	return c.keyAgentWith(func(ctx context.Context, u keyagent.Use) keyagent.Decision {
+		return c.askKeyUse(ctx, h, source, u)
+	})
+}
+
+// keyAgentWith returns an agent over the keychain's usable keys that asks
+// approve before each signature.
+func (c *Core) keyAgentWith(approve func(context.Context, keyagent.Use) keyagent.Decision) *keyagent.Agent {
 	load := func() ([]keyagent.Key, error) {
 		if c.store.Locked() {
 			return nil, storageLocked()
@@ -60,9 +68,6 @@ func (c *Core) keyAgent(h models.Host, source string) *keyagent.Agent {
 		}
 		return out, nil
 	}
-	approve := func(ctx context.Context, u keyagent.Use) keyagent.Decision {
-		return c.askKeyUse(ctx, h, source, u)
-	}
 	return keyagent.New(load, approve)
 }
 
@@ -72,12 +77,16 @@ func (c *Core) askKeyUse(ctx context.Context, h models.Host, source string, u ke
 		return keyagent.Deny
 	}
 	now := time.Now()
-	ai := source != "terminal"
+	local := h.ID == localAgentHost
+	ai := source != "terminal" && !local
 	p := &pendingKeyUse{ch: make(chan keyagent.Decision, 1), r: models.KeyUseRequest{
-		ID: ids.New(), HostID: h.ID, HostLabel: h.Label, Remote: remote(h),
-		KeyName: u.KeyName, Fingerprint: u.Fingerprint, Source: source, AI: ai,
+		ID: ids.New(), HostID: h.ID, HostLabel: h.Label, Remote: source,
+		KeyName: u.KeyName, Fingerprint: u.Fingerprint, Source: source, AI: ai, Local: local,
 		CreatedAt: now.UnixMilli(), ExpiresAt: now.Add(keyUseTimeout).UnixMilli(),
 	}}
+	if !local {
+		p.r.Remote = remote(h)
+	}
 	c.keyUseMu.Lock()
 	c.keyUses[p.r.ID] = p
 	c.keyUseMu.Unlock()
@@ -92,6 +101,8 @@ func (c *Core) askKeyUse(ctx context.Context, h models.Host, source string, u ke
 		who := h.Label
 		if ai {
 			who = source + " on " + h.Label
+		} else if local {
+			who = source + " on this computer"
 		}
 		c.notify(who+" wants to use your key "+u.KeyName, "Allow or deny it in Remvyn.")
 	}

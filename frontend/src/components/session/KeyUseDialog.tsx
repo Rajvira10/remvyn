@@ -1,4 +1,4 @@
-import { BotIcon, KeyRoundIcon } from 'lucide-react'
+import { BotIcon, KeyRoundIcon, LaptopIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -51,13 +51,14 @@ export function KeyUseDialog() {
             <DialogHeader>
               <div className="flex items-center gap-3">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                  {current.ai ? <BotIcon className="size-5" /> : <KeyRoundIcon className="size-5" />}
+                  {current.ai ? <BotIcon className="size-5" /> : current.local ? <LaptopIcon className="size-5" /> : <KeyRoundIcon className="size-5" />}
                 </div>
                 <div className="min-w-0">
                   <DialogTitle>
-                    {current.ai ? `${current.source} on ${current.hostLabel}` : current.hostLabel} wants to use your key “{current.keyName}”
+                    {current.ai ? `${current.source} on ${current.hostLabel}` : current.local ? 'A program on this computer' : current.hostLabel} wants to use your
+                    key “{current.keyName}”
                   </DialogTitle>
-                  <DialogDescription className="font-mono">{current.remote}</DialogDescription>
+                  <DialogDescription className="font-mono">{current.local ? current.source : current.remote}</DialogDescription>
                 </div>
               </div>
             </DialogHeader>
@@ -68,9 +69,11 @@ export function KeyUseDialog() {
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              {current.ai
-                ? 'A command run by the AI agent on this server is trying to log in somewhere (for example git or ssh) with your key. Only allow it if you asked for that.'
-                : 'Something on this server, usually git or ssh, is trying to log in somewhere with your key. The key itself never leaves Remvyn. If you didn’t just run such a command, deny it.'}
+              {current.local
+                ? 'Usually git or ssh logging in somewhere, started by the programs listed above (an AI agent shows up there as claude, codex or node). The key itself never leaves Remvyn. Deny it unless you, or an agent you asked, just ran such a command.'
+                : current.ai
+                  ? 'A command run by the AI agent on this server is trying to log in somewhere (for example git or ssh) with your key. Only allow it if you asked for that.'
+                  : 'Something on this server, usually git or ssh, is trying to log in somewhere with your key. The key itself never leaves Remvyn. If you didn’t just run such a command, deny it.'}
             </p>
             <DialogFooter className="items-center">
               <span className="mr-auto text-xs text-muted-foreground tabular-nums">

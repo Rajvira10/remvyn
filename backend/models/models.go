@@ -319,6 +319,10 @@ type Settings struct {
 	// ForwardKeysToAI also forwards keys on AI agents' connections to those
 	// hosts (still asking each time).
 	ForwardKeysToAI bool `json:"forwardKeysToAI"`
+	// LocalKeyAgent serves the keychain's keys to programs on this computer
+	// (git, ssh, AI coding agents) through an SSH agent socket, asking each
+	// time a key is used. Per device: never synced.
+	LocalKeyAgent bool `json:"localKeyAgent"`
 	// AutoUpdateCheck looks for a new release at startup and every few
 	// hours. Updates are only installed when the user asks.
 	AutoUpdateCheck bool `json:"autoUpdateCheck"`
@@ -387,10 +391,13 @@ type KeyUseRequest struct {
 	KeyName     string `json:"keyName"`
 	Fingerprint string `json:"fingerprint"`
 	// Source is "terminal", or the AI agent's name for its connections.
-	Source    string `json:"source"`
-	AI        bool   `json:"ai"`
-	CreatedAt int64  `json:"createdAt"`
-	ExpiresAt int64  `json:"expiresAt"`
+	Source string `json:"source"`
+	AI     bool   `json:"ai"`
+	// Local is a program on this computer using the local SSH agent; Source
+	// then names it and the programs that started it.
+	Local     bool  `json:"local"`
+	CreatedAt int64 `json:"createdAt"`
+	ExpiresAt int64 `json:"expiresAt"`
 }
 
 // AgentApproval asks the user to allow an AI agent's action.
@@ -453,6 +460,16 @@ type AgentStatus struct {
 	Command []string     `json:"command"`
 	Running int          `json:"running"`
 	Grants  []AgentGrant `json:"grants"`
+}
+
+// LocalAgentStatus describes the local SSH agent socket for the UI.
+type LocalAgentStatus struct {
+	Enabled     bool   `json:"enabled"`
+	Listening   bool   `json:"listening"`
+	ListenError string `json:"listenError,omitempty"`
+	SocketPath  string `json:"socketPath"`
+	// Supported is false where OpenSSH can't use a Unix socket (Windows).
+	Supported bool `json:"supported"`
 }
 
 // Password vault item kinds.

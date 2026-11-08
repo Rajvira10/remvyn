@@ -38,6 +38,7 @@ func (c *Core) Start() {
 	c.keyMu.Unlock()
 	c.StartMonitoring()
 	c.startAgent()
+	c.applyLocalAgent()
 	if unlocked {
 		c.afterUnlock()
 	}

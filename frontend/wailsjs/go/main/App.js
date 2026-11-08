@@ -282,6 +282,10 @@ export function ListVaults() {
   return window['go']['main']['App']['ListVaults']();
 }
 
+export function LocalAgentStatus() {
+  return window['go']['main']['App']['LocalAgentStatus']();
+}
+
 export function Lock() {
   return window['go']['main']['App']['Lock']();
 }
@@ -488,6 +492,10 @@ export function SetForwardKeys(arg1, arg2) {
 
 export function SetForwardKeysToAI(arg1) {
   return window['go']['main']['App']['SetForwardKeysToAI'](arg1);
+}
+
+export function SetLocalKeyAgent(arg1) {
+  return window['go']['main']['App']['SetLocalKeyAgent'](arg1);
 }
 
 export function SetMasterPassword(arg1, arg2) {

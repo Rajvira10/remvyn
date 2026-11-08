@@ -146,6 +146,8 @@ export function ListVaultItems():Promise<Array<models.VaultItem>>;
 
 export function ListVaults():Promise<Array<core.VaultProfile>>;
 
+export function LocalAgentStatus():Promise<models.LocalAgentStatus>;
+
 export function Lock():Promise<void>;
 
 export function MetricsHistory(arg1:string,arg2:number):Promise<Array<models.MetricPoint>>;
@@ -249,6 +251,8 @@ export function SetAgentHostMode(arg1:string,arg2:string):Promise<models.Setting
 export function SetForwardKeys(arg1:string,arg2:boolean):Promise<models.Settings>;
 
 export function SetForwardKeysToAI(arg1:boolean):Promise<models.Settings>;
+
+export function SetLocalKeyAgent(arg1:boolean):Promise<models.Settings>;
 
 export function SetMasterPassword(arg1:string,arg2:string):Promise<models.LockStatus>;
 
