@@ -14,7 +14,7 @@ provides=('remvyn')
 conflicts=('remvyn')
 options=('!strip' '!debug')
 source=("Remvyn-$pkgver-linux-x86_64.tar.gz::$url/releases/download/v$pkgver/Remvyn-$pkgver-linux-x86_64.tar.gz")
-sha256sums=('bc09ef79483eacaba8462990a059157b7e718a6081d57b8e581d8ce03e4e9772')
+sha256sums=('6458e1ebf3ed040234bc62cca7ad00441afe2d5e170c778d9e0f54c2ba888049')
 
 package() {
   cd "Remvyn-$pkgver-linux-x86_64"
