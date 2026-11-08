@@ -32,9 +32,10 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
     items: [
       ['Copy selection', isMac ? '⌘C' : 'Ctrl+Shift+C'],
       ['Paste', isMac ? '⌘V' : 'Ctrl+Shift+V'],
-      ['Accept a command suggestion / one word', '→  Ctrl+→'],
-      ['List matching past commands', 'Ctrl+Space'],
-      ['List the folder, or complete the path, you are typing', 'Tab'],
+      ['Accept the faint suggestion / one word of it', '→  Ctrl+→'],
+      ['List folder contents or past commands (again to switch)', 'Ctrl+Space'],
+      ['In a list: choose / insert / close', '↑↓  Enter  Esc'],
+      ["Shell's own completion (never intercepted)", 'Tab'],
       ['Find', k('F')],
       ['Clear scrollback', k('K')],
       ['Show or hide server metrics', k('I')],

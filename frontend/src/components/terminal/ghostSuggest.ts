@@ -2,14 +2,15 @@ import type { IDecoration, IDisposable, IMarker, Terminal } from '@xterm/xterm'
 
 /**
  * Fish-style inline suggestions: the rest of a past command is drawn in faint
- * text after the cursor, and → or End accepts it. Ctrl+Space opens a list of
- * more matches, filtered as you keep typing.
+ * text after the cursor, and → or End accepts it (Ctrl/Alt+→ one word).
  *
- * Typing a path (/var/www/, ~/, src/co) lists what's in that folder under the
- * cursor, narrowing as you type: ↑↓ choose, Tab inserts, Esc hides it. Tab
- * on any argument (cd , cd mon) lists the shell's folder the same way. Tab
- * pressed while the listing is still on its way waits for it, then inserts
- * the only match, shows the list, or (no match) goes to the shell.
+ * Each key has one job, so typing is never second-guessed:
+ * - Tab, ↑↓ and Enter always go to the shell, unless a list is open.
+ * - Nothing pops up on its own. Ctrl+Space opens a list: the folder's contents
+ *   when the cursor is on an argument or a path (cd , cd mon, /var/www/,
+ *   src/co), otherwise matching past commands; pressed again it switches
+ *   between the two. The list narrows as you keep typing. ↑↓ choose, Enter
+ *   or Tab insert (a folder's contents then show next), Esc closes.
  *
  * The remote shell owns the command line, so it is read back from the screen:
  * the text between where the first key of a line was typed (the end of the
@@ -83,13 +84,11 @@ export class GhostSuggest {
   private deco: IDecoration | null = null
   private menu: { items: string[]; sel: number; typed: string; el: HTMLDivElement } | null = null
   private paths: { items: string[]; sel: number; word: PathWord; el: HTMLDivElement } | null = null
-  // The path whose list Esc hid; it stays hidden until the path changes.
-  private dismissed = ''
-  // A Tab waiting for the listing of the path it was pressed on, or (null)
-  // for the keys typed before it to be echoed.
-  private pendingTab: { raw: string | null; timer: number } | null = null
-  // Where the word Tab was pressed on starts: it is completed even without a /.
-  private tabStart = -1
+  // While the folder list is open: where its word starts on the line. It
+  // stays open while that word is typed, and shows once the listing arrives.
+  private pathStart = -1
+  // Ctrl+Space pressed before the keys typed ahead of it were echoed.
+  private pendingOpen = 0
   private raf = 0
   private subs: IDisposable[]
 
@@ -124,8 +123,7 @@ export class GhostSuggest {
     this.fresh = fresh
     this.closeMenu()
     this.closePaths()
-    this.cancelTab()
-    this.tabStart = -1
+    this.cancelOpen()
     this.typed = ''
     this.show('', '')
   }
@@ -166,8 +164,7 @@ export class GhostSuggest {
     if (!this.enabled || e.type !== 'keydown') return false
     const noMods = !e.ctrlKey && !e.altKey && !e.metaKey
     if (e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey && e.code === 'Space') {
-      if (this.menu) this.closeMenu()
-      else this.openMenu()
+      this.toggleList()
       e.preventDefault()
       return true
     }
@@ -177,10 +174,6 @@ export class GhostSuggest {
       return true
     }
     if (this.paths && this.pathKey(e, noMods)) {
-      e.preventDefault()
-      return true
-    }
-    if (noMods && !e.shiftKey && e.key === 'Tab' && !this.menu && this.holdTab()) {
       e.preventDefault()
       return true
     }
@@ -207,18 +200,61 @@ export class GhostSuggest {
     for (const s of this.subs) s.dispose()
   }
 
-  private openMenu() {
-    // Asking for the list at a fresh prompt marks where the line starts.
+  /**
+   * Ctrl+Space: opens the list that fits the cursor, or switches to the
+   * other one; with nothing to switch to it closes.
+   */
+  private toggleList() {
+    if (this.pendingOpen) return
+    // Asking for a list at a fresh prompt marks where the line starts.
     if (this.fresh && this.term.buffer.active.type === 'normal') this.startLine(true)
+    if (this.menu) {
+      this.closeMenu()
+      if (!this.openPaths()) this.update()
+    } else if (this.pathStart >= 0) {
+      this.closePaths()
+      if (!this.openMenu()) this.update()
+    } else if (!this.echoed()) {
+      // The line on screen is behind what was typed: open once it's echoed.
+      this.pendingOpen = window.setTimeout(() => (this.pendingOpen = 0), 1500)
+    } else {
+      this.openBest()
+    }
+  }
+
+  private openBest() {
+    if (!this.openPaths()) this.openMenu()
+  }
+
+  private cancelOpen() {
+    clearTimeout(this.pendingOpen)
+    this.pendingOpen = 0
+  }
+
+  /** Opens the folder list for the word at the cursor; false if there is none. */
+  private openPaths(): boolean {
+    const line = this.pathLine()
+    const word = line !== null ? pathWord(line, true) : null
+    if (!word) return false
+    // A loaded folder with nothing matching: offer past commands instead.
+    if (this.opts.listDir!(word.dir) !== undefined && !this.pathItems(word).length) return false
+    this.closeMenu()
+    this.pathStart = line!.length - word.raw.length
+    this.schedule()
+    return true
+  }
+
+  private openMenu(): boolean {
     const line = this.read()
-    if (!line || line.tail) return
+    if (!line || line.tail) return false
     const items = this.opts.list(line.text, LIST_SIZE)
-    if (!items.length) return
+    if (!items.length) return false
     this.closePaths()
     const el = popup('Command suggestions')
     this.term.element?.appendChild(el)
     this.menu = { items, sel: 0, typed: line.text, el }
     this.update()
+    return true
   }
 
   private closeMenu() {
@@ -251,46 +287,15 @@ export class GhostSuggest {
     if (noMods && !e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
       p.sel = (p.sel + (e.key === 'ArrowDown' ? 1 : -1) + p.items.length) % p.items.length
       this.placePaths(p.word, p.items)
-    } else if (noMods && !e.shiftKey && e.key === 'Tab') {
+    } else if (noMods && !e.shiftKey && (e.key === 'Enter' || e.key === 'Tab')) {
       this.insertPath(p.word, p.items[p.sel])
     } else if (e.key === 'Escape' && !e.ctrlKey && !e.altKey && !e.metaKey) {
-      this.dismissed = p.word.raw
       this.closePaths()
       this.update()
     } else {
       return false
     }
     return true
-  }
-
-  /**
-   * Tab on an argument: inserts the only match or shows the list, waiting for
-   * the listing if needed. False (no match) lets the shell have the Tab.
-   */
-  private holdTab(): boolean {
-    if (this.pendingTab) return true
-    // The line on screen is behind what was typed: decide once it's echoed.
-    if (!this.echoed()) {
-      this.waitTab(null)
-      return true
-    }
-    return this.completeTab()
-  }
-
-  private completeTab(): boolean {
-    const line = this.pathLine()
-    const word = line ? pathWord(line, true) : null
-    if (!word) return false
-    this.tabStart = line!.length - word.raw.length
-    this.dismissed = ''
-    if (this.opts.listDir!(word.dir) === undefined) {
-      this.waitTab(word.raw)
-      return true
-    }
-    const found = this.pathItems(word)
-    if (found.length === 1) this.insertPath(word, found[0])
-    else if (found.length) this.schedule()
-    return found.length > 0
   }
 
   /** The command line for path completion, also when the prompt had to be guessed. */
@@ -300,38 +305,20 @@ export class GhostSuggest {
     return line && !line.tail ? line.text : null
   }
 
-  /** The word being completed: a path, or any argument Tab was pressed on. */
-  private pathWordAt(line: string | null): PathWord | null {
-    if (line === null) return null
-    if (this.tabStart >= 0) {
-      const w = pathWord(line, true)
-      if (w && line.length - w.raw.length === this.tabStart) return w
-    }
-    return pathWord(line)
-  }
-
   /** Whether the line on screen shows everything typed so far (yes if it can't be read). */
   private echoed(): boolean {
     const line = this.read() ?? this.guess()
     return !this.typed || !line || line.text.endsWith(this.typed)
   }
 
-  private waitTab(raw: string | null) {
-    // Give up waiting after a while and let the shell complete instead.
-    const timer = window.setTimeout(() => {
-      this.pendingTab = null
-      this.typed = ''
-      this.opts.send('\t')
-    }, 2000)
-    this.pendingTab = { raw, timer }
-  }
-
-  private cancelTab() {
-    if (this.pendingTab) clearTimeout(this.pendingTab.timer)
-    this.pendingTab = null
-  }
-
+  /** Closes the folder list. */
   private closePaths() {
+    this.hidePaths()
+    this.pathStart = -1
+  }
+
+  /** Takes the folder list off screen; it stays open and comes back on update. */
+  private hidePaths() {
     this.paths?.el.remove()
     this.paths = null
   }
@@ -340,7 +327,9 @@ export class GhostSuggest {
   private insertPath(word: PathWord, name: string) {
     const text = word.quoted ? name : name.replace(/[^\w@%+=:,./~-]/g, '\\$&')
     const raw = word.rawPrefix
-    this.closePaths()
+    // A folder stays open, to show what's inside it next.
+    if (name.endsWith('/')) this.hidePaths()
+    else this.closePaths()
     this.accept(text.startsWith(raw) ? text.slice(raw.length) : '\x7f'.repeat([...raw].length) + text)
   }
 
@@ -412,7 +401,7 @@ export class GhostSuggest {
       return item
     })
     const more = items.length > PATH_ROWS ? ` · ${p.sel + 1} of ${items.length}` : ''
-    p.el.replaceChildren(...rows, hint(`↑↓ choose · Tab insert · Esc hide${more}`))
+    p.el.replaceChildren(...rows, hint(`↑↓ choose · Enter insert · Esc close · Ctrl+Space past commands${more}`))
 
     const cellW = screen.clientWidth / this.term.cols
     const cellH = screen.clientHeight / this.term.rows
@@ -503,35 +492,24 @@ export class GhostSuggest {
       }
       this.closeMenu()
     }
-    if (this.pendingTab?.raw === null && this.echoed()) {
-      this.cancelTab()
-      if (!this.completeTab()) {
-        this.typed = ''
-        this.opts.send('\t')
-      }
+    if (this.pendingOpen && this.echoed()) {
+      this.cancelOpen()
+      return this.openBest()
     }
-    const word = this.enabled ? this.pathWordAt(this.pathLine()) : null
-    if (word?.raw !== this.dismissed) this.dismissed = ''
-    if (this.pendingTab && this.pendingTab.raw !== null) {
-      // Typing on drops the held Tab.
-      if (word?.raw !== this.pendingTab.raw) this.cancelTab()
-      else if (this.opts.listDir!(word.dir) !== undefined) {
-        this.cancelTab()
-        this.dismissed = ''
-        const found = this.pathItems(word)
-        if (found.length === 1) return this.insertPath(word, found[0])
-        if (!found.length) {
-          this.typed = ''
-          this.opts.send('\t')
+    if (this.pathStart >= 0) {
+      const text = this.pathLine()
+      const word = text !== null ? pathWord(text, true) : null
+      if (!word || text!.length - word.raw.length !== this.pathStart) this.closePaths()
+      else {
+        const items = this.pathItems(word)
+        if (items.length && this.placePaths(word, items)) {
+          this.show('', '')
+          return
         }
+        // Still loading, out of view, or nothing matches yet.
+        this.hidePaths()
       }
     }
-    const items = word && !this.dismissed ? this.pathItems(word) : []
-    if (word && items.length && this.placePaths(word, items)) {
-      this.show('', '')
-      return
-    }
-    this.closePaths()
     const full = line && !line.tail ? this.opts.suggest(line.text) : undefined
     this.show(full && line ? full.slice(line.text.length) : '', full ?? '')
   }
@@ -588,7 +566,7 @@ export class GhostSuggest {
         })
         return item
       }),
-      hint('↑↓ choose · Enter insert · Shift+Del forget · Esc close'),
+      hint(`↑↓ choose · Enter insert · Shift+Del forget · Esc close${this.opts.listDir ? ' · Ctrl+Space files' : ''}`),
     )
 
     // Line it up with the start of the typed text, inside the terminal.

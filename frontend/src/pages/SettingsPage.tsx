@@ -158,7 +158,7 @@ export function SettingsPage() {
             </Field>
             <Field
               label="Command suggestions"
-              hint="Shows a past command in faint text as you type; → or End accepts it, Ctrl+Space lists more matches, Shift+Delete forgets one. Typing a path lists that folder's contents; Tab inserts one. History is kept per host, encrypted, and also read from the server's shell history."
+              hint="Shows a past command in faint text as you type; → or End accepts it, Shift+Delete forgets it. Ctrl+Space lists the folder contents for the word you're on, or more past commands (press again to switch). Tab is always the shell's own completion. History is kept per host, encrypted, and also read from the server's shell history."
             >
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" onClick={() => setConfirmClearHistory(true)}>
