@@ -1,8 +1,8 @@
 import { BotIcon, CloudAlertIcon, CloudCheckIcon, CloudIcon, FolderIcon, LaptopIcon, LayoutGridIcon, LockIcon, PlusIcon, RadioTowerIcon, RefreshCwIcon, TerminalIcon, XIcon } from 'lucide-react'
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
-import { Logo } from '@/components/common/Logo'
 import { Tooltip } from '@/components/ui/tooltip'
+import { VaultSwitcher } from '@/components/layout/VaultSwitcher'
 import { api } from '@/lib/api'
 import { appKey, cn, isMac, relativeTime } from '@/lib/utils'
 import { useAgent } from '@/stores/agent'
@@ -60,12 +60,9 @@ export function TabBar() {
 
   return (
     <div className="titlebar-drag flex h-[50px] shrink-0 items-center border-b bg-sidebar">
-      {/* Same width as the vault sidebar, so the window controls and brand sit above it and the tabs line up with the content. */}
-      <div className={cn('flex h-full w-[200px] shrink-0 items-center justify-end gap-2 border-r pr-4', !isMac && 'justify-start pl-4')}>
-        <div className="flex size-5 items-center justify-center rounded-md bg-primary/15">
-          <Logo className="size-3 text-primary" />
-        </div>
-        <span className="text-[13px] font-semibold tracking-tight">Remvyn</span>
+      {/* Same width as the vault sidebar, so the window controls and the vault switcher sit above it and the tabs line up with the content. */}
+      <div className={cn('flex h-full w-[200px] shrink-0 items-center border-r pr-2', isMac ? 'pl-[76px]' : 'pl-2')}>
+        <VaultSwitcher />
       </div>
       <button
         onClick={() => activate('vault')}

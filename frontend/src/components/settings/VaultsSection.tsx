@@ -11,6 +11,7 @@ import { api, errorMessage } from '@/lib/api'
 import type { VaultProfile } from '@/lib/types'
 import { useLock } from '@/stores/lock'
 import { reopenPage } from '@/stores/ui'
+import { useVaults } from '@/stores/vaults'
 import { Field, Section } from './Section'
 
 /** Reload the window on Settings so every store reads the newly opened vault. */
@@ -90,6 +91,7 @@ export function VaultsSection() {
   const load = async () => {
     try {
       setVaults(await api.listVaults())
+      void useVaults.getState().load()
     } catch (e) {
       toast.error('Could not list vaults', { description: errorMessage(e) })
     }
