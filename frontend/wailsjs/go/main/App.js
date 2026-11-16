@@ -38,6 +38,10 @@ export function ClearTransfers() {
   return window['go']['main']['App']['ClearTransfers']();
 }
 
+export function CloseRemoteDesktop(arg1) {
+  return window['go']['main']['App']['CloseRemoteDesktop'](arg1);
+}
+
 export function CloseSFTP(arg1) {
   return window['go']['main']['App']['CloseSFTP'](arg1);
 }
@@ -218,6 +222,10 @@ export function InstallUpdate() {
   return window['go']['main']['App']['InstallUpdate']();
 }
 
+export function LaunchRDP(arg1) {
+  return window['go']['main']['App']['LaunchRDP'](arg1);
+}
+
 export function ListAgentLog(arg1) {
   return window['go']['main']['App']['ListAgentLog'](arg1);
 }
@@ -348,6 +356,10 @@ export function OpenLocalWith(arg1, arg2) {
 
 export function OpenReleasePage() {
   return window['go']['main']['App']['OpenReleasePage']();
+}
+
+export function OpenRemoteDesktop(arg1, arg2) {
+  return window['go']['main']['App']['OpenRemoteDesktop'](arg1, arg2);
 }
 
 export function OpenRemoteWith(arg1, arg2, arg3) {

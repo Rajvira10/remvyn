@@ -59,6 +59,10 @@ type syncHost struct {
 	CreatedAt      int64  `json:"createdAt"`
 	UpdatedAt      int64  `json:"updatedAt"`
 	Password       string `json:"password"`
+	// Omitted for SSH hosts so their records are unchanged from before RDP
+	// and VNC (no re-upload, and older versions read them as before).
+	Protocol  string `json:"protocol,omitempty"`
+	ViaHostID string `json:"viaHostId,omitempty"`
 }
 
 type syncKey struct {
@@ -146,7 +150,7 @@ func (s *Store) SyncSnapshot(ctx context.Context) ([]SyncRecord, error) {
 	}
 
 	rows, err = s.db.QueryContext(ctx, `SELECT id, label, group_id, hostname, port, username, auth_method, key_id,
-		color, startup_command, created_at, updated_at, password_sealed FROM hosts`)
+		color, startup_command, created_at, updated_at, password_sealed, protocol, via_host_id FROM hosts`)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +159,7 @@ func (s *Store) SyncSnapshot(ctx context.Context) ([]SyncRecord, error) {
 		var h syncHost
 		var pw []byte
 		if err := rows.Scan(&h.ID, &h.Label, &h.GroupID, &h.Hostname, &h.Port, &h.Username, &h.AuthMethod, &h.KeyID,
-			&h.Color, &h.StartupCommand, &h.CreatedAt, &h.UpdatedAt, &pw); err != nil {
+			&h.Color, &h.StartupCommand, &h.CreatedAt, &h.UpdatedAt, &pw, &h.Protocol, &h.ViaHostID); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -265,14 +269,18 @@ func (s *Store) ApplySyncRecord(ctx context.Context, r SyncRecord) error {
 		if err != nil {
 			return err
 		}
+		if h.Protocol == models.ProtocolSSH {
+			h.Protocol = ""
+		}
 		_, err = s.db.ExecContext(ctx, `INSERT INTO hosts(id, label, group_id, hostname, port, username, auth_method, key_id,
-			password_sealed, color, startup_command, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+			password_sealed, color, startup_command, created_at, updated_at, protocol, via_host_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 			ON CONFLICT(id) DO UPDATE SET label=excluded.label, group_id=excluded.group_id, hostname=excluded.hostname,
 			port=excluded.port, username=excluded.username, auth_method=excluded.auth_method, key_id=excluded.key_id,
 			password_sealed=excluded.password_sealed, color=excluded.color, startup_command=excluded.startup_command,
-			created_at=excluded.created_at, updated_at=excluded.updated_at`,
+			created_at=excluded.created_at, updated_at=excluded.updated_at, protocol=excluded.protocol,
+			via_host_id=excluded.via_host_id`,
 			r.ID, h.Label, h.GroupID, h.Hostname, h.Port, h.Username, h.AuthMethod, h.KeyID, pw, h.Color, h.StartupCommand,
-			h.CreatedAt, h.UpdatedAt)
+			h.CreatedAt, h.UpdatedAt, h.Protocol, h.ViaHostID)
 		return err
 	case KindForward:
 		var f models.ForwardRule

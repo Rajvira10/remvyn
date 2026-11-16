@@ -545,9 +545,11 @@ export namespace models {
 	    id: string;
 	    label: string;
 	    groupId: string;
+	    protocol: string;
 	    hostname: string;
 	    port: number;
 	    username: string;
+	    viaHostId: string;
 	    authMethod: string;
 	    keyId: string;
 	    hasPassword: boolean;
@@ -566,9 +568,11 @@ export namespace models {
 	        this.id = source["id"];
 	        this.label = source["label"];
 	        this.groupId = source["groupId"];
+	        this.protocol = source["protocol"];
 	        this.hostname = source["hostname"];
 	        this.port = source["port"];
 	        this.username = source["username"];
+	        this.viaHostId = source["viaHostId"];
 	        this.authMethod = source["authMethod"];
 	        this.keyId = source["keyId"];
 	        this.hasPassword = source["hasPassword"];
@@ -1021,6 +1025,40 @@ export namespace models {
 	}
 	
 	
+	export class RemoteDesktop {
+	    id: string;
+	    hostId: string;
+	    kind: string;
+	    target: string;
+	    via: string;
+	    username: string;
+	    url?: string;
+	    addr?: string;
+	    client?: string;
+	    launchError?: string;
+	    launchCode?: string;
+	    startedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new RemoteDesktop(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.hostId = source["hostId"];
+	        this.kind = source["kind"];
+	        this.target = source["target"];
+	        this.via = source["via"];
+	        this.username = source["username"];
+	        this.url = source["url"];
+	        this.addr = source["addr"];
+	        this.client = source["client"];
+	        this.launchError = source["launchError"];
+	        this.launchCode = source["launchCode"];
+	        this.startedAt = source["startedAt"];
+	    }
+	}
 	export class SSHConfigImport {
 	    imported: number;
 	    skipped: number;

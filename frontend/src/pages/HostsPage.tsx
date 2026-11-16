@@ -3,6 +3,7 @@ import {
   FileDownIcon,
   FolderIcon,
   FolderOpenIcon,
+  MonitorIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -33,12 +34,13 @@ import type { Group, Host } from '@/lib/types'
 import { relativeTime } from '@/lib/utils'
 import { useSessions } from '@/stores/sessions'
 import { useUI } from '@/stores/ui'
-import { useVault } from '@/stores/vault'
+import { defaultPort, isSSH, useVault } from '@/stores/vault'
 
 export function HostsPage() {
   const { hosts, groups, keys, loadHosts } = useVault()
   const editHost = useUI((s) => s.editHost)
   const openSession = useSessions((s) => s.open)
+  const connect = useSessions((s) => s.connect)
   const [query, setQuery] = useState('')
   const [deleting, setDeleting] = useState<Host | null>(null)
   const [renamingGroup, setRenamingGroup] = useState<Group | null>(null)
@@ -92,6 +94,7 @@ export function HostsPage() {
   }
 
   const keyName = (id: string) => keys.find((k) => k.id === id)?.name ?? 'missing key'
+  const hostLabel = (id: string) => hosts.find((h) => h.id === id)?.label ?? 'deleted host'
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -116,7 +119,7 @@ export function HostsPage() {
       <div className="min-h-0 flex-1 overflow-auto p-5">
         {hosts.length === 0 ? (
           <EmptyState icon={ServerIcon} title="No hosts yet">
-            Add a server to connect to it over SSH, or import your existing ~/.ssh/config.
+            Add a server to connect to it over SSH, RDP or VNC, or import your existing ~/.ssh/config.
             <div className="mt-4 flex justify-center gap-2">
               <Button variant="outline" size="sm" onClick={() => void importConfig()}>
                 <FileDownIcon /> Import SSH config
@@ -161,7 +164,7 @@ export function HostsPage() {
                     {hs.map((h) => (
                       <div
                         key={h.id}
-                        onDoubleClick={() => openSession(h.id, 'terminal')}
+                        onDoubleClick={() => connect(h.id)}
                         className="group relative flex items-center gap-3 rounded-xl border bg-card p-3 transition-colors hover:border-primary/40 hover:bg-accent/40"
                       >
                         <HostAvatar label={h.label} color={h.color} />
@@ -170,19 +173,32 @@ export function HostsPage() {
                           <div className="truncate font-mono text-[11.5px] text-muted-foreground">
                             {h.username ? `${h.username}@` : ''}
                             {h.hostname}
-                            {h.port !== 22 ? `:${h.port}` : ''}
+                            {h.port !== defaultPort(h) ? `:${h.port}` : ''}
                           </div>
-                          <div className="mt-1 flex items-center gap-1.5">
-                            <Badge variant="outline" className="text-[10px]">
-                              {h.authMethod === 'key' ? keyName(h.keyId) : h.authMethod === 'agent' ? 'agent' : h.hasPassword ? 'password saved' : 'password'}
-                            </Badge>
+                          <div className="mt-1 flex min-w-0 items-center gap-1.5">
+                            {!isSSH(h) && (
+                              <Badge variant="info" className="text-[10px]">
+                                <MonitorIcon /> {h.protocol.toUpperCase()}
+                              </Badge>
+                            )}
+                            {isSSH(h) ? (
+                              <Badge variant="outline" className="text-[10px]">
+                                {h.authMethod === 'key' ? keyName(h.keyId) : h.authMethod === 'agent' ? 'agent' : h.hasPassword ? 'password saved' : 'password'}
+                              </Badge>
+                            ) : (
+                              h.viaHostId && (
+                                <Badge variant="outline" className="min-w-0 truncate text-[10px]" title={`Tunnelled through ${hostLabel(h.viaHostId)}`}>
+                                  via {hostLabel(h.viaHostId)}
+                                </Badge>
+                              )
+                            )}
                             <span className="text-[10.5px] text-muted-foreground/80">{relativeTime(h.lastConnectedAt)}</span>
                           </div>
                         </div>
                         <div className="flex flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-                          <Tooltip content="Open terminal">
-                            <Button size="icon-xs" onClick={() => openSession(h.id, 'terminal')} aria-label={`Connect to ${h.label}`}>
-                              <TerminalIcon />
+                          <Tooltip content={isSSH(h) ? 'Open terminal' : h.protocol === 'rdp' ? 'Open in RDP app' : 'Open remote desktop'}>
+                            <Button size="icon-xs" onClick={() => connect(h.id)} aria-label={`Connect to ${h.label}`}>
+                              {isSSH(h) ? <TerminalIcon /> : <MonitorIcon />}
                             </Button>
                           </Tooltip>
                           <DropdownMenu>
@@ -192,12 +208,20 @@ export function HostsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onSelect={() => openSession(h.id, 'terminal')}>
-                                <TerminalIcon /> Open terminal
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => openSession(h.id, 'sftp')}>
-                                <FolderOpenIcon /> Open SFTP
-                              </DropdownMenuItem>
+                              {isSSH(h) ? (
+                                <>
+                                  <DropdownMenuItem onSelect={() => openSession(h.id, 'terminal')}>
+                                    <TerminalIcon /> Open terminal
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => openSession(h.id, 'sftp')}>
+                                    <FolderOpenIcon /> Open SFTP
+                                  </DropdownMenuItem>
+                                </>
+                              ) : (
+                                <DropdownMenuItem onSelect={() => connect(h.id)}>
+                                  <MonitorIcon /> {h.protocol === 'rdp' ? 'Open in RDP app' : 'Open remote desktop'}
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onSelect={() => editHost(h.id)}>
                                 <PencilIcon /> Edit
@@ -226,7 +250,11 @@ export function HostsPage() {
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
         title={`Delete “${deleting?.label}”?`}
-        description="The host, its saved password and its port-forwarding rules are removed. Keys in the keychain are kept."
+        description={
+          deleting && !isSSH(deleting)
+            ? 'The host and its saved password are removed.'
+            : 'The host, its saved password and its port-forwarding rules are removed. Keys in the keychain are kept.'
+        }
         confirmLabel="Delete"
         destructive
         onConfirm={async () => {

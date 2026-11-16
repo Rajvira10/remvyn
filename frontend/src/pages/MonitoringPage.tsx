@@ -37,7 +37,7 @@ import { cn, relativeTime } from '@/lib/utils'
 import { useMonitor } from '@/stores/monitor'
 import { useSessions } from '@/stores/sessions'
 import { useSettings } from '@/stores/settings'
-import { useVault } from '@/stores/vault'
+import { useSSHHosts, useVault } from '@/stores/vault'
 
 export function MonitoringPage() {
   const [detail, setDetail] = useState<string | null>(null)
@@ -90,7 +90,7 @@ async function saveMonitored(ids: string[]) {
 }
 
 function Dashboard({ onOpen }: { onOpen: (id: string) => void }) {
-  const hosts = useVault((s) => s.hosts)
+  const hosts = useSSHHosts()
   const monitoredIds = useSettings((s) => s.settings?.monitorHostIds)
   const interval = useSettings((s) => s.settings?.monitorIntervalSec ?? 30)
   const [choosing, setChoosing] = useState(false)
@@ -225,7 +225,7 @@ function ServerCard({ host, onOpen }: { host: Host; onOpen: () => void }) {
 }
 
 function ChooseServersDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
-  const hosts = useVault((s) => s.hosts)
+  const hosts = useSSHHosts()
   const current = useSettings((s) => s.settings?.monitorHostIds)
   const [sel, setSel] = useState<string[]>([])
   useEffect(() => {
@@ -586,7 +586,7 @@ function newRule(metric: AlertMetric = 'cpu'): AlertRule {
 const ANY = '__any__'
 
 function RuleDialog({ rule, checks, onOpenChange, onSaved }: { rule: AlertRule | null; checks: UptimeSummary[]; onOpenChange: (o: boolean) => void; onSaved: () => Promise<void> }) {
-  const hosts = useVault((s) => s.hosts)
+  const hosts = useSSHHosts()
   const [r, setR] = useState<AlertRule>(newRule())
   const [busy, setBusy] = useState(false)
   useEffect(() => {

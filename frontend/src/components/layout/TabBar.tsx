@@ -1,4 +1,4 @@
-import { BotIcon, CloudAlertIcon, CloudCheckIcon, CloudIcon, FolderIcon, LaptopIcon, LayoutGridIcon, LockIcon, PlusIcon, RadioTowerIcon, RefreshCwIcon, TerminalIcon, XIcon } from 'lucide-react'
+import { BotIcon, CloudAlertIcon, CloudCheckIcon, CloudIcon, FolderIcon, LaptopIcon, LayoutGridIcon, LockIcon, MonitorIcon, PlusIcon, RadioTowerIcon, RefreshCwIcon, TerminalIcon, XIcon } from 'lucide-react'
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { Tooltip } from '@/components/ui/tooltip'
@@ -36,11 +36,15 @@ export function useCloseTab() {
           ? `${unsaved} open file${unsaved === 1 ? ' has' : 's have'} unsaved changes that will be lost.`
           : pending?.tab.kind === 'sftp'
             ? 'The SFTP session and any running transfers will be stopped.'
-            : panes > 1
-              ? `All ${panes} panes in this tab will be closed.`
-              : pending?.tab.kind === 'local'
-                ? 'The shell and anything running in it will be stopped.'
-                : 'The SSH session will be disconnected.'
+            : pending?.tab.kind === 'vnc'
+              ? 'The remote desktop will be disconnected.'
+              : pending?.tab.kind === 'rdp'
+                ? 'The SSH tunnel to the desktop, if any, will be closed. The RDP app’s window is left open.'
+                : panes > 1
+                  ? `All ${panes} panes in this tab will be closed.`
+                  : pending?.tab.kind === 'local'
+                    ? 'The shell and anything running in it will be stopped.'
+                    : 'The SSH session will be disconnected.'
       }
       confirmLabel={unsaved ? 'Close without saving' : 'Close'}
       destructive={!!unsaved}
@@ -95,6 +99,8 @@ export function TabBar() {
               <TerminalIcon className="size-3.5 shrink-0" />
             ) : t.kind === 'local' ? (
               <LaptopIcon className="size-3.5 shrink-0" />
+            ) : t.kind === 'vnc' || t.kind === 'rdp' ? (
+              <MonitorIcon className="size-3.5 shrink-0" />
             ) : (
               <FolderIcon className="size-3.5 shrink-0" />
             )}

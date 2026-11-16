@@ -158,8 +158,10 @@ func (c *Core) ResolveKeyUse(id, decision string) bool {
 // SetForwardKeys turns key forwarding on or off for a host. It applies to
 // new connections.
 func (c *Core) SetForwardKeys(hostID string, on bool) (models.Settings, error) {
-	if _, err := c.store.GetHost(context.Background(), hostID); err != nil && on {
+	if h, err := c.store.GetHost(context.Background(), hostID); err != nil && on {
 		return c.Settings(), errors.New("host not found")
+	} else if err == nil && on && !h.IsSSH() {
+		return c.Settings(), errors.New("key forwarding needs an SSH host")
 	}
 	c.saveMu.Lock()
 	st := c.Settings()

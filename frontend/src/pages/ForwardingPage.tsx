@@ -21,7 +21,7 @@ import { Switch } from '@/components/ui/switch'
 import { api, errorMessage } from '@/lib/api'
 import type { ForwardRule, ForwardType } from '@/lib/types'
 import { cn, formatBytes } from '@/lib/utils'
-import { useVault } from '@/stores/vault'
+import { useSSHHosts, useVault } from '@/stores/vault'
 
 const TYPE_INFO: Record<ForwardType, { label: string; flag: string; help: string }> = {
   local: { label: 'Local', flag: '-L', help: 'Open a port on this computer that reaches a service through the SSH server (e.g. a remote database).' },
@@ -43,6 +43,7 @@ export function ForwardingPage() {
   const [deleting, setDeleting] = useState<ForwardRule | null>(null)
   const [busy, setBusy] = useState<Set<string>>(new Set())
 
+  const sshHosts = useSSHHosts()
   const hostLabel = (id: string) => hosts.find((h) => h.id === id)?.label ?? 'deleted host'
 
   const toggle = async (r: ForwardRule) => {
@@ -70,7 +71,7 @@ export function ForwardingPage() {
       <div className="flex h-14 shrink-0 items-center gap-3 border-b px-5">
         <h1 className="text-[15px] font-semibold">Port forwarding</h1>
         <div className="ml-auto">
-          <Button size="sm" disabled={hosts.length === 0} onClick={() => setEditing(newRule(hosts[0]?.id ?? ''))}>
+          <Button size="sm" disabled={sshHosts.length === 0} onClick={() => setEditing(newRule(sshHosts[0]?.id ?? ''))}>
             <PlusIcon /> New rule
           </Button>
         </div>
@@ -78,7 +79,7 @@ export function ForwardingPage() {
       <div className="min-h-0 flex-1 overflow-auto p-5">
         {forwards.length === 0 ? (
           <EmptyState icon={CableIcon} title="No forwarding rules">
-            {hosts.length === 0 ? 'Add a host first, then create local, remote or SOCKS forwarding rules through it.' : 'Tunnel ports through your SSH hosts: local (-L), remote (-R) or dynamic SOCKS (-D).'}
+            {sshHosts.length === 0 ? 'Add an SSH host first, then create local, remote or SOCKS forwarding rules through it.' : 'Tunnel ports through your SSH hosts: local (-L), remote (-R) or dynamic SOCKS (-D).'}
           </EmptyState>
         ) : (
           <div className="flex flex-col gap-2">
@@ -165,7 +166,7 @@ function newRule(hostId: string): ForwardRule {
 }
 
 function RuleDialog({ rule, onOpenChange, onSaved, running }: { rule: ForwardRule | null; onOpenChange: (o: boolean) => void; onSaved: () => Promise<void>; running: boolean }) {
-  const hosts = useVault((s) => s.hosts)
+  const hosts = useSSHHosts()
   const [r, setR] = useState<ForwardRule>(newRule(''))
   const [busy, setBusy] = useState(false)
   useEffect(() => {

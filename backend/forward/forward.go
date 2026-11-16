@@ -242,6 +242,13 @@ func (m *Manager) handle(ctx context.Context, r *runner, inbound net.Conn) {
 	pipe(inbound, outbound, &r.out, &r.in)
 }
 
+// Pipe copies both directions between two connections until either side
+// closes. It does not close them.
+func Pipe(a, b net.Conn) {
+	var n atomic.Int64
+	pipe(a, b, &n, &n)
+}
+
 // pipe copies both directions until either side closes.
 func pipe(a, b net.Conn, aToB, bToA *atomic.Int64) {
 	done := make(chan struct{}, 2)

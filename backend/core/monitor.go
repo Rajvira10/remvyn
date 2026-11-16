@@ -102,7 +102,7 @@ func (c *Core) existingHostIDs(in []string) []string {
 		if slices.Contains(out, id) {
 			continue
 		}
-		if _, err := c.store.GetHost(context.Background(), id); err == nil {
+		if h, err := c.store.GetHost(context.Background(), id); err == nil && h.IsSSH() {
 			out = append(out, id)
 		}
 	}

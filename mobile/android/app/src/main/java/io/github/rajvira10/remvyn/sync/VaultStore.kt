@@ -20,7 +20,11 @@ data class Host(
     val id: String, val label: String, val groupId: String, val hostname: String, val port: Int,
     val username: String, val authMethod: String, val keyId: String, val color: String,
     val startupCommand: String, val password: String,
-)
+    /** "" or "ssh" for SSH; "rdp" and "vnc" remote desktops only open in Remvyn on a computer. */
+    val protocol: String = "", val viaHostId: String = "",
+) {
+    val isSsh: Boolean get() = protocol.isEmpty() || protocol == "ssh"
+}
 
 data class SshKey(val id: String, val name: String, val type: String, val privateKey: String, val passphrase: String)
 data class Group(val id: String, val name: String)
@@ -226,7 +230,8 @@ class VaultStore(val dir: File) {
             when (p.kind) {
                 "host" -> hosts += Host(p.id, d.optString("label"), d.optString("groupId"), d.optString("hostname"),
                     d.optInt("port", 22), d.optString("username"), d.optString("authMethod"), d.optString("keyId"),
-                    d.optString("color"), d.optString("startupCommand"), d.optString("password"))
+                    d.optString("color"), d.optString("startupCommand"), d.optString("password"),
+                    d.optString("protocol"), d.optString("viaHostId"))
                 "key" -> keys[p.id] = SshKey(p.id, d.optString("name"), d.optString("type"), d.optString("privateKey"), d.optString("passphrase"))
                 "group" -> groups[p.id] = Group(p.id, d.optString("name"))
                 "snippet" -> snippets += Snippet(p.id, d.optString("name"), d.optString("command"), d.optString("description"))

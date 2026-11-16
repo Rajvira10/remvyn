@@ -24,6 +24,8 @@ export function ClearCommandHistory():Promise<void>;
 
 export function ClearTransfers():Promise<void>;
 
+export function CloseRemoteDesktop(arg1:string):Promise<void>;
+
 export function CloseSFTP(arg1:string):Promise<void>;
 
 export function CloseTerminal(arg1:string):Promise<void>;
@@ -114,6 +116,8 @@ export function InstallPublicKey(arg1:string,arg2:string,arg3:models.ConnectOpti
 
 export function InstallUpdate():Promise<void>;
 
+export function LaunchRDP(arg1:string):Promise<models.RemoteDesktop>;
+
 export function ListAgentLog(arg1:number):Promise<Array<models.AgentLogEntry>>;
 
 export function ListAlertEvents():Promise<Array<models.AlertEvent>>;
@@ -179,6 +183,8 @@ export function OpenLocalTerminal(arg1:string,arg2:models.ConnectOptions):Promis
 export function OpenLocalWith(arg1:string,arg2:string):Promise<void>;
 
 export function OpenReleasePage():Promise<void>;
+
+export function OpenRemoteDesktop(arg1:string,arg2:string):Promise<models.RemoteDesktop>;
 
 export function OpenRemoteWith(arg1:string,arg2:string,arg3:string):Promise<void>;
 

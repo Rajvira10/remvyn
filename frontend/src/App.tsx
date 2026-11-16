@@ -10,6 +10,8 @@ import { ShortcutsDialog } from '@/components/layout/ShortcutsDialog'
 import { TabBar, useCloseTab } from '@/components/layout/TabBar'
 import { UpdateDialog } from '@/components/layout/UpdateDialog'
 import { VaultSidebar } from '@/components/layout/VaultSidebar'
+import { RdpView } from '@/components/remote/RdpView'
+import { VncView } from '@/components/remote/VncView'
 import { HostKeyDialog } from '@/components/session/HostKeyDialog'
 import { KeyUseDialog } from '@/components/session/KeyUseDialog'
 import { SftpView } from '@/components/sftp/SftpView'
@@ -189,6 +191,13 @@ export default function App() {
               {tabs.map((t) => {
                 const root = (t.parent && byKey.get(t.parent)) || t
                 const visible = active === root.key
+                if (t.kind === 'vnc' || t.kind === 'rdp') {
+                  return (
+                    <ErrorBoundary key={t.key}>
+                      {t.kind === 'vnc' ? <VncView tab={t} visible={visible} /> : <RdpView tab={t} visible={visible} />}
+                    </ErrorBoundary>
+                  )
+                }
                 if (t.kind === 'sftp') {
                   return (
                     <ErrorBoundary key={t.key}>

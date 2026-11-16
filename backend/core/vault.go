@@ -128,8 +128,9 @@ func (c *Core) Unlock(password string) error {
 }
 
 // Lock forgets the data key until the master password is entered again.
-// Open terminals keep running; new connections, saved secrets, background
-// monitoring and sync wait for Unlock.
+// Open terminals keep running, but remote desktops (RDP, VNC) close, since
+// their windows can't be covered by the lock screen. New connections, saved
+// secrets, background monitoring and sync wait for Unlock.
 func (c *Core) Lock() error {
 	c.keyMu.Lock()
 	if !c.protected {
@@ -143,6 +144,7 @@ func (c *Core) Lock() error {
 	c.dek = nil
 	c.keyMu.Unlock()
 	c.sync.Lock()
+	c.closeRemoteDesktops("Remvyn was locked")
 	c.agentStop()
 	c.applyMonitoring()
 	c.emitLock()
@@ -224,6 +226,7 @@ func (c *Core) ResetVault() (models.Settings, error) {
 	c.forwards.StopAll()
 	c.terms.CloseAll()
 	c.files.CloseAll()
+	c.closeRemoteDesktops("")
 	c.keyMu.Lock()
 	if err := c.store.ClearAll(context.Background()); err != nil {
 		c.keyMu.Unlock()

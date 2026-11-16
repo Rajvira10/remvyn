@@ -10,6 +10,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  // noVNC is plain ESM with a top-level await; serve it as is in dev instead
+  // of pre-bundling it.
+  optimizeDeps: {
+    exclude: ['@novnc/novnc'],
+  },
   build: {
     chunkSizeWarningLimit: 6000,
     target: 'es2022',

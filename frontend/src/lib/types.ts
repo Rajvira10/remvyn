@@ -2,13 +2,19 @@
 
 export type AuthMethod = 'password' | 'key' | 'agent'
 
+/** '' (hosts saved before RDP/VNC) and 'ssh' both mean SSH. */
+export type Protocol = '' | 'ssh' | 'rdp' | 'vnc'
+
 export interface Host {
   id: string
   label: string
   groupId: string
+  protocol: Protocol
   hostname: string
   port: number
   username: string
+  /** RDP/VNC: a saved SSH host to tunnel through ('' connects directly). */
+  viaHostId: string
   authMethod: AuthMethod
   keyId: string
   hasPassword: boolean
@@ -118,6 +124,33 @@ export interface ConnectOptions {
   persistKey?: string
   /** Replay a resumed session's scrollback into an empty terminal. */
   restore?: boolean
+}
+
+/** An open RDP or VNC session. */
+export interface RemoteDesktop {
+  id: string
+  hostId: string
+  kind: 'rdp' | 'vnc'
+  /** host:port of the remote desktop. */
+  target: string
+  /** Label of the SSH host tunnelled through, if any. */
+  via: string
+  username: string
+  /** VNC: local WebSocket URL (with a one-time token) for the viewer. */
+  url?: string
+  /** RDP: where the RDP app connects (the target, or the tunnel's local end). */
+  addr?: string
+  /** RDP: the app that was opened. */
+  client?: string
+  /** RDP: why the app couldn't be opened; code 'no_rdp_app' when none is installed. */
+  launchError?: string
+  launchCode?: string
+  startedAt: number
+}
+
+export interface RemoteDesktopEnded {
+  id: string
+  error?: string
 }
 
 export interface SessionInfo {

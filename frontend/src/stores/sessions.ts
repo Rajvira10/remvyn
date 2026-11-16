@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 import { api } from '@/lib/api'
-import type { ServerSession } from '@/lib/types'
+import type { Host, ServerSession } from '@/lib/types'
 import { uid } from '@/lib/utils'
-import { hostById } from './vault'
+import { hostById, isSSH } from './vault'
 
-export type TabKind = 'terminal' | 'local' | 'sftp'
+export type TabKind = 'terminal' | 'local' | 'sftp' | 'rdp' | 'vnc'
 export type TabState = 'connecting' | 'auth' | 'connected' | 'closed' | 'error'
 
 /** Panes side by side ('row') or stacked ('col'). */
@@ -64,6 +64,8 @@ interface SessionsState {
   tabs: Tab[]
   active: string // 'vault' or a top-level tab key
   open: (hostId: string, kind: TabKind) => string
+  /** Opens a host the default way: a terminal for SSH, the viewer for VNC, the RDP app for RDP. */
+  connect: (hostId: string) => string
   openLocal: () => string
   update: (key: string, patch: Partial<Tab>) => void
   /** Closes a whole tab, with all its panes. */
@@ -113,6 +115,11 @@ export function isBroadcasting(tabs: Tab[], all: boolean, key: string): boolean 
 }
 
 export const isTerminal = (t: Tab) => t.kind === 'terminal' || t.kind === 'local'
+
+export const isRemoteDesktop = (t: Tab) => t.kind === 'rdp' || t.kind === 'vnc'
+
+/** The tab kind a host opens in by default. */
+export const connectKind = (h: Host | undefined): TabKind => (h?.protocol === 'rdp' ? 'rdp' : h?.protocol === 'vnc' ? 'vnc' : 'terminal')
 
 export const topTabs = (tabs: Tab[]) => tabs.filter((t) => !t.parent)
 
@@ -188,6 +195,10 @@ export function splitRects(n: Layout, r: Rect, path: string, fn: (n: Layout, r: 
  */
 function release(t: Tab, end: boolean) {
   if (t.state === 'connecting' || t.state === 'auth') void api.cancelConnect(t.sessionId)
+  if (isRemoteDesktop(t)) {
+    void api.closeRemoteDesktop(t.sessionId)
+    return
+  }
   if (!isTerminal(t)) {
     void api.closeSFTP(t.sessionId)
     return
@@ -221,12 +232,17 @@ export const useSessions = create<SessionsState>((set, get) => ({
   active: 'vault',
 
   open: (hostId, kind) => {
+    // A remote desktop never opens as a terminal or file browser.
+    const h = kind === 'terminal' || kind === 'sftp' ? hostById(hostId) : undefined
+    if (h && !isSSH(h)) kind = connectKind(h)
     const tab = newTab(hostId, kind)
     set((s) => ({ tabs: [...s.tabs, tab], active: tab.key }))
     return tab.key
   },
 
   openLocal: () => get().open('', 'local'),
+
+  connect: (hostId) => get().open(hostId, connectKind(hostById(hostId))),
 
   update: (key, patch) => set((s) => ({ tabs: s.tabs.map((t) => (t.key === key ? { ...t, ...patch } : t)) })),
 

@@ -9,15 +9,28 @@ const (
 	AuthAgent    = "agent"
 )
 
-// Host is a saved SSH connection target. Secrets (password) never leave the
-// backend; HasPassword reports whether one is stored.
+// Connection protocols for a host. "" means SSH (hosts saved before RDP and
+// VNC existed).
+const (
+	ProtocolSSH = "ssh"
+	ProtocolRDP = "rdp"
+	ProtocolVNC = "vnc"
+)
+
+// Host is a saved connection target: an SSH server, or a remote desktop
+// (RDP, VNC). Secrets (password) never leave the backend; HasPassword
+// reports whether one is stored.
 type Host struct {
-	ID          string `json:"id"`
-	Label       string `json:"label"`
-	GroupID     string `json:"groupId"`
-	Hostname    string `json:"hostname"`
-	Port        int    `json:"port"`
-	Username    string `json:"username"`
+	ID       string `json:"id"`
+	Label    string `json:"label"`
+	GroupID  string `json:"groupId"`
+	Protocol string `json:"protocol"` // "" or ssh | rdp | vnc
+	Hostname string `json:"hostname"`
+	Port     int    `json:"port"`
+	Username string `json:"username"`
+	// ViaHostID optionally names a saved SSH host to tunnel an RDP or VNC
+	// connection through; empty connects directly.
+	ViaHostID   string `json:"viaHostId"`
 	AuthMethod  string `json:"authMethod"`
 	KeyID       string `json:"keyId"`
 	HasPassword bool   `json:"hasPassword"`
@@ -28,6 +41,9 @@ type Host struct {
 	UpdatedAt       int64  `json:"updatedAt"`
 	LastConnectedAt int64  `json:"lastConnectedAt"`
 }
+
+// IsSSH reports whether the host is an SSH server (not a remote desktop).
+func (h Host) IsSSH() bool { return h.Protocol == "" || h.Protocol == ProtocolSSH }
 
 // HostInput is used to create or update a host. Password is only applied when
 // SetPassword is true (empty + SetPassword clears it).
@@ -183,6 +199,36 @@ type SessionInfo struct {
 	// Detached lists other Remvyn sessions on the server that no client is
 	// attached to, e.g. from before Remvyn was restarted.
 	Detached []ServerSession `json:"detached"`
+}
+
+// RemoteDesktop describes an open RDP or VNC session.
+type RemoteDesktop struct {
+	ID       string `json:"id"`
+	HostID   string `json:"hostId"`
+	Kind     string `json:"kind"`   // rdp | vnc
+	Target   string `json:"target"` // host:port of the remote desktop
+	Via      string `json:"via"`    // label of the SSH host tunnelled through, if any
+	Username string `json:"username"`
+	// URL is the local WebSocket address noVNC connects to (VNC only). It
+	// carries a one-time random token.
+	URL string `json:"url,omitempty"`
+	// Addr is where the RDP client connects: the target, or the local end
+	// of the SSH tunnel (RDP only).
+	Addr string `json:"addr,omitempty"`
+	// Client names the app RDP was opened with, when known.
+	Client string `json:"client,omitempty"`
+	// LaunchError says why the RDP client couldn't be opened; LaunchCode is
+	// "no_rdp_app" when none is installed.
+	LaunchError string `json:"launchError,omitempty"`
+	LaunchCode  string `json:"launchCode,omitempty"`
+	StartedAt   int64  `json:"startedAt"`
+}
+
+// RemoteDesktopEnded is emitted when a remote desktop session's connection
+// or tunnel ends on its own.
+type RemoteDesktopEnded struct {
+	ID    string `json:"id"`
+	Error string `json:"error,omitempty"`
 }
 
 // ServerSession is a persistent terminal session running on a server.

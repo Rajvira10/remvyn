@@ -71,6 +71,7 @@ fun HostsScreen(app: AppState) {
     val vault = app.vault ?: return
     var query by remember { mutableStateOf("") }
     var askPassword by remember { mutableStateOf<Host?>(null) }
+    var desktopOnly by remember { mutableStateOf<Host?>(null) }
 
     val filtered = vault.hosts.filter {
         query.isBlank() || listOf(it.label, it.hostname, it.username).any { f -> f.contains(query, true) }
@@ -129,7 +130,8 @@ fun HostsScreen(app: AppState) {
                         Row(
                             Modifier.fillMaxWidth().padding(horizontal = 12.dp).background(Surface, RoundedCornerShape(12.dp))
                                 .clickable {
-                                    if (session == null && h.authMethod == "password" && h.password.isEmpty()) askPassword = h
+                                    if (!h.isSsh) desktopOnly = h
+                                    else if (session == null && h.authMethod == "password" && h.password.isEmpty()) askPassword = h
                                     else app.open(h)
                                 }
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -140,7 +142,8 @@ fun HostsScreen(app: AppState) {
                             Column(Modifier.weight(1f)) {
                                 Text(h.label, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(
-                                    "${h.username.ifEmpty { "root" }}@${h.hostname}${if (h.port != 22) ":${h.port}" else ""}",
+                                    if (h.isSsh) "${h.username.ifEmpty { "root" }}@${h.hostname}${if (h.port != 22) ":${h.port}" else ""}"
+                                    else "${h.protocol.uppercase()} · ${h.hostname}:${h.port}",
                                     color = Muted, fontSize = 12.sp, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 )
                             }
@@ -157,6 +160,15 @@ fun HostsScreen(app: AppState) {
                 color = Muted, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(10.dp),
             )
         }
+    }
+
+    desktopOnly?.let { h ->
+        AlertDialog(
+            onDismissRequest = { desktopOnly = null },
+            title = { Text(h.label) },
+            text = { Text("This is a ${h.protocol.uppercase()} remote desktop. Open it in Remvyn on your computer; the phone app connects to SSH hosts only.") },
+            confirmButton = { TextButton(onClick = { desktopOnly = null }) { Text("OK") } },
+        )
     }
 
     askPassword?.let { h ->

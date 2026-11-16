@@ -22,6 +22,7 @@ import type {
   SSHConfigImport,
   ServerSession,
   SessionInfo,
+  RemoteDesktop,
   ShellDir,
   Settings,
   Snippet,
@@ -123,6 +124,11 @@ export const api = {
 
   openSFTP: (id: string, hostId: string, opts: ConnectOptions): Promise<SessionInfo> => call.OpenSFTP(id, hostId, opts),
   closeSFTP: (id: string): Promise<void> => call.CloseSFTP(id),
+  /** VNC: connects and returns the viewer's WebSocket URL. RDP: starts the tunnel (if any) and opens the RDP app. */
+  openRemoteDesktop: (id: string, hostId: string): Promise<RemoteDesktop> => call.OpenRemoteDesktop(id, hostId),
+  launchRDP: (id: string): Promise<RemoteDesktop> => call.LaunchRDP(id),
+  closeRemoteDesktop: (id: string): Promise<void> => call.CloseRemoteDesktop(id),
+
   remoteHome: (id: string): Promise<string> => call.RemoteHome(id),
   listRemote: (id: string, dir: string): Promise<DirListing> => call.ListRemote(id, dir),
   mkdirRemote: (id: string, dir: string, name: string): Promise<void> => call.MkdirRemote(id, dir, name),
@@ -283,6 +289,7 @@ export const events = {
   FORWARD_STATUS: 'forward:status',
   TRANSFER: 'transfer:update',
   SFTP_CLOSED: 'sftp:closed',
+  REMOTE_ENDED: 'remote:ended',
   EDIT_SYNC: 'edit:sync',
   MONITOR_SAMPLE: 'monitor:sample',
   MONITOR_STATUS: 'monitor:status',

@@ -93,7 +93,9 @@ CREATE TABLE IF NOT EXISTS hosts (
 	startup_command TEXT NOT NULL DEFAULT '',
 	created_at      INTEGER NOT NULL,
 	updated_at      INTEGER NOT NULL,
-	last_connected_at INTEGER NOT NULL DEFAULT 0
+	last_connected_at INTEGER NOT NULL DEFAULT 0,
+	protocol        TEXT NOT NULL DEFAULT '',
+	via_host_id     TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS snippets (
 	id          TEXT PRIMARY KEY,
@@ -150,9 +152,36 @@ func Open(path string, vault *security.Vault) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("initialise schema: %w", err)
 	}
+	if err := migrate(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("upgrade database: %w", err)
+	}
 	st := &Store{db: db}
 	st.vault.Store(vault)
 	return st, nil
+}
+
+// columnsAdded lists columns added to tables after their first release.
+// Databases created before then get them with ALTER TABLE.
+var columnsAdded = []struct{ table, column, def string }{
+	{"hosts", "protocol", "TEXT NOT NULL DEFAULT ''"},
+	{"hosts", "via_host_id", "TEXT NOT NULL DEFAULT ''"},
+}
+
+func migrate(db *sql.DB) error {
+	for _, c := range columnsAdded {
+		var n int
+		if err := db.QueryRow(`SELECT count(*) FROM pragma_table_info(?) WHERE name = ?`, c.table, c.column).Scan(&n); err != nil {
+			return err
+		}
+		if n > 0 {
+			continue
+		}
+		if _, err := db.Exec(`ALTER TABLE ` + c.table + ` ADD COLUMN ` + c.column + ` ` + c.def); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Close releases the database.
@@ -246,12 +275,13 @@ func (s *Store) DeleteGroup(ctx context.Context, id string) error {
 // ---------------------------------------------------------------- hosts
 
 const hostCols = `id, label, group_id, hostname, port, username, auth_method, key_id,
-	password_sealed IS NOT NULL AND length(password_sealed) > 0, color, startup_command, created_at, updated_at, last_connected_at`
+	password_sealed IS NOT NULL AND length(password_sealed) > 0, color, startup_command, created_at, updated_at, last_connected_at,
+	protocol, via_host_id`
 
 func scanHost(row interface{ Scan(...any) error }) (models.Host, error) {
 	var h models.Host
 	err := row.Scan(&h.ID, &h.Label, &h.GroupID, &h.Hostname, &h.Port, &h.Username, &h.AuthMethod, &h.KeyID,
-		&h.HasPassword, &h.Color, &h.StartupCommand, &h.CreatedAt, &h.UpdatedAt, &h.LastConnectedAt)
+		&h.HasPassword, &h.Color, &h.StartupCommand, &h.CreatedAt, &h.UpdatedAt, &h.LastConnectedAt, &h.Protocol, &h.ViaHostID)
 	return h, err
 }
 
@@ -306,8 +336,21 @@ func ValidateHost(h *models.Host) error {
 	if strings.ContainsAny(h.Hostname, " /\t") {
 		return errors.New("address must be a hostname or IP address")
 	}
+	switch h.Protocol {
+	case "", models.ProtocolSSH:
+		// Stored as "" so SSH hosts look the same as before RDP and VNC.
+		h.Protocol, h.ViaHostID = "", ""
+	case models.ProtocolRDP, models.ProtocolVNC:
+		// Remote desktops log in with a password only; SSH options don't apply.
+		h.AuthMethod, h.KeyID, h.StartupCommand = models.AuthPassword, "", ""
+		if h.ViaHostID != "" && h.ViaHostID == h.ID {
+			return errors.New("a host can't tunnel through itself")
+		}
+	default:
+		return fmt.Errorf("unknown protocol %q", h.Protocol)
+	}
 	if h.Port == 0 {
-		h.Port = 22
+		h.Port = DefaultPort(h.Protocol)
 	}
 	if h.Port < 1 || h.Port > 65535 {
 		return errors.New("port must be between 1 and 65535")
@@ -328,6 +371,17 @@ func ValidateHost(h *models.Host) error {
 	return nil
 }
 
+// DefaultPort is the usual port for a protocol.
+func DefaultPort(protocol string) int {
+	switch protocol {
+	case models.ProtocolRDP:
+		return 3389
+	case models.ProtocolVNC:
+		return 5900
+	}
+	return 22
+}
+
 // SaveHost creates or updates a host.
 func (s *Store) SaveHost(ctx context.Context, in models.HostInput) (models.Host, error) {
 	h := in.Host
@@ -337,6 +391,15 @@ func (s *Store) SaveHost(ctx context.Context, in models.HostInput) (models.Host,
 	if h.AuthMethod == models.AuthKey {
 		if _, err := s.GetKey(ctx, h.KeyID); err != nil {
 			return h, errors.New("the selected key no longer exists")
+		}
+	}
+	if h.ViaHostID != "" {
+		via, err := s.GetHost(ctx, h.ViaHostID)
+		if err != nil {
+			return h, errors.New("the SSH host to tunnel through no longer exists")
+		}
+		if !via.IsSSH() {
+			return h, errors.New("connections can only tunnel through an SSH host")
 		}
 	}
 	ts := now()
@@ -351,12 +414,13 @@ func (s *Store) SaveHost(ctx context.Context, in models.HostInput) (models.Host,
 	}
 	defer tx.Rollback()
 	_, err = tx.ExecContext(ctx, `INSERT INTO hosts(id, label, group_id, hostname, port, username, auth_method, key_id,
-		color, startup_command, created_at, updated_at, last_connected_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+		color, startup_command, created_at, updated_at, last_connected_at, protocol, via_host_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(id) DO UPDATE SET label=excluded.label, group_id=excluded.group_id, hostname=excluded.hostname,
 		port=excluded.port, username=excluded.username, auth_method=excluded.auth_method, key_id=excluded.key_id,
-		color=excluded.color, startup_command=excluded.startup_command, updated_at=excluded.updated_at`,
+		color=excluded.color, startup_command=excluded.startup_command, updated_at=excluded.updated_at,
+		protocol=excluded.protocol, via_host_id=excluded.via_host_id`,
 		h.ID, h.Label, h.GroupID, h.Hostname, h.Port, h.Username, h.AuthMethod, h.KeyID, h.Color, h.StartupCommand,
-		h.CreatedAt, h.UpdatedAt, h.LastConnectedAt)
+		h.CreatedAt, h.UpdatedAt, h.LastConnectedAt, h.Protocol, h.ViaHostID)
 	if err != nil {
 		return h, err
 	}
@@ -661,8 +725,10 @@ func (s *Store) SaveForward(ctx context.Context, f models.ForwardRule) (models.F
 	if err := ValidateForward(&f); err != nil {
 		return f, err
 	}
-	if _, err := s.GetHost(ctx, f.HostID); err != nil {
+	if h, err := s.GetHost(ctx, f.HostID); err != nil {
 		return f, errors.New("the selected host no longer exists")
+	} else if !h.IsSSH() {
+		return f, errors.New("port forwarding needs an SSH host")
 	}
 	if f.ID == "" {
 		f.ID, f.CreatedAt = ids.New(), now()
