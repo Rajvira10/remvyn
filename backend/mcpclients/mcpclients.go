@@ -145,7 +145,7 @@ func clients() []client {
 		jsonClient("cursor", "Cursor", func(e env) string { return filepath.Join(e.home, ".cursor", "mcp.json") }, "mcpServers"),
 		jsonClient("claude-desktop", "Claude Desktop", claudeDesktop, "mcpServers"),
 		{
-			id: "vscode", name: "VS Code (Copilot)", format: fmtVSCode, path: vscode,
+			id: "vscode", name: "GitHub Copilot (VS Code)", format: fmtVSCode, path: vscode,
 			dir:    func(e env) string { return filepath.Dir(vscode(e)) },
 			manual: func(cmd []string) (string, string) { return "json", jsonSnippet("servers", vscodeEntry(cmd)) },
 		},

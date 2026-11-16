@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { AIToolIcon } from '@/components/agent/AIToolIcon'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { CopyButton } from '@/components/common/CopyButton'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -195,9 +196,7 @@ function ClientRow({
   return (
     <div>
       <div className="flex items-center gap-3 px-4 py-2.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-[12px] font-semibold text-muted-foreground">
-          {c.name[0]}
-        </div>
+        <AIToolIcon id={c.id} name={c.name} />
         <div className="min-w-0 flex-1">
           <div className="text-[13px] font-medium">{c.name}</div>
           <div className={cn('flex items-center gap-1 text-[11.5px]', stale ? 'text-warning' : c.connected ? 'text-success' : 'text-muted-foreground')}>
