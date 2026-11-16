@@ -25,7 +25,7 @@ import (
 )
 
 // Version is the application version.
-const Version = "2.7.3"
+const Version = "2.8.0"
 
 // The public GitHub App used for "Sign in with GitHub" sync. Override at
 // build time:

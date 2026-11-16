@@ -4,7 +4,7 @@
 
 Connect to servers, transfer files, monitor Linux hosts, and manage credentials from one app. Remvyn also lets you grant AI coding agents access to selected servers through MCP, without exposing saved SSH passwords or private keys to the agent.
 
-[**Download Remvyn**](https://github.com/Rajvira10/remvyn/releases) · [Installation instructions](#install) · [AI agent setup](#ai-agents-claude-code)
+[**Download Remvyn**](https://github.com/Rajvira10/remvyn/releases) · [Installation instructions](#install) · [AI agent setup](#ai-agents-claude-code-codex-and-other-mcp-clients)
 
 ### Why Remvyn?
 
