@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { Tab } from '@/stores/sessions'
 import { useUI } from '@/stores/ui'
-import { useSessions } from '@/stores/sessions'
+import { isRemoteDesktop, useSessions } from '@/stores/sessions'
 import type { Host } from '@/lib/types'
+import { defaultPort } from '@/stores/vault'
 
 export interface Credentials {
   password: string
@@ -31,7 +32,7 @@ export function ConnectOverlay({
   const { reconnect, closePane: close, activate } = useSessions()
   const local = tab.kind === 'local'
   const editHost = useUI((s) => s.editHost)
-  const target = host ? `${host.username ? host.username + '@' : ''}${host.hostname}${host.port !== 22 ? ':' + host.port : ''}` : ''
+  const target = host ? `${host.username ? host.username + '@' : ''}${host.hostname}${host.port !== defaultPort(host) ? ':' + host.port : ''}` : ''
 
   if (tab.state === 'connected') return null
 
@@ -60,7 +61,9 @@ export function ConnectOverlay({
                 ? tab.error
                 : tab.error
                   ? tab.error
-                  : `The ${local ? '' : 'remote '}shell exited${tab.exitCode !== undefined && tab.exitCode >= 0 ? ` with status ${tab.exitCode}` : ''}.`}
+                  : isRemoteDesktop(tab)
+                    ? 'The remote desktop session ended.'
+                    : `The ${local ? '' : 'remote '}shell exited${tab.exitCode !== undefined && tab.exitCode >= 0 ? ` with status ${tab.exitCode}` : ''}.`}
             </div>
             <div className="mt-1 flex gap-2">
               <Button size="sm" onClick={() => reconnect(tab.key)}>

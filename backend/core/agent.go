@@ -208,8 +208,10 @@ func (c *Core) SetAgentHostMode(hostID, mode string) (models.Settings, error) {
 	default:
 		return c.Settings(), fmt.Errorf("unknown access mode %q", mode)
 	}
-	if _, err := c.store.GetHost(context.Background(), hostID); err != nil && mode != "" {
+	if h, err := c.store.GetHost(context.Background(), hostID); err != nil && mode != "" {
 		return c.Settings(), errors.New("host not found")
+	} else if err == nil && mode != "" && !h.IsSSH() {
+		return c.Settings(), errors.New("only SSH hosts can be opened to agents")
 	}
 	c.saveMu.Lock()
 	st := c.Settings()
@@ -426,7 +428,8 @@ func (c *Core) agentHosts(st models.Settings) []models.Host {
 	all, _ := c.store.ListHosts(context.Background())
 	out := []models.Host{}
 	for _, h := range all {
-		if st.AgentHosts[h.ID] != "" {
+		// Agents run commands, so only SSH servers can be opened to them.
+		if st.AgentHosts[h.ID] != "" && h.IsSSH() {
 			out = append(out, h)
 		}
 	}

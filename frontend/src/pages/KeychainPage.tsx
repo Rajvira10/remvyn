@@ -22,7 +22,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { api, emptyConnect, errorCode, errorMessage } from '@/lib/api'
 import type { Key, KeyGenerateInput } from '@/lib/types'
 import { cn, formatDate } from '@/lib/utils'
-import { useVault } from '@/stores/vault'
+import { useSSHHosts, useVault } from '@/stores/vault'
 
 export function KeychainPage() {
   const { keys, loadKeys } = useVault()
@@ -339,7 +339,7 @@ function ImportKeyDialog({ open, onOpenChange, onDone }: { open: boolean; onOpen
 }
 
 function InstallKeyDialog({ keyItem, onOpenChange }: { keyItem: Key | null; onOpenChange: (o: boolean) => void }) {
-  const hosts = useVault((s) => s.hosts)
+  const hosts = useSSHHosts()
   const [hostId, setHostId] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)

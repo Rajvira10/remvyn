@@ -22,7 +22,7 @@ import type { AgentLogEntry, AgentMode, Host, LocalAgentStatus } from '@/lib/typ
 import { cn, relativeTime } from '@/lib/utils'
 import { useAgent } from '@/stores/agent'
 import { useSettings } from '@/stores/settings'
-import { useVault } from '@/stores/vault'
+import { useSSHHosts } from '@/stores/vault'
 
 /** Quotes a path for a POSIX shell when it needs it. */
 function shellQuote(s: string) {
@@ -42,7 +42,8 @@ const toolLabel: Record<string, string> = {
 export function AgentsPage() {
   const settings = useSettings((s) => s.settings)
   const status = useAgent((s) => s.status)
-  const hosts = useVault((s) => s.hosts)
+  // Agents run commands, so only SSH hosts can be opened to them.
+  const hosts = useSSHHosts()
   const enabled = !!settings?.agentEnabled
 
   const setEnabled = async (on: boolean) => {

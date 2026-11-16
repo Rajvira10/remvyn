@@ -11,7 +11,7 @@ Connect to servers, transfer files, monitor Linux hosts, and manage credentials 
 - **Keep working through disconnects.** Persistent tmux-backed terminals can reconnect and resume sessions after network interruptions or app restarts, when tmux is available on the server.
 - **Manage servers without installing agents.** Inspect CPU, memory, disks, Docker containers, systemd services, and alerts over SSH on Linux hosts.
 - **Give AI agents controlled access.** Choose which servers an MCP client can use, require approval for actions, and keep SSH credentials inside Remvyn.
-- **Bring your tools together.** Tabbed and split terminals, SFTP with a file editor, port forwarding, SSH keys, snippets, and encrypted GitHub-backed vault sync.
+- **Bring your tools together.** Tabbed and split terminals, SFTP with a file editor, port forwarding, RDP and VNC remote desktops, SSH keys, snippets, and encrypted GitHub-backed vault sync.
 
 **Platforms:** Windows, macOS, Linux, and an Android companion app. See [Releases](https://github.com/Rajvira10/remvyn/releases) for available builds. Windows builds are not yet code-signed and macOS builds are not yet notarized; review the [installation notes](#install) before installing.
 
@@ -20,6 +20,7 @@ Built with Wails v2, Go, React, TypeScript, xterm.js, and SQLite.
 ## Features
 
 - **Hosts**: saved servers with labels, groups, colors, startup commands, and password, SSH key or SSH agent authentication. Search, duplicate, import from `~/.ssh/config` (keys referenced by `IdentityFile` are imported too), and quick connect with ⌘T.
+- **Remote desktops (RDP and VNC)**: save Windows (RDP) and VNC hosts next to your SSH servers, optionally tunnelled through a saved SSH host. See [Remote desktops](#remote-desktops-rdp-and-vnc).
 - **Terminal**:
   - Tabbed xterm.js sessions (WebGL renderer) with a real PTY (`xterm-256color`, truecolor, Unicode 11) and live resize.
   - Copy and paste, find in scrollback, clickable links, 39 color schemes, and configurable font, cursor and scrollback. The palette button in the terminal toolbar switches scheme (with live preview on hover), text size and cursor without opening Settings.
@@ -53,6 +54,17 @@ Built with Wails v2, Go, React, TypeScript, xterm.js, and SQLite.
 - **AI agents**: let Claude Code (or any MCP client) run commands and edit files on servers you choose. Remvyn makes the connections with its own saved credentials, so the agent never sees a key or password; you can approve each action. See [AI agents](#ai-agents-claude-code).
 - **Sync**: keep your vault in sync between computers through a private GitHub repository, end-to-end encrypted. Sign in with GitHub; no server needed. Keep several vaults, each synced to its own repository, under one GitHub sign-in.
 - **Settings**: theme, terminal appearance, keepalive and connect timeout, SFTP defaults, close confirmation, and clearing all data.
+
+## Remote desktops (RDP and VNC)
+
+Choose **RDP** or **VNC** at the top of the host editor. These hosts have an address, port (3389 / 5900 by default), username and password, and optionally **Tunnel through**: a saved SSH host the connection goes through, so the desktop doesn't need to be reachable from your computer. Double-click one (or pick it in ⌘T) to connect. Remote desktop hosts aren't offered for terminals, SFTP, port forwarding, monitoring, installing a public key or AI agents.
+
+- **VNC** opens in a tab, in an embedded viewer ([noVNC](https://github.com/novnc/noVNC)). Remvyn connects (directly or through the SSH host) and bridges the viewer to it through a WebSocket on `127.0.0.1` with a one-time random token, which accepts a single connection. The saved password is handed to the server only when it asks for one; without one, you're asked, and can save it. The toolbar has scale to fit / actual size, view only, Send Ctrl+Alt+Del, send your clipboard text to the remote clipboard (text copied on the remote desktop lands in yours), full screen and reconnect.
+- **RDP** opens in your system's Remote Desktop app, and the tab shows the connection: with a tunnel, a local port on `127.0.0.1` that forwards through SSH and stays open while the tab is. The tab can open the app again, copy the saved password, or close (which closes the tunnel).
+  - **macOS**: opens a temporary `.rdp` file (address and username, never the password; deleted when the tab closes) in [Windows App](https://apps.apple.com/app/windows-app/id1295203466) (formerly Microsoft Remote Desktop), which asks for the password. Remvyn tells you if no app can open it.
+  - **Windows**: stores the password with `cmdkey` for the session, runs `mstsc`, and removes the stored credential when the tab closes.
+  - **Linux**: runs `xfreerdp3` or `xfreerdp` (the password goes in on stdin, not the command line), or Remmina if FreeRDP isn't installed.
+- Remote desktop tabs close when Remvyn locks or you switch vaults. The Android app shows these hosts but can't open them.
 
 ## Monitoring
 
@@ -96,6 +108,7 @@ A companion for when you're away from your computer. It signs in with GitHub, op
 - **Several vaults**, like Settings → Vaults on the desktop: Settings → Vaults → *Add vault* reuses the GitHub sign-in and goes straight to the repository picker (repositories already added are greyed out), then asks for that vault's own master password. The lock screen names the locked vault and can open another; opening one closes open terminals. Vaults have names (the first is "Default", others start as their repository's name) that you can rename in Settings. Remove a vault from the phone in Settings, or from the lock screen if its password is forgotten. Sign out removes them all.
 - Host keys are checked against the vault's known hosts; new ones need confirmation, and a changed key is flagged.
 - The vault stays encrypted on the phone and opens only with the master password; Remvyn locks after 5 minutes in the background. The GitHub token is sealed with the Android Keystore. Screenshots of the app are blocked.
+- RDP and VNC hosts are listed but open only on the desktop.
 - **Read-only vault for now**: add and edit hosts, snippets and passwords on the desktop. Host keys you trust on the phone are kept on the phone.
 - Sessions can drop when Android suspends the app in the background (no foreground service yet). Agent-auth hosts can't be used on the phone.
 
@@ -272,6 +285,7 @@ cd frontend && npx tsc -b && npx oxlint src
 - Recursive SFTP upload and download, byte-for-byte, plus rename, delete and transfer cancellation.
 - File operations: local and remote text editing, copy and move, compress and extract round trips, zip-slip rejection, and shell quoting for remote commands.
 - Local, remote and SOCKS forwarding.
+- Remote desktops: the VNC WebSocket proxy (refusing a missing or wrong token, carrying binary data both ways, accepting one viewer, closing both ends), the RDP tunnel through the test SSH server, VNC directly and through SSH, ending when the SSH link drops or Remvyn locks, the password never reaching the `.rdp` file or FreeRDP's command line, RDP/VNC hosts refused for SSH-only features, and the new host fields surviving storage, sync and an upgrade of an older database.
 - Forward teardown when the connection drops.
 - Public-key install.
 - Cancelling a connection while its host-key prompt is open.
@@ -304,6 +318,7 @@ backend/
   files/               SFTP and local file operations, recursive transfers with progress, remote text
                        editing, copy/move/compress/extract, open with an installed editor
   forward/             -L / -R / SOCKS5 -D forwarding
+  remotedesk/          VNC WebSocket proxy, RDP tunnel and launching the system's RDP app
   keys/                key generation, parsing and passphrases
   keyagent/            read-only SSH agent for agent forwarding, asking before each signature
   sshconfig/           ~/.ssh/config parser
@@ -324,7 +339,7 @@ tools/devgithub/       run the fake GitHub for trying sync
 packaging/             Linux tarball build (Docker) and Arch PKGBUILD
 mobile/android/        Android companion app (Kotlin, Jetpack Compose, JSch)
 branding/              logo, app icons and naming research (BRANDING.md)
-frontend/src/          React + TypeScript + Tailwind + Zustand UI (xterm.js terminals)
+frontend/src/          React + TypeScript + Tailwind + Zustand UI (xterm.js terminals, noVNC viewer)
 ```
 
 Terminal tabs stay mounted while hidden, so switching tabs never loses scrollback. The frontend subscribes to a session's output events *before* asking the backend to connect, so the login banner is never missed.
@@ -339,6 +354,7 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 - With agent forwarding on, anything on that server (including root, or an attacker who controls it) can ask to use your keys while you're connected. Remvyn asks before every use and the private keys never leave it, but only turn forwarding on for servers you trust, and deny requests you didn't expect.
 - Updates are only installed if they match the SHA-256 checksum GitHub publishes for the release file, which catches corrupt or swapped downloads. Builds aren't code-signed yet, so this trusts the GitHub repository's releases, the same as downloading by hand.
 - Forwarding rules bind to `127.0.0.1` by default, and the UI warns before you bind to other interfaces.
+- The VNC viewer's WebSocket listens on `127.0.0.1` behind a random 256-bit token and accepts one connection. An RDP tunnel's local port is open to other programs on this computer while its tab is open, like a forwarding rule. RDP passwords are never written to the `.rdp` file or put on FreeRDP's command line; on Windows, `cmdkey` receives the password as an argument and the credential is removed when the tab closes.
 
 ## Platform support
 
@@ -356,6 +372,7 @@ Terminal tabs stay mounted while hidden, so switching tabs never loses scrollbac
 - No team sharing.
 - Monitoring only runs while Remvyn is open (no agent or tray mode yet) and supports Linux servers only.
 - The "install public key" command assumes a POSIX shell on the server.
+- RDP isn't embedded; it opens in the system's Remote Desktop app. Opening it on Windows (`cmdkey`/`mstsc`) and Linux (FreeRDP, Remmina) hasn't been tried on real machines yet. Versions of Remvyn before RDP and VNC support see those hosts as SSH hosts, and editing one there turns it back into an SSH host.
 
 ## Contributing
 

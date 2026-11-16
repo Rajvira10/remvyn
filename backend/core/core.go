@@ -96,6 +96,9 @@ type Core struct {
 	keyUses  map[string]*pendingKeyUse
 
 	local localAgent
+
+	remoteOnce sync.Once
+	remote     *remoteSessions
 }
 
 // DefaultDataDir returns the per-user data directory, honouring REMVYN_DATA_DIR.
@@ -250,6 +253,7 @@ func (c *Core) close() {
 	c.forwards.StopAll()
 	c.terms.CloseAll()
 	c.files.CloseAll()
+	c.closeRemoteDesktops("")
 	_ = c.store.Close()
 }
 
@@ -336,6 +340,9 @@ func (c *Core) dialWith(ctx context.Context, hostID string, opts models.ConnectO
 	h, err := c.store.GetHost(ctx, hostID)
 	if err != nil {
 		return nil, h, errors.New("host not found")
+	}
+	if !h.IsSSH() {
+		return nil, h, fmt.Errorf("%s is a remote desktop (%s), not an SSH server", h.Label, strings.ToUpper(h.Protocol))
 	}
 	t := sshconn.Target{Host: h, Password: opts.Password, Passphrase: opts.Passphrase}
 	switch h.AuthMethod {
@@ -805,6 +812,7 @@ func (c *Core) ClearAppData() (models.Settings, error) {
 	c.forwards.StopAll()
 	c.terms.CloseAll()
 	c.files.CloseAll()
+	c.closeRemoteDesktops("")
 	if err := c.store.ClearAll(context.Background()); err != nil {
 		return c.Settings(), err
 	}

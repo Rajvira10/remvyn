@@ -1,18 +1,19 @@
 import { Dialog as DialogPrimitive } from 'radix-ui'
-import { FolderOpenIcon, LaptopIcon, PlusIcon, SearchIcon, TerminalIcon } from 'lucide-react'
+import { FolderOpenIcon, LaptopIcon, MonitorIcon, PlusIcon, SearchIcon, TerminalIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { HostAvatar } from '@/components/hosts/HostAvatar'
 import { Kbd } from '@/components/ui/kbd'
 import { appKey, cn, isMac } from '@/lib/utils'
 import { useSessions } from '@/stores/sessions'
 import { useUI } from '@/stores/ui'
-import { useVault } from '@/stores/vault'
+import { defaultPort, isSSH, useVault } from '@/stores/vault'
 
-/** ⌘T palette: fuzzy-find a host and open a terminal (Enter) or SFTP (⌘Enter), or open a local terminal. */
+/** ⌘T palette: fuzzy-find a host and open a terminal (Enter) or SFTP (⌘Enter), or open a local terminal. RDP and VNC hosts open their desktop. */
 export function QuickConnect() {
   const { paletteOpen, setPaletteOpen, editHost } = useUI()
   const hosts = useVault((s) => s.hosts)
   const open = useSessions((s) => s.open)
+  const connect = useSessions((s) => s.connect)
   const openLocal = useSessions((s) => s.openLocal)
   const activate = useSessions((s) => s.activate)
   const [q, setQ] = useState('')
@@ -58,7 +59,8 @@ export function QuickConnect() {
     const h = results[i - offset]
     if (!h) return
     setPaletteOpen(false)
-    open(h.id, sftp ? 'sftp' : 'terminal')
+    if (!isSSH(h)) connect(h.id)
+    else open(h.id, sftp ? 'sftp' : 'terminal')
   }
 
   return (
@@ -138,10 +140,15 @@ export function QuickConnect() {
                     <div className="truncate font-mono text-[11px] text-muted-foreground">
                       {h.username ? `${h.username}@` : ''}
                       {h.hostname}
-                      {h.port !== 22 ? `:${h.port}` : ''}
+                      {h.port !== defaultPort(h) ? `:${h.port}` : ''}
                     </div>
                   </div>
-                  {i + offset === idx && (
+                  {i + offset === idx && !isSSH(h) && (
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <MonitorIcon className="size-3" /> {h.protocol.toUpperCase()} <Kbd>↵</Kbd>
+                    </div>
+                  )}
+                  {i + offset === idx && isSSH(h) && (
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       <TerminalIcon className="size-3" /> <Kbd>↵</Kbd>
                       <FolderOpenIcon className="ml-2 size-3" /> <Kbd>{isMac ? '⌘' : 'Ctrl'}↵</Kbd>

@@ -39,7 +39,8 @@ type events struct {
 	status  map[string]models.MonitorStatus
 	alerts  []models.AlertEvent
 	// agent approval requests
-	approvals chan models.AgentApproval
+	approvals   chan models.AgentApproval
+	remoteEnded []models.RemoteDesktopEnded
 }
 
 func newEvents() *events {
@@ -79,6 +80,8 @@ func (e *events) emit(name string, payload any) {
 		e.approvals <- payload.(models.AgentApproval)
 	case name == "alert:event":
 		e.alerts = append(e.alerts, payload.(models.AlertEvent))
+	case name == EventRemoteEnded:
+		e.remoteEnded = append(e.remoteEnded, payload.(models.RemoteDesktopEnded))
 	}
 }
 

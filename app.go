@@ -486,6 +486,30 @@ func (a *App) CloseSFTP(id string) {
 	}
 }
 
+// OpenRemoteDesktop starts an RDP or VNC session for a host. VNC returns a
+// local WebSocket URL for the viewer; RDP opens the system's RDP client.
+func (a *App) OpenRemoteDesktop(id, hostID string) (models.RemoteDesktop, error) {
+	if err := a.ready(); err != nil {
+		return models.RemoteDesktop{}, err
+	}
+	return a.core().OpenRemoteDesktop(id, hostID)
+}
+
+// LaunchRDP opens the RDP client again for an open RDP session.
+func (a *App) LaunchRDP(id string) (models.RemoteDesktop, error) {
+	if err := a.ready(); err != nil {
+		return models.RemoteDesktop{}, err
+	}
+	return a.core().LaunchRDP(id)
+}
+
+// CloseRemoteDesktop ends an RDP or VNC session and its tunnel.
+func (a *App) CloseRemoteDesktop(id string) {
+	if a.core() != nil {
+		a.core().CloseRemoteDesktop(id)
+	}
+}
+
 // RemoteHome returns the remote working directory.
 func (a *App) RemoteHome(id string) (string, error) {
 	if err := a.ready(); err != nil {
