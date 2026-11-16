@@ -7,6 +7,7 @@ import {
   ChevronRightIcon,
   CircleXIcon,
   Loader2Icon,
+  SearchIcon,
   ServerIcon,
   Trash2Icon,
 } from 'lucide-react'
@@ -19,6 +20,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { HostAvatar } from '@/components/hosts/HostAvatar'
 import { Field, Section } from '@/components/settings/Section'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api, errorMessage, events, onEvent } from '@/lib/api'
@@ -321,14 +323,15 @@ function KeysSection({ forwardToAI }: { forwardToAI: boolean }) {
   )
 }
 
-const MODES: { v: AgentMode | ''; label: string }[] = [
-  { v: '', label: 'No access' },
+const MODES: { v: AgentMode; label: string }[] = [
   { v: 'ask', label: 'Ask first' },
   { v: 'auto', label: 'Always allow' },
 ]
 
 function HostsSection({ hosts, modes, enabled }: { hosts: Host[]; modes: Record<string, AgentMode>; enabled: boolean }) {
   const allGrants = useAgent((s) => s.status?.grants)
+  const [query, setQuery] = useState('')
+  const [onlyOpen, setOnlyOpen] = useState(false)
   // Re-render every 30 seconds so expired "allowed until" labels go away.
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
@@ -344,12 +347,17 @@ function HostsSection({ hosts, modes, enabled }: { hosts: Host[]; modes: Record<
     }
   }
   const opened = hosts.filter((h) => modes[h.id]).length
+  const q = query.trim().toLowerCase()
+  const shown = hosts.filter(
+    (h) => (!onlyOpen || modes[h.id]) && (!q || [h.label, h.hostname, h.username].some((v) => v?.toLowerCase().includes(q))),
+  )
   return (
     <Section
       title="Servers"
       description={
         <>
-          <span className="text-foreground">Ask first</span>: you approve each action. <span className="text-foreground">Always allow</span>: no prompts.
+          Turn a server on to let agents use it. <span className="text-foreground">Ask first</span>: you approve each action.{' '}
+          <span className="text-foreground">Always allow</span>: no prompts.
         </>
       }
     >
@@ -361,7 +369,43 @@ function HostsSection({ hosts, modes, enabled }: { hosts: Host[]; modes: Record<
         </div>
       ) : (
         <>
-          {hosts.map((h) => {
+          <div className="flex items-center gap-2 px-4 py-2">
+            <div className="relative min-w-0 flex-1">
+              <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
+                placeholder="Search servers"
+                className="h-8 pl-8"
+              />
+            </div>
+            <div role="radiogroup" aria-label="Show" className="flex shrink-0 rounded-md border p-0.5">
+              {[
+                { v: false, label: `All ${hosts.length}` },
+                { v: true, label: `On ${opened}` },
+              ].map((f) => (
+                <button
+                  key={String(f.v)}
+                  role="radio"
+                  aria-checked={onlyOpen === f.v}
+                  onClick={() => setOnlyOpen(f.v)}
+                  className={cn(
+                    'rounded px-2.5 py-1 text-xs tabular-nums transition-colors',
+                    onlyOpen === f.v ? 'bg-accent font-medium text-foreground' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {shown.length === 0 && (
+            <div className="px-4 py-5 text-center text-xs text-muted-foreground">
+              {onlyOpen && !q ? 'No servers are on yet.' : 'No matching servers.'}
+            </div>
+          )}
+          {shown.map((h) => {
             const mode = modes[h.id] ?? ''
             const grant = grants.find((g) => g.hostId === h.id)
             return (
@@ -378,37 +422,39 @@ function HostsSection({ hosts, modes, enabled }: { hosts: Host[]; modes: Record<
                     )}
                   </div>
                 </div>
-                <div role="radiogroup" aria-label={`Agent access for ${h.label}`} className="flex shrink-0 rounded-md border p-0.5">
-                  {MODES.map((m) => (
-                    <button
-                      key={m.v || 'off'}
-                      role="radio"
-                      aria-checked={mode === m.v}
-                      onClick={() => mode !== m.v && void setMode(h.id, m.v)}
-                      className={cn(
-                        'rounded px-2.5 py-1 text-xs transition-colors',
-                        mode === m.v
-                          ? m.v === 'auto'
-                            ? 'bg-warning/15 font-medium text-warning'
-                            : m.v === 'ask'
-                              ? 'bg-primary/15 font-medium text-primary'
-                              : 'bg-accent font-medium text-foreground'
-                          : 'text-muted-foreground hover:text-foreground',
-                      )}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
+                {mode && (
+                  <div role="radiogroup" aria-label={`Agent access for ${h.label}`} className="flex shrink-0 rounded-md border p-0.5">
+                    {MODES.map((m) => (
+                      <button
+                        key={m.v}
+                        role="radio"
+                        aria-checked={mode === m.v}
+                        onClick={() => mode !== m.v && void setMode(h.id, m.v)}
+                        className={cn(
+                          'rounded px-2.5 py-1 text-xs transition-colors',
+                          mode === m.v
+                            ? m.v === 'auto'
+                              ? 'bg-warning/15 font-medium text-warning'
+                              : 'bg-primary/15 font-medium text-primary'
+                            : 'text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <Switch
+                  checked={!!mode}
+                  aria-label={`Let agents use ${h.label}`}
+                  onCheckedChange={(on) => void setMode(h.id, on ? 'ask' : '')}
+                />
               </div>
             )
           })}
-          {(opened > 0 || grants.length > 0) && (
+          {(!enabled || grants.length > 0) && opened > 0 && (
             <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-xs text-muted-foreground">
-              <span>
-                {opened} of {hosts.length} open to agents
-                {!enabled && ' (agent access is off)'}
-              </span>
+              <span>{!enabled ? 'Agent access is off, so these servers are closed for now.' : ''}</span>
               {grants.length > 0 && (
                 <Button variant="ghost" size="xs" onClick={() => void api.revokeAgentGrants()}>
                   Ask again everywhere

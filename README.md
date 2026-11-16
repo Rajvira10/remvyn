@@ -182,9 +182,9 @@ Remvyn includes an [MCP](https://modelcontextprotocol.io) server, so Claude Code
 AI tool ──MCP (stdio)──▶ remvyn mcp ──unix socket (0600)──▶ Remvyn app ──SSH──▶ your servers
 ```
 
-1. Open **AI agents** in the sidebar, turn on **Allow AI agents**, and choose access per server:
-   - **No access** (the default): the server is invisible to agents.
-   - **Ask first**: every action appears in Remvyn with **Deny**, **Allow once** or **Allow for 30 min**. You also get a desktop notification. Unanswered requests are denied after 5 minutes.
+1. Open **AI agents** in the sidebar, turn on **Allow AI agents**, and switch on the servers agents may use (search finds a server by name, address or user; **On** shows only the ones you've opened). Each server is:
+   - **Off** (the default): the server is invisible to agents.
+   - **Ask first** (what switching it on picks): every action appears in Remvyn with **Deny**, **Allow once** or **Allow for 30 min**. You also get a desktop notification. Unanswered requests are denied after 5 minutes.
    - **Always allow**: actions run without asking.
 2. Under **Connect your AI tools**, click **Add** next to each tool you use. Remvyn finds Claude Code, Codex, Gemini CLI, Cursor, Claude Desktop, GitHub Copilot (VS Code), Windsurf and opencode (each shown with its logo), and writes Remvyn into that tool's own MCP config (Claude Code through `claude mcp add`; the others by editing their config file and keeping everything else in it). Restart the tool afterwards. If you move Remvyn, the row says so and **Update** fixes the path. **By hand** shows the command or JSON for doing it yourself, for example:
 
