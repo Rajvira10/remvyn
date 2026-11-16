@@ -58,6 +58,10 @@ export function CompressRemote(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['CompressRemote'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function ConnectMCPClient(arg1) {
+  return window['go']['main']['App']['ConnectMCPClient'](arg1);
+}
+
 export function ContainerAction(arg1, arg2, arg3) {
   return window['go']['main']['App']['ContainerAction'](arg1, arg2, arg3);
 }
@@ -120,6 +124,10 @@ export function DeleteVault(arg1) {
 
 export function DeleteVaultItem(arg1) {
   return window['go']['main']['App']['DeleteVaultItem'](arg1);
+}
+
+export function DisconnectMCPClient(arg1) {
+  return window['go']['main']['App']['DisconnectMCPClient'](arg1);
 }
 
 export function Download(arg1, arg2, arg3) {
@@ -248,6 +256,10 @@ export function ListKnownHosts() {
 
 export function ListLocal(arg1) {
   return window['go']['main']['App']['ListLocal'](arg1);
+}
+
+export function ListMCPClients() {
+  return window['go']['main']['App']['ListMCPClients']();
 }
 
 export function ListNames(arg1, arg2, arg3) {

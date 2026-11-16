@@ -334,6 +334,17 @@ export interface AgentGrant {
   until: number
 }
 
+export interface MCPClient {
+  id: string
+  name: string
+  installed: boolean
+  connected: boolean
+  current: boolean
+  configPath: string
+  manualKind: 'command' | 'json'
+  manual: string
+}
+
 export interface LocalAgentStatus {
   enabled: boolean
   listening: boolean

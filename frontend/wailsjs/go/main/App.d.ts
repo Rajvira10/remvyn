@@ -34,6 +34,8 @@ export function CompressLocal(arg1:string,arg2:Array<string>,arg3:string,arg4:st
 
 export function CompressRemote(arg1:string,arg2:string,arg3:Array<string>,arg4:string,arg5:string):Promise<string>;
 
+export function ConnectMCPClient(arg1:string):Promise<void>;
+
 export function ContainerAction(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function CopyLocal(arg1:Array<string>,arg2:string):Promise<void>;
@@ -65,6 +67,8 @@ export function DeleteUptimeCheck(arg1:string):Promise<void>;
 export function DeleteVault(arg1:string):Promise<void>;
 
 export function DeleteVaultItem(arg1:string):Promise<void>;
+
+export function DisconnectMCPClient(arg1:string):Promise<void>;
 
 export function Download(arg1:string,arg2:Array<string>,arg3:string):Promise<string>;
 
@@ -129,6 +133,8 @@ export function ListKeys():Promise<Array<models.Key>>;
 export function ListKnownHosts():Promise<Array<models.KnownHost>>;
 
 export function ListLocal(arg1:string):Promise<models.DirListing>;
+
+export function ListMCPClients():Promise<Array<models.MCPClient>>;
 
 export function ListNames(arg1:string,arg2:string,arg3:string):Promise<Array<string>>;
 

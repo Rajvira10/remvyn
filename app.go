@@ -17,6 +17,7 @@ import (
 	"remvyn/backend/core"
 	"remvyn/backend/files"
 	"remvyn/backend/mcp"
+	"remvyn/backend/mcpclients"
 	"remvyn/backend/models"
 	"remvyn/backend/sshconn"
 	"remvyn/backend/updater"
@@ -1339,6 +1340,21 @@ func (a *App) GetAgentStatus() models.AgentStatus {
 		return models.AgentStatus{Command: agentCommand(), Grants: []models.AgentGrant{}}
 	}
 	return a.core().AgentStatus()
+}
+
+// ListMCPClients lists the AI tools Remvyn can be added to.
+func (a *App) ListMCPClients() []models.MCPClient {
+	return mcpclients.List(agentCommand())
+}
+
+// ConnectMCPClient adds Remvyn to an AI tool's MCP config.
+func (a *App) ConnectMCPClient(id string) error {
+	return mcpclients.Connect(a.ctx, id, agentCommand())
+}
+
+// DisconnectMCPClient removes Remvyn from an AI tool's MCP config.
+func (a *App) DisconnectMCPClient(id string) error {
+	return mcpclients.Disconnect(a.ctx, id)
 }
 
 // SetAgentEnabled turns AI agent access on or off.

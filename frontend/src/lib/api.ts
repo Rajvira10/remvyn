@@ -45,6 +45,7 @@ import type {
   AgentMode,
   AgentStatus,
   LocalAgentStatus,
+  MCPClient,
   TOTPCode,
   UpdateStatus,
   VaultItem,
@@ -253,6 +254,9 @@ export const api = {
   deleteVault: (id: string): Promise<void> => call.DeleteVault(id),
 
   agentStatus: (): Promise<AgentStatus> => call.GetAgentStatus(),
+  mcpClients: (): Promise<MCPClient[]> => call.ListMCPClients(),
+  connectMCPClient: (id: string): Promise<void> => call.ConnectMCPClient(id),
+  disconnectMCPClient: (id: string): Promise<void> => call.DisconnectMCPClient(id),
   localAgentStatus: (): Promise<LocalAgentStatus> => call.LocalAgentStatus(),
   setLocalKeyAgent: (on: boolean): Promise<Settings> => call.SetLocalKeyAgent(on),
   setAgentEnabled: (on: boolean): Promise<Settings> => call.SetAgentEnabled(on),

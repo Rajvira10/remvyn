@@ -3,8 +3,10 @@ import {
   BanIcon,
   BotIcon,
   CheckCircle2Icon,
+  CheckIcon,
   ChevronRightIcon,
   CircleXIcon,
+  Loader2Icon,
   ServerIcon,
   Trash2Icon,
 } from 'lucide-react'
@@ -14,11 +16,12 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { CopyButton } from '@/components/common/CopyButton'
 import { EmptyState } from '@/components/common/EmptyState'
 import { HostAvatar } from '@/components/hosts/HostAvatar'
-import { Section } from '@/components/settings/Section'
+import { Field, Section } from '@/components/settings/Section'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api, errorMessage, events, onEvent } from '@/lib/api'
-import type { AgentLogEntry, AgentMode, Host, LocalAgentStatus } from '@/lib/types'
+import type { AgentLogEntry, AgentMode, Host, LocalAgentStatus, MCPClient } from '@/lib/types'
 import { cn, relativeTime } from '@/lib/utils'
 import { useAgent } from '@/stores/agent'
 import { useSettings } from '@/stores/settings'
@@ -42,8 +45,10 @@ const toolLabel: Record<string, string> = {
 export function AgentsPage() {
   const settings = useSettings((s) => s.settings)
   const status = useAgent((s) => s.status)
+  const logCount = useAgent((s) => s.log.length)
   const hosts = useVault((s) => s.hosts)
   const enabled = !!settings?.agentEnabled
+  const [tab, setTab] = useState('setup')
 
   const setEnabled = async (on: boolean) => {
     try {
@@ -55,14 +60,19 @@ export function AgentsPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <Tabs value={tab} onValueChange={setTab} className="h-full min-h-0">
       <div className="flex h-14 shrink-0 items-center gap-3 border-b px-5">
         <h1 className="text-[15px] font-semibold">AI agents</h1>
-        <span className="truncate text-xs text-muted-foreground">
-          Let Claude Code work on your servers through Remvyn, without ever seeing a key or password.
-        </span>
+        <span className="truncate text-xs text-muted-foreground">AI tools work on your servers through Remvyn and never see a key or password.</span>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto">
+      <TabsList className="px-3">
+        <TabsTrigger value="setup">Setup</TabsTrigger>
+        <TabsTrigger value="activity">
+          Activity
+          {logCount > 0 && <span className="rounded bg-muted px-1 text-[10.5px] tabular-nums text-muted-foreground">{logCount}</span>}
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="setup" className="overflow-auto">
         <div className="mx-auto flex max-w-3xl flex-col gap-5 p-5">
           <section className="flex items-center gap-4 rounded-xl border bg-card px-4 py-3.5">
             <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', enabled ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground')}>
@@ -73,9 +83,9 @@ export function AgentsPage() {
               <div className="mt-0.5 text-xs text-muted-foreground">
                 {enabled
                   ? status?.running
-                    ? `${status.running} action${status.running === 1 ? '' : 's'} running. Turning this off stops them immediately.`
-                    : 'Agents can use the servers you open below. Turning this off stops everything immediately.'
-                  : 'Off: agents get no access to anything.'}
+                    ? `${status.running} action${status.running === 1 ? '' : 's'} running.`
+                    : 'Agents can use the servers you open below.'
+                  : 'Off: agents get no access.'}
               </div>
             </div>
             <Switch checked={enabled} onCheckedChange={(on) => void setEnabled(on)} aria-label="Allow AI agents" />
@@ -88,76 +98,152 @@ export function AgentsPage() {
             </div>
           )}
 
-          <SetupSection command={status?.command ?? []} />
+          <ConnectSection />
           <HostsSection hosts={hosts} modes={settings?.agentHosts ?? {}} enabled={enabled} />
-          <Section
-            title="Forwarded SSH keys"
-            description="For servers with “Forward my SSH keys” on (in the host's settings), commands the agent runs can log in elsewhere with your keys, e.g. git pull from a private repo."
-          >
-            <div className="flex items-center justify-between gap-4 px-4 py-3">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[13px] font-medium">Let agents use forwarded keys</span>
-                <span className="text-xs text-muted-foreground">
-                  Remvyn still asks you every time a key is used, even on hosts set to run without asking. Off: agents' connections never forward keys.
-                </span>
-              </div>
-              <Switch
-                checked={!!settings?.forwardKeysToAI}
-                aria-label="Let agents use forwarded keys"
-                onCheckedChange={(on) =>
-                  void api
-                    .setForwardKeysToAI(on)
-                    .then((s) => useSettings.getState().setLocal(s))
-                    .catch((e) => toast.error('Could not change the setting', { description: errorMessage(e) }))
-                }
-              />
-            </div>
-          </Section>
-          <LocalAgentSection />
-          <ActivitySection />
+          <KeysSection forwardToAI={!!settings?.forwardKeysToAI} />
         </div>
-      </div>
-    </div>
+      </TabsContent>
+      <TabsContent value="activity" className="flex flex-col">
+        <ActivityTab />
+      </TabsContent>
+    </Tabs>
   )
 }
 
-function SetupSection({ command }: { command: string[] }) {
-  const [exe = 'remvyn', ...args] = command
-  const claudeCmd = `claude mcp add --scope user remvyn -- ${[exe, ...args].map(shellQuote).join(' ')}`
-  const json = JSON.stringify({ mcpServers: { remvyn: { command: exe, args } } }, null, 2)
-  const [showJson, setShowJson] = useState(false)
+/** Adds Remvyn's MCP server to the AI tools on this computer. */
+function ConnectSection() {
+  const [clients, setClients] = useState<MCPClient[] | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [manual, setManual] = useState<string | null>(null)
+  const [showAll, setShowAll] = useState(false)
+  const load = () =>
+    api
+      .mcpClients()
+      .then(setClients)
+      .catch(() => setClients([]))
+  useEffect(() => {
+    void load()
+  }, [])
+
+  const act = async (c: MCPClient, remove: boolean) => {
+    setBusy(c.id)
+    try {
+      if (remove) await api.disconnectMCPClient(c.id)
+      else await api.connectMCPClient(c.id)
+      toast.success(remove ? `Removed from ${c.name}` : `Added to ${c.name}`, {
+        description: remove ? undefined : `Restart ${c.name} (or start a new session) to pick it up.`,
+      })
+    } catch (e) {
+      toast.error(`Could not change ${c.name}`, { description: errorMessage(e) })
+    } finally {
+      setBusy(null)
+      void load()
+    }
+  }
+
+  const found = (clients ?? []).filter((c) => c.installed || c.connected)
+  const others = (clients ?? []).filter((c) => !c.installed && !c.connected)
+  const shown = showAll ? [...found, ...others] : found
+
   return (
-    <Section title="Connect Claude Code" description="Run this once in a terminal. Remvyn has to be open for agents to reach your servers.">
-      <div className="flex flex-col gap-3 px-4 py-3">
-        <div className="flex items-start gap-2 rounded-lg border bg-muted/40 py-2 pr-1.5 pl-3">
-          <code data-selectable className="min-w-0 flex-1 py-0.5 font-mono text-[12px] leading-relaxed break-all">
-            {claudeCmd}
-          </code>
-          <CopyButton text={claudeCmd} tooltip="Copy command" />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Then ask Claude something like <span className="text-foreground">“check disk space on my prod server”</span>. It sees only the servers you
-          open below, and Remvyn runs every action with the credentials in your vault.
-        </p>
-        <button onClick={() => setShowJson((v) => !v)} className="flex items-center gap-1 self-start text-xs text-muted-foreground hover:text-foreground">
-          <ChevronRightIcon className={cn('size-3.5 transition-transform', showJson && 'rotate-90')} /> Other MCP clients (Cursor, Codex, Claude Desktop…)
-        </button>
-        {showJson && (
-          <div className="flex items-start gap-2 rounded-lg border bg-muted/40 py-2 pr-1.5 pl-3">
-            <pre data-selectable className="min-w-0 flex-1 overflow-x-auto font-mono text-[12px] leading-relaxed">
-              {json}
-            </pre>
-            <CopyButton text={json} tooltip="Copy JSON" />
-          </div>
-        )}
-      </div>
+    <Section title="Connect your AI tools" description="Works with any MCP client. Remvyn needs to be open while the agent works.">
+      {clients === null ? (
+        <div className="px-4 py-4 text-xs text-muted-foreground">Looking for AI tools…</div>
+      ) : (
+        <>
+          {shown.length === 0 && <div className="px-4 py-4 text-xs text-muted-foreground">No AI tools found on this computer.</div>}
+          {shown.map((c) => (
+            <ClientRow
+              key={c.id}
+              c={c}
+              busy={busy === c.id}
+              manualOpen={manual === c.id}
+              onManual={() => setManual(manual === c.id ? null : c.id)}
+              onAct={(remove) => void act(c, remove)}
+            />
+          ))}
+          {others.length > 0 && (
+            <button
+              onClick={() => setShowAll((v) => !v)}
+              className="flex w-full items-center gap-1 px-4 py-2 text-left text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ChevronRightIcon className={cn('size-3.5 transition-transform', showAll && 'rotate-90')} />
+              {showAll ? 'Hide tools not on this computer' : `${others.length} more (${others.map((c) => c.name).join(', ')})`}
+            </button>
+          )}
+        </>
+      )}
     </Section>
   )
 }
 
-/** The local SSH agent: programs on this computer use the keychain's keys. */
-function LocalAgentSection() {
+function ClientRow({
+  c,
+  busy,
+  manualOpen,
+  onManual,
+  onAct,
+}: {
+  c: MCPClient
+  busy: boolean
+  manualOpen: boolean
+  onManual: () => void
+  onAct: (remove: boolean) => void
+}) {
+  const stale = c.connected && !c.current
+  return (
+    <div>
+      <div className="flex items-center gap-3 px-4 py-2.5">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-[12px] font-semibold text-muted-foreground">
+          {c.name[0]}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] font-medium">{c.name}</div>
+          <div className={cn('flex items-center gap-1 text-[11.5px]', stale ? 'text-warning' : c.connected ? 'text-success' : 'text-muted-foreground')}>
+            {c.connected && !stale && <CheckIcon className="size-3" />}
+            {stale ? 'Points at another copy of Remvyn' : c.connected ? 'Added' : c.installed ? 'Not added' : 'Not found on this computer'}
+          </div>
+        </div>
+        <Button variant="ghost" size="xs" onClick={onManual} className="text-muted-foreground">
+          {manualOpen ? 'Hide' : 'By hand'}
+        </Button>
+        {c.connected && !stale ? (
+          <Button variant="ghost" size="xs" disabled={busy} onClick={() => onAct(true)}>
+            {busy ? <Loader2Icon className="animate-spin" /> : null} Remove
+          </Button>
+        ) : (
+          <Button variant={stale ? 'outline' : 'default'} size="xs" disabled={busy} onClick={() => onAct(false)} className="min-w-16">
+            {busy ? <Loader2Icon className="animate-spin" /> : null} {stale ? 'Update' : 'Add'}
+          </Button>
+        )}
+      </div>
+      {manualOpen && (
+        <div className="flex flex-col gap-1.5 px-4 pb-3">
+          <p className="text-xs text-muted-foreground">
+            {c.manualKind === 'command' ? (
+              'Run in a terminal:'
+            ) : (
+              <>
+                Add to <span data-selectable className="font-mono">{c.configPath}</span>:
+              </>
+            )}
+          </p>
+          <div className="flex items-start gap-2 rounded-lg border bg-muted/40 py-2 pr-1.5 pl-3">
+            <pre data-selectable className="min-w-0 flex-1 overflow-x-auto py-0.5 font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all">
+              {c.manual}
+            </pre>
+            <CopyButton text={c.manual} tooltip="Copy" />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Forwarded keys for agents, and the local SSH agent for apps on this computer. */
+function KeysSection({ forwardToAI }: { forwardToAI: boolean }) {
   const [status, setStatus] = useState<LocalAgentStatus | null>(null)
+  const [showSetup, setShowSetup] = useState(false)
   useEffect(() => {
     void api
       .localAgentStatus()
@@ -165,57 +251,70 @@ function LocalAgentSection() {
       .catch(() => {})
     return onEvent<LocalAgentStatus>(events.LOCAL_AGENT_STATUS, setStatus)
   }, [])
-  if (!status?.supported) return null
-  const toggle = async (on: boolean) => {
+  const toggleLocal = async (on: boolean) => {
     try {
       useSettings.getState().setLocal(await api.setLocalKeyAgent(on))
       setStatus(await api.localAgentStatus())
+      if (on) setShowSetup(true)
     } catch (e) {
       toast.error('Could not change the setting', { description: errorMessage(e) })
     }
   }
-  const sock = status.socketPath
+  const sock = status?.socketPath ?? ''
   const sshConfig = `Host github.com\n  IdentityAgent "${sock}"`
   const env = `export SSH_AUTH_SOCK=${shellQuote(sock)}`
   return (
-    <Section
-      title="SSH keys for apps on this computer"
-      description="git, ssh, and AI coding agents like Claude Code running on this computer can log in with your keychain's keys, for example to git push. The keys never leave Remvyn."
-    >
-      <div className="flex items-center justify-between gap-4 px-4 py-3">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[13px] font-medium">Let apps on this computer use my keys</span>
-          <span className="text-xs text-muted-foreground">
-            Remvyn asks you each time a key is used and shows which program asked (for example ssh ← git ← claude). Works while Remvyn is open and
-            unlocked, whether or not “Allow AI agents” is on.
-          </span>
-        </div>
-        <Switch checked={status.enabled} aria-label="Let apps on this computer use my keys" onCheckedChange={(on) => void toggle(on)} />
-      </div>
-      {status.enabled && status.listenError && (
-        <div className="mx-4 mb-3 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
-          <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
-          <span>The SSH agent couldn't start: {status.listenError}</span>
-        </div>
-      )}
-      {status.enabled && (
-        <div className="flex flex-col gap-2 px-4 pb-3">
-          <p className="text-xs text-muted-foreground">
-            For GitHub everywhere (terminals, editors and AI agents), add this to <span className="font-mono">~/.ssh/config</span>:
-          </p>
-          <div className="flex items-start gap-2 rounded-lg border bg-muted/40 py-2 pr-1.5 pl-3">
-            <pre data-selectable className="min-w-0 flex-1 overflow-x-auto font-mono text-[12px] leading-relaxed">
-              {sshConfig}
-            </pre>
-            <CopyButton text={sshConfig} tooltip="Copy" />
-          </div>
-          <p className="text-xs text-muted-foreground">Or, for every SSH login from one shell:</p>
-          <div className="flex items-start gap-2 rounded-lg border bg-muted/40 py-2 pr-1.5 pl-3">
-            <code data-selectable className="min-w-0 flex-1 py-0.5 font-mono text-[12px] leading-relaxed break-all">
-              {env}
-            </code>
-            <CopyButton text={env} tooltip="Copy" />
-          </div>
+    <Section title="SSH keys" description="Your keys never leave Remvyn, and you're asked each time one is used.">
+      <Field label="Agents can use forwarded keys" hint="On servers with key forwarding on, e.g. for git pull from a private repo.">
+        <Switch
+          checked={forwardToAI}
+          aria-label="Agents can use forwarded keys"
+          onCheckedChange={(on) =>
+            void api
+              .setForwardKeysToAI(on)
+              .then((s) => useSettings.getState().setLocal(s))
+              .catch((e) => toast.error('Could not change the setting', { description: errorMessage(e) }))
+          }
+        />
+      </Field>
+      {status?.supported && (
+        <div>
+          <Field label="Apps on this computer can use my keys" hint="git, ssh and AI agents on this computer, e.g. to git push.">
+            <Switch checked={status.enabled} aria-label="Apps on this computer can use my keys" onCheckedChange={(on) => void toggleLocal(on)} />
+          </Field>
+          {status.enabled && status.listenError && (
+            <div className="mx-4 mb-3 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
+              <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+              <span>The SSH agent couldn't start: {status.listenError}</span>
+            </div>
+          )}
+          {status.enabled && (
+            <div className="px-4 pb-3">
+              <button onClick={() => setShowSetup((v) => !v)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                <ChevronRightIcon className={cn('size-3.5 transition-transform', showSetup && 'rotate-90')} /> How to use it
+              </button>
+              {showSetup && (
+                <div className="mt-2 flex flex-col gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    Add to <span className="font-mono">~/.ssh/config</span>:
+                  </p>
+                  <div className="flex items-start gap-2 rounded-lg border bg-muted/40 py-2 pr-1.5 pl-3">
+                    <pre data-selectable className="min-w-0 flex-1 overflow-x-auto font-mono text-[12px] leading-relaxed">
+                      {sshConfig}
+                    </pre>
+                    <CopyButton text={sshConfig} tooltip="Copy" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Or, for one shell:</p>
+                  <div className="flex items-start gap-2 rounded-lg border bg-muted/40 py-2 pr-1.5 pl-3">
+                    <code data-selectable className="min-w-0 flex-1 py-0.5 font-mono text-[12px] leading-relaxed break-all">
+                      {env}
+                    </code>
+                    <CopyButton text={env} tooltip="Copy" />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </Section>
@@ -250,8 +349,7 @@ function HostsSection({ hosts, modes, enabled }: { hosts: Host[]; modes: Record<
       title="Servers"
       description={
         <>
-          Choose what agents may use. <span className="text-foreground">Ask first</span> shows each command in Remvyn for you to approve;{' '}
-          <span className="text-foreground">Always allow</span> runs anything without asking.
+          <span className="text-foreground">Ask first</span>: you approve each action. <span className="text-foreground">Always allow</span>: no prompts.
         </>
       }
     >
@@ -324,7 +422,7 @@ function HostsSection({ hosts, modes, enabled }: { hosts: Host[]; modes: Record<
   )
 }
 
-function ActivitySection() {
+function ActivityTab() {
   const { log, logLoaded, loadLog } = useAgent()
   const [open, setOpen] = useState<string | null>(null)
   const [clearing, setClearing] = useState(false)
@@ -332,21 +430,26 @@ function ActivitySection() {
     loadLog().catch(() => {})
   }, [loadLog])
   return (
-    <Section title="Activity" description="Everything agents did, newest first. Commands and output are stored encrypted, like your passwords.">
-      {log.length === 0 ? (
-        <div className="px-4 py-6 text-center text-xs text-muted-foreground">{logLoaded ? 'No agent activity yet.' : 'Loading…'}</div>
-      ) : (
-        <>
-          {log.map((e) => (
-            <LogRow key={e.id} e={e} open={open === e.id} onToggle={() => setOpen(open === e.id ? null : e.id)} />
-          ))}
-          <div className="flex justify-end px-4 py-2">
-            <Button variant="ghost" size="xs" onClick={() => setClearing(true)}>
-              <Trash2Icon /> Clear activity
-            </Button>
+    <>
+      <div className="flex h-10 shrink-0 items-center justify-between gap-3 border-b px-5 text-xs text-muted-foreground">
+        <span>Everything agents did, newest first. Stored encrypted.</span>
+        {log.length > 0 && (
+          <Button variant="ghost" size="xs" onClick={() => setClearing(true)}>
+            <Trash2Icon /> Clear
+          </Button>
+        )}
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto">
+        {log.length === 0 ? (
+          <div className="px-4 py-10 text-center text-xs text-muted-foreground">{logLoaded ? 'No agent activity yet.' : 'Loading…'}</div>
+        ) : (
+          <div className="divide-y">
+            {log.map((e) => (
+              <LogRow key={e.id} e={e} open={open === e.id} onToggle={() => setOpen(open === e.id ? null : e.id)} />
+            ))}
           </div>
-        </>
-      )}
+        )}
+      </div>
       <ConfirmDialog
         open={clearing}
         onOpenChange={setClearing}
@@ -359,7 +462,7 @@ function ActivitySection() {
           useAgent.getState().clearLog()
         }}
       />
-    </Section>
+    </>
   )
 }
 
@@ -382,7 +485,7 @@ function LogRow({ e, open, onToggle }: { e: AgentLogEntry; open: boolean; onTogg
           : ''
   return (
     <div>
-      <button onClick={onToggle} className="flex w-full items-center gap-2.5 px-4 py-2 text-left hover:bg-accent/40">
+      <button onClick={onToggle} className="flex w-full items-center gap-2.5 px-5 py-2 text-left hover:bg-accent/40">
         {icon}
         <span className="w-14 shrink-0 text-[11px] text-muted-foreground">{toolLabel[e.tool] ?? e.tool}</span>
         <span className="min-w-0 flex-1 truncate font-mono text-[12px]">{e.summary || '(details unavailable)'}</span>
@@ -393,7 +496,7 @@ function LogRow({ e, open, onToggle }: { e: AgentLogEntry; open: boolean; onTogg
         </span>
       </button>
       {open && (
-        <div className="flex flex-col gap-2 px-4 pb-3">
+        <div className="flex flex-col gap-2 px-5 pb-3">
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
             <span>{e.client}</span>
             <span>{new Date(e.at).toLocaleString()}</span>

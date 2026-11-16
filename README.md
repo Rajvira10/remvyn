@@ -43,14 +43,14 @@ Built with Wails v2, Go, React, TypeScript, xterm.js, and SQLite.
   - Generate Ed25519, ECDSA or RSA keys, optionally passphrase-protected, or import OpenSSH/PEM keys from a paste or a file.
   - Copy the public key, install it on a host (like `ssh-copy-id`), or export the private key with `0600` permissions.
   - Agent forwarding: turn on **Forward my SSH keys** for a host, and git or ssh on that server can log in with your keychain's keys, for example to `git pull` a private repo or hop to another server, without copying keys there. Remvyn acts as the SSH agent itself, so the keys never leave it, and each use pops up **Deny**, **Allow once** or **Allow for this connection**. It keeps working inside persistent sessions after a reconnect. Per device, and off by default.
-  - SSH keys for apps on this computer: turn on **Let apps on this computer use my keys** (AI agents page), and git, ssh, editors and AI coding agents like Claude Code on this Mac or Linux PC can log in with your keychain's keys, for example to `git push`, through Remvyn's SSH agent socket. Point them at it with `IdentityAgent` in `~/.ssh/config` (the page shows a ready-made `Host github.com` entry) or `SSH_AUTH_SOCK`. The keys never leave Remvyn: every use asks **Deny**, **Allow once** or **Allow for this connection**, naming the program that asked and what started it (for example `ssh ← git ← claude`). Works while Remvyn is open and unlocked; the socket only accepts your user. Off by default; not on Windows yet.
+  - SSH keys for apps on this computer: turn on **Apps on this computer can use my keys** (AI agents page, SSH keys), and git, ssh, editors and AI coding agents like Claude Code on this Mac or Linux PC can log in with your keychain's keys, for example to `git push`, through Remvyn's SSH agent socket. Point them at it with `IdentityAgent` in `~/.ssh/config` (**How to use it** shows a ready-made `Host github.com` entry) or `SSH_AUTH_SOCK`. The keys never leave Remvyn: every use asks **Deny**, **Allow once** or **Allow for this connection**, naming the program that asked and what started it (for example `ssh ← git ← claude`). Works while Remvyn is open and unlocked; the socket only accepts your user. Off by default; not on Windows yet.
 - **Port forwarding**: local (`-L`), remote (`-R`) and dynamic SOCKS5 (`-D`) rules, with start/stop, auto-start at launch, live connection and byte counters, and automatic stop with an error if the SSH link drops.
 - **Passwords**: a password vault for email and website logins, API tokens and secure notes, with a password generator, two-factor (TOTP) codes and extra fields. Encrypted like everything else and synced with the vault. See [Passwords](#passwords).
 - **Snippets**: saved commands you can send to any open terminal.
 - **Known hosts**: trust on first use with an explicit fingerprint check. A changed host key shows a man-in-the-middle warning with both fingerprints, and rejecting it is the default action. You can review and forget trusted hosts.
 - **Monitoring**: live CPU, memory, disk, network, Docker containers, services and top processes beside the terminal, plus history, alerts, uptime checks and a multi-server dashboard. See [Monitoring](#monitoring).
 - **Master password and app lock**: optional master password, auto-lock after inactivity, and ⌘L to lock. See [Master password and sync](#master-password-and-sync).
-- **AI agents**: let Claude Code (or any MCP client) run commands and edit files on servers you choose. Remvyn makes the connections with its own saved credentials, so the agent never sees a key or password; you can approve each action. See [AI agents](#ai-agents-claude-code).
+- **AI agents**: let Claude Code, Codex, Gemini CLI, Cursor or any other MCP client run commands and edit files on servers you choose. One click adds Remvyn to the tools installed on your computer. Remvyn makes the connections with its own saved credentials, so the agent never sees a key or password; you can approve each action. See [AI agents](#ai-agents-claude-code-codex-and-other-mcp-clients).
 - **Sync**: keep your vault in sync between computers through a private GitHub repository, end-to-end encrypted. Sign in with GitHub; no server needed. Keep several vaults, each synced to its own repository, under one GitHub sign-in.
 - **Settings**: theme, terminal appearance, keepalive and connect timeout, SFTP defaults, close confirmation, and clearing all data.
 
@@ -161,26 +161,27 @@ REMVYN_GITHUB_WEB=http://127.0.0.1:2280 REMVYN_GITHUB_API=http://127.0.0.1:2280 
   REMVYN_GITHUB_CLIENT_ID=dev REMVYN_GITHUB_APP_SLUG=remvyn-dev REMVYN_DATA_DIR=/tmp/remvyn-a wails dev
 ```
 
-## AI agents (Claude Code)
+## AI agents (Claude Code, Codex and other MCP clients)
 
-Remvyn includes an [MCP](https://modelcontextprotocol.io) server, so Claude Code can work on your servers without you putting SSH keys on the machine it runs on or pasting passwords into it.
+Remvyn includes an [MCP](https://modelcontextprotocol.io) server, so Claude Code, Codex or any other MCP client can work on your servers without you putting SSH keys on the machine it runs on or pasting passwords into it.
 
 ```text
-Claude Code ──MCP (stdio)──▶ remvyn mcp ──unix socket (0600)──▶ Remvyn app ──SSH──▶ your servers
+AI tool ──MCP (stdio)──▶ remvyn mcp ──unix socket (0600)──▶ Remvyn app ──SSH──▶ your servers
 ```
 
 1. Open **AI agents** in the sidebar, turn on **Allow AI agents**, and choose access per server:
    - **No access** (the default): the server is invisible to agents.
    - **Ask first**: every action appears in Remvyn with **Deny**, **Allow once** or **Allow for 30 min**. You also get a desktop notification. Unanswered requests are denied after 5 minutes.
    - **Always allow**: actions run without asking.
-2. Run the command shown on that page once. On macOS it is:
+2. Under **Connect your AI tools**, click **Add** next to each tool you use. Remvyn finds Claude Code, Codex, Gemini CLI, Cursor, Claude Desktop, VS Code (Copilot), Windsurf and opencode, and writes Remvyn into that tool's own MCP config (Claude Code through `claude mcp add`; the others by editing their config file and keeping everything else in it). Restart the tool afterwards. If you move Remvyn, the row says so and **Update** fixes the path. **By hand** shows the command or JSON for doing it yourself, for example:
 
    ```bash
    claude mcp add --scope user remvyn -- /Applications/Remvyn.app/Contents/MacOS/Remvyn mcp
+   codex mcp add remvyn -- /Applications/Remvyn.app/Contents/MacOS/Remvyn mcp
    ```
 
-   Other MCP clients use the same command (`<path to Remvyn> mcp`); the page shows the JSON config.
-3. Ask Claude something like "check disk space and nginx status on prod-web".
+   Any other MCP client works with the same command (`<path to Remvyn> mcp`) over stdio.
+3. Ask your agent something like "check disk space and nginx status on prod-web".
 
 Tools: `list_hosts`, `run_command` (non-interactive, exit code, stdout and stderr, timeout up to 30 minutes), `read_file`, `write_file` (atomic, keeps permissions) and `list_dir`, over SFTP.
 
@@ -189,8 +190,8 @@ Safeguards:
 - The agent never receives a password, key or passphrase. Remvyn connects with the vault's credentials and returns only the output.
 - An agent alone can never make Remvyn trust a new host key. When you approve an action on a server whose key isn't trusted yet, Remvyn shows you the usual fingerprint check; on "Always allow" servers an unknown key is refused.
 - Turning access off, locking Remvyn or auto-lock stops running commands, refuses pending requests and closes agent connections immediately.
-- Every action is recorded in the activity log, with its command and output encrypted like your passwords.
-- Agents' connections never forward your SSH keys unless you turn on **Let agents use forwarded keys** on the AI agents page, and only to hosts with forwarding on. Even then, every use of a key asks you first, including on "Always allow" servers, so an agent can't use a forwarded key to reach servers you haven't opened to it.
+- Every action is recorded on the page's **Activity** tab, with its command and output encrypted like your passwords.
+- Agents' connections never forward your SSH keys unless you turn on **Agents can use forwarded keys** on the AI agents page, and only to hosts with forwarding on. Even then, every use of a key asks you first, including on "Always allow" servers, so an agent can't use a forwarded key to reach servers you haven't opened to it.
 - The socket lives in the data folder and only your user account can open it. Access settings are per device and are never synced.
 
 Remvyn has to be running for agents to reach it; otherwise the agent is told to ask you to open it.
@@ -314,6 +315,7 @@ backend/
   totp/                two-factor codes (RFC 6238) for password vault items
   vaultsync/           GitHub sync: device-flow sign-in, Git Data API remote, encrypted records, merge engine
   mcp/                 MCP server for AI agents: stdio protocol, `remvyn mcp` bridge, app socket
+  mcpclients/          adds Remvyn to installed AI tools' MCP configs (Claude Code, Codex, Gemini CLI, Cursor, …)
   monitor/             agentless metrics collection (script, parser, per-host collectors)
   alerts/              alert rule evaluation, firing and resolving
   uptime/              HTTP/TCP uptime probes

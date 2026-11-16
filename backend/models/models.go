@@ -462,6 +462,21 @@ type AgentStatus struct {
 	Grants  []AgentGrant `json:"grants"`
 }
 
+// MCPClient is an AI tool Remvyn can be added to as an MCP server.
+type MCPClient struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Installed bool   `json:"installed"`
+	Connected bool   `json:"connected"`
+	// Current is false when the config points at another copy of Remvyn
+	// (for example after the app was moved).
+	Current    bool   `json:"current"`
+	ConfigPath string `json:"configPath"`
+	// ManualKind is "command" or "json": how to add Remvyn by hand.
+	ManualKind string `json:"manualKind"`
+	Manual     string `json:"manual"`
+}
+
 // LocalAgentStatus describes the local SSH agent socket for the UI.
 type LocalAgentStatus struct {
 	Enabled     bool   `json:"enabled"`

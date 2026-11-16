@@ -761,6 +761,32 @@ export namespace models {
 	        this.syncConnected = source["syncConnected"];
 	    }
 	}
+	export class MCPClient {
+	    id: string;
+	    name: string;
+	    installed: boolean;
+	    connected: boolean;
+	    current: boolean;
+	    configPath: string;
+	    manualKind: string;
+	    manual: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MCPClient(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.installed = source["installed"];
+	        this.connected = source["connected"];
+	        this.current = source["current"];
+	        this.configPath = source["configPath"];
+	        this.manualKind = source["manualKind"];
+	        this.manual = source["manual"];
+	    }
+	}
 	export class MetricPoint {
 	    at: number;
 	    cpu: number;
